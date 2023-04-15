@@ -1,0 +1,4 @@
+.vscode
+*.dSYM
+build
+build-cpp-tests
