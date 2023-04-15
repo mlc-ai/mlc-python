@@ -1,0 +1,98 @@
+[project]
+name = "mlc-python"
+version = "0.0.1"
+dependencies = ['numpy >= 1.22', "ml-dtypes >= 0.1", 'setuptools ; platform_system == "Windows"',]
+description = ""
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: Apache Software License",
+    "Intended Audience :: Science/Research",
+]
+keywords = []
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "PyMLC Authors", email = "junrushao@apache.org" }]
+
+[project.scripts]
+"mlc.config" = "mlc.config:main"
+
+[project.optional-dependencies]
+tests = ['pytest']
+dev = [
+    "cython>=3",
+    "pre-commit",
+    "pytest",
+    "pipx",
+    "ipdb",
+    "ruff",
+    "mypy",
+]
+
+[build-system]
+requires = ["scikit-build-core>=0.9.8", "cython"]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+build.targets = ["mlc_py", "mlc_registry"]
+build.verbose = true
+cmake.build-type = "RelWithDebInfo"
+logging.level = "DEBUG"
+wheel.license-files = []
+wheel.install-dir = "mlc"
+install.strip = false
+build-dir = "build-wheels/{wheel_tag}-{build_type}"
+
+[tool.scikit-build.wheel.packages]
+"mlc" = "python/mlc"
+"include" = "include"
+"3rdparty/dlpack/include/" = "3rdparty/dlpack/include/"
+
+[tool.scikit-build.cmake.define]
+MLC_BUILD_PY = "ON"
+MLC_BUILD_REGISTRY = "ON"
+MLC_BUILD_TESTS = "OFF"
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+target-version = "py39"
+include = ["pyproject.toml", "python/**/*.py", "tests/python/**/*.py"]
+
+[tool.ruff.lint]
+select = [
+    "UP",  # pyupgrade, https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "PL",  # pylint, https://docs.astral.sh/ruff/rules/#pylint-pl
+    "I",   # isort, https://docs.astral.sh/ruff/rules/#isort-i
+    "RUF", # ruff, https://docs.astral.sh/ruff/rules/#ruff-specific-rules-ruf
+    "NPY", # numpy, https://docs.astral.sh/ruff/rules/#numpy-specific-rules-npy
+    "F",   # pyflakes, https://docs.astral.sh/ruff/rules/#pyflakes-f
+    "ANN", # flake8-annotations, https://docs.astral.sh/ruff/rules/#flake8-annotations-ann
+    "PTH", # flake8-use-pathlib, https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
+    # "D",  # pydocstyle, https://docs.astral.sh/ruff/rules/#pydocstyle-d
+]
+ignore = [
+    "PLR2004", # pylint: magic-value-comparison
+    "ANN101",  # flake8-annotations: missing-type-self
+    "ANN401",  # flake8-annotations: any-type
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[tool.cython-lint]
+max-line-length = 120
+
+[tool.mypy]
+mypy_path = "./python"
