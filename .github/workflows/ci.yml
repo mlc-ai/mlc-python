@@ -1,0 +1,82 @@
+name: CI
+
+on: [push, pull_request]
+env:
+  CIBW_BUILD_VERBOSITY: 3
+  CIBW_TEST_REQUIRES: "pytest"
+  CIBW_TEST_COMMAND: "pytest -svv {project}/tests/python/"
+  MLC_CIBW_VERSION: "2.20.0"
+  MLC_PYTHON_VERSION: "3.9"
+  MLC_CIBW_WIN_BUILD: "cp39-win_amd64"
+  MLC_CIBW_MAC_BUILD: "cp39-macosx_arm64"
+  MLC_CIBW_LINUX_BUILD: "cp312-manylinux_x86_64"
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MLC_PYTHON_VERSION }}
+      - uses: pre-commit/action@v3.0.1
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    needs: pre-commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MLC_PYTHON_VERSION }}
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel=="${{ env.MLC_CIBW_VERSION }}"
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BEFORE_ALL: ".\\scripts\\cpp_tests.bat"
+          CIBW_BUILD: ${{ env.MLC_CIBW_WIN_BUILD }}
+      - name: Show package contents
+        run: python scripts/show_wheel_content.py wheelhouse
+  macos:
+    name: MacOS
+    runs-on: macos-latest
+    needs: pre-commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MLC_PYTHON_VERSION }}
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==${{ env.MLC_CIBW_VERSION }}
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BEFORE_ALL: "./scripts/cpp_tests.sh"
+          CIBW_BUILD: ${{ env.MLC_CIBW_MAC_BUILD }}
+      - name: Show package contents
+        run: python scripts/show_wheel_content.py wheelhouse
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    needs: pre-commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MLC_PYTHON_VERSION }}
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==${{ env.MLC_CIBW_VERSION }}
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BEFORE_ALL: "./scripts/setup_manylinux2014.sh && ./scripts/cpp_tests.sh"
+          CIBW_BUILD: ${{ env.MLC_CIBW_LINUX_BUILD }}
+      - name: Show package contents
+        run: python scripts/show_wheel_content.py wheelhouse
