@@ -40,6 +40,8 @@ struct UDictObj : protected ::mlc::core::DictBase {
   friend struct ::mlc::core::DictBase;
   using Hash = ::mlc::core::AnyHash;
   using Equal = ::mlc::core::AnyEqual;
+  using TKey = Any;
+  using TValue = Any;
   using MLCDict::_mlc_header;
   struct Iterator;
   struct ReverseIterator;
@@ -131,6 +133,8 @@ struct UDict : public ObjectRef {
   using ReverseIterator = UDictObj::ReverseIterator;
   using Hash = UDictObj::Hash;
   using Equal = UDictObj::Equal;
+  using TKey = Any;
+  using TValue = Any;
 
   MLC_INLINE UDict() : UDict(::mlc::base::AllocatorOf<UDictObj>::New()) {}
   MLC_INLINE UDict(std::initializer_list<std::pair<Any, Any>> init)

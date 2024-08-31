@@ -326,7 +326,7 @@ template <typename AnyType> struct Checker_Constructor_RawStr {
       CheckConvertToRef([&]() { return v.operator ObjectRef(); }, MLCTypeIndex::kMLCStr, ref_cnt + 1, str_ptr);
       CheckConvertToRef([&]() { return v.operator Ref<StrObj>(); }, MLCTypeIndex::kMLCStr, ref_cnt + 1, str_ptr);
       CheckConvertToRef([&]() { return v.operator Str(); }, MLCTypeIndex::kMLCStr, ref_cnt + 1, str_ptr);
-      CheckConvertFail([&]() { return v.operator Ref<UListObj>(); }, v.type_index, "object.List *");
+      CheckConvertFail([&]() { return v.operator Ref<UListObj>(); }, v.type_index, "object.ListObj[Any] *");
       CheckConvert<RefObj>([&]() { return v.operator RefObj(); }, RefObj(reinterpret_cast<StrObj *>(v_obj)));
       CheckConvert<Object *>([&]() { return v.operator Object *(); }, reinterpret_cast<Object *>(v_obj));
       CheckConvert<StrObj *>([&]() { return v.operator StrObj *(); }, reinterpret_cast<StrObj *>(v_obj));
@@ -334,7 +334,7 @@ template <typename AnyType> struct Checker_Constructor_RawStr {
     } else {
       CheckConvertFail([&]() { return v.operator Ref<Object>(); }, v.type_index, "object.Object *");
       CheckConvertFail([&]() { return v.operator ObjectRef(); }, v.type_index, "object.Object *");
-      CheckConvertFail([&]() { return v.operator StrObj *(); }, v.type_index, "object.Str *");
+      CheckConvertFail([&]() { return v.operator StrObj *(); }, v.type_index, "object.StrObj *");
     }
     CheckConvert<Str>([&]() { return v.operator Str(); }, Str(str));
   }
@@ -490,7 +490,7 @@ TEST(Any, Constructor_Any_ObjPtr) {
     CheckConvertToRef([&]() { return v.operator ObjectRef(); }, MLCTypeIndex::kMLCStr, ref_cnt + 1, v_obj);
     CheckConvertToRef([&]() { return v.operator Ref<StrObj>(); }, MLCTypeIndex::kMLCStr, ref_cnt + 1, v_obj);
     CheckConvertToRef([&]() { return v.operator Str(); }, MLCTypeIndex::kMLCStr, ref_cnt + 1, v_obj);
-    CheckConvertFail([&]() { return v.operator Ref<UListObj>(); }, v.type_index, "object.List *");
+    CheckConvertFail([&]() { return v.operator Ref<UListObj>(); }, v.type_index, "object.ListObj[Any] *");
   };
   Any src(Ref<StrObj>::New("hello"));
   check(AnyView(src), src, 1);            // Copy

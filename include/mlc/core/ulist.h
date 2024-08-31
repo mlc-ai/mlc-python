@@ -10,6 +10,7 @@ struct UListObj : protected core::ListBase {
   template <typename> friend struct ::mlc::core::ListBase::ffi;
   friend struct ::mlc::core::ListBase;
   using MLCList::_mlc_header;
+  using TElem = Any;
   struct Iterator;
   struct ReverseIterator;
 
@@ -92,6 +93,7 @@ MLC_INLINE UListObj::ReverseIterator UListObj::rend() { return ReverseIterator(b
 struct UList : public ObjectRef {
   using Iterator = UListObj::Iterator;
   using ReverseIterator = UListObj::ReverseIterator;
+  using TElem = Any;
   /* clang-format off */
   MLC_INLINE UList() : UList(::mlc::base::AllocatorOf<UListObj>::New()) {}
   MLC_INLINE UList(std::initializer_list<Any> init) : UList(::mlc::base::AllocatorOf<UListObj>::New(init)) {}

@@ -1,6 +1,6 @@
 [project]
 name = "mlc-python"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = ['numpy >= 1.22', "ml-dtypes >= 0.1", 'setuptools ; platform_system == "Windows"',]
 description = ""
 requires-python = ">=3.9"

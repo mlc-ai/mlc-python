@@ -19,6 +19,7 @@
 #include <mlc/c_api.h>
 #include <sstream>
 #include <type_traits>
+#include <vector>
 #if MLC_DEBUG_MODE == 1
 #include <iostream>
 #endif
@@ -159,6 +160,7 @@ template <typename T> constexpr bool IsPOD = IsPODImpl<T>::value;
 template <typename, typename = void> struct IsObjImpl : std::false_type {};
 template <typename T> struct IsObjImpl<T, std::void_t<decltype(T::_type_info)>> : std::true_type {};
 template <typename T> constexpr static bool IsObj = IsObjImpl<T>::value;
+template <typename T> constexpr static bool IsRawObjPtr = std::is_pointer_v<T> && IsObj<std::remove_pointer_t<T>>;
 template <typename ObjectType, typename = std::enable_if_t<IsObj<ObjectType>>> struct DefaultObjectAllocator;
 template <typename T, typename = void> struct AllocatorOfImplImpl { using Type = DefaultObjectAllocator<T>; };
 template <typename T> struct AllocatorOfImplImpl<T, std::void_t<typename T::Allocator>> { using Type = typename T::Allocator; };
@@ -243,39 +245,6 @@ template <typename, typename = void> struct PODTraits {};
 template <typename T, typename = void> struct ObjPtrTraits;
 template <typename T> struct ObjPtrTraits<ListObj<T>, void>;
 
-template <typename _T> struct Type2Str {
-  static std::string Run() {
-    using T = RemoveCR<_T>;
-    if constexpr (std::is_same_v<T, Any>) {
-      return "Any";
-    } else if constexpr (std::is_same_v<T, AnyView>) {
-      return "AnyView";
-    } else if constexpr (std::is_same_v<T, void>) {
-      return "void";
-    } else if constexpr (IsPOD<T>) {
-      return PODTraits<T>::Type2Str();
-    } else if constexpr (std::is_pointer_v<T> && IsObj<std::remove_pointer_t<T>>) {
-      return std::string(std::remove_pointer_t<T>::_type_key) + " *";
-    } else if constexpr (std::is_same_v<T, UList>) {
-      return "list[Any]";
-    } else if constexpr (std::is_same_v<T, UDict>) {
-      return "dict[Any, Any]";
-    } else if constexpr (std::is_base_of_v<UList, T>) {
-      return "list[" + Type2Str<typename T::TElem>::Run() + "]";
-    } else if constexpr (std::is_base_of_v<UDict, T>) {
-      return "dict[" + Type2Str<typename T::TKey>::Run() + ", " + Type2Str<typename T::TValue>::Run() + "]";
-    } else if constexpr (IsRef<T>) {
-      return "Ref<" + std::string(T::TObj::_type_key) + ">";
-    } else if constexpr (IsObjRef<T>) {
-      return std::string(T::TObj::_type_key);
-    } else if constexpr (IsObj<T>) {
-      return std::string(T::_type_key);
-    } else {
-      static_assert(std::is_void_v<T>, "Unsupported type");
-    }
-  }
-};
-
 /********** Section 3. Errors *********/
 
 struct TemporaryTypeError : public std::exception {};
@@ -306,14 +275,27 @@ StrObj *StrCopyFromCharArray(const char *source, size_t length);
 void FuncCall(const void *func, int32_t num_args, const MLCAny *args, MLCAny *ret);
 template <typename DerivedType, typename SelfType = Object> bool IsInstanceOf(const MLCAny *self);
 
-MLC_INLINE const char *TypeIndex2TypeKey(int32_t type_index) {
+MLC_INLINE MLCTypeInfo *TypeIndex2TypeInfo(int32_t type_index) {
   MLCTypeInfo *type_info;
   MLCTypeIndex2Info(nullptr, type_index, &type_info);
-  return type_info ? type_info->type_key : "(undefined)";
+  return type_info;
+}
+
+MLC_INLINE const char *TypeIndex2TypeKey(int32_t type_index) {
+  if (MLCTypeInfo *type_info = TypeIndex2TypeInfo(type_index)) {
+    return type_info->type_key;
+  }
+  return "(undefined)";
 }
 
 MLC_INLINE const char *TypeIndex2TypeKey(const MLCAny *self) {
-  return self == nullptr ? "None" : TypeIndex2TypeKey(self->type_index);
+  if (self == nullptr) {
+    return "None";
+  }
+  if (MLCTypeInfo *type_info = TypeIndex2TypeInfo(self->type_index)) {
+    return type_info->type_key;
+  }
+  return "(undefined)";
 }
 
 MLC_INLINE MLCTypeInfo *TypeRegister(int32_t parent_type_index, int32_t type_index, const char *type_key,
@@ -330,6 +312,77 @@ MLC_INLINE bool IsTypeIndexNone(int32_t type_index) {
 MLC_INLINE bool IsTypeIndexPOD(int32_t type_index) {
   return type_index < static_cast<int32_t>(MLCTypeIndex::kMLCStaticObjectBegin);
 }
+
+template <typename _T> struct Type2Str {
+  using T = RemoveCR<_T>;
+  static std::string Run() {
+    if constexpr (std::is_same_v<T, Any>) {
+      return "Any";
+    } else if constexpr (std::is_same_v<T, AnyView>) {
+      return "AnyView";
+    } else if constexpr (std::is_same_v<T, void>) {
+      return "void";
+    } else if constexpr (std::is_same_v<T, Object>) {
+      return "object.Object";
+    } else if constexpr (std::is_same_v<T, ObjectRef>) {
+      return "object.ObjectRef";
+    } else if constexpr (IsPOD<T>) {
+      return PODTraits<T>::Type2Str();
+    } else if constexpr (IsRawObjPtr<T>) {
+      using U = std::remove_pointer_t<T>;
+      return Type2Str<U>::Run() + " *";
+    } else if constexpr (std::is_base_of_v<UListObj, T>) {
+      using E = typename T::TElem;
+      return "object.ListObj[" + Type2Str<E>::Run() + "]";
+    } else if constexpr (std::is_base_of_v<UDictObj, T>) {
+      using K = typename T::TKey;
+      using V = typename T::TValue;
+      return "object.DictObj[" + Type2Str<K>::Run() + ", " + Type2Str<V>::Run() + "]";
+    } else if constexpr (std::is_base_of_v<UList, T>) {
+      using E = typename T::TElem;
+      return "list[" + Type2Str<E>::Run() + "]";
+    } else if constexpr (std::is_base_of_v<UDict, T>) {
+      using K = typename T::TKey;
+      using V = typename T::TValue;
+      return "dict[" + Type2Str<K>::Run() + ", " + Type2Str<V>::Run() + "]";
+    } else if constexpr (IsRef<T>) {
+      return "Ref<" + Type2Str<typename T::TObj>::Run() + ">";
+    } else if constexpr (IsObjRef<T>) {
+      return std::string(T::TObj::_type_key);
+    } else if constexpr (IsObj<T>) {
+      return std::string(T::_type_key) + "Obj";
+    } else {
+      static_assert(std::is_void_v<T>, "Unsupported type");
+    }
+  }
+
+  static void CollectTypeInfo(std::vector<MLCTypeInfo *> *info) {
+    if constexpr (std::is_same_v<T, Any> || std::is_same_v<T, AnyView>) {
+      info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCNone)));
+    } else if constexpr (std::is_same_v<T, void>) {
+      MLC_THROW(TypeError) << "`void` is not allowed in type annotation";
+    } else if constexpr (std::is_same_v<T, char *>) {
+      info->push_back(TypeIndex2TypeInfo(PODTraits<_T>::default_type_index));
+    } else if constexpr (IsPOD<T>) {
+      info->push_back(TypeIndex2TypeInfo(PODTraits<T>::default_type_index));
+    } else if constexpr (IsRawObjPtr<T>) {
+      using U = std::remove_pointer_t<T>;
+      Type2Str<Ref<U>>::CollectTypeInfo(info);
+    } else if constexpr (std::is_base_of_v<UList, T>) {
+      info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCList)));
+      Type2Str<typename T::TElem>::CollectTypeInfo(info);
+    } else if constexpr (std::is_base_of_v<UDict, T>) {
+      info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCDict)));
+      Type2Str<typename T::TKey>::CollectTypeInfo(info);
+      Type2Str<typename T::TValue>::CollectTypeInfo(info);
+    } else if constexpr (IsRef<T> || IsObjRef<T>) {
+      using U = typename T::TObj;
+      info->push_back(TypeIndex2TypeInfo(U::_type_index));
+    } else {
+      static_assert(std::is_void_v<T>, "Unsupported type");
+    }
+  }
+};
 
 MLC_INLINE void IncRef(MLCObject *obj) {
   if (obj != nullptr) {

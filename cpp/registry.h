@@ -261,17 +261,18 @@ inline TypeTable *TypeTable::New() {
   self->type_table.resize(1024);
   self->type_key_to_info.reserve(1024);
   self->num_types = static_cast<int32_t>(MLCTypeIndex::kMLCDynObjectBegin);
-#define MLC_TYPE_TABLE_INIT_TYPE(TypeIndex, UnderlyingType, Self)                                                      \
-  Self->TypeRegister(-1, static_cast<int32_t>(TypeIndex), ::mlc::base::PODTraits<UnderlyingType>::Type2Str(),          \
-                     PODGetterSetter<UnderlyingType>::Getter, PODGetterSetter<UnderlyingType>::Setter);
+#define MLC_TYPE_TABLE_INIT_TYPE(UnderlyingType, Self)                                                                 \
+  Self->TypeRegister(-1, ::mlc::base::PODTraits<UnderlyingType>::default_type_index,                                   \
+                     ::mlc::base::PODTraits<UnderlyingType>::Type2Str(), PODGetterSetter<UnderlyingType>::Getter,      \
+                     PODGetterSetter<UnderlyingType>::Setter);
 
-  MLC_TYPE_TABLE_INIT_TYPE(MLCTypeIndex::kMLCNone, std::nullptr_t, self);
-  MLC_TYPE_TABLE_INIT_TYPE(MLCTypeIndex::kMLCInt, int64_t, self);
-  MLC_TYPE_TABLE_INIT_TYPE(MLCTypeIndex::kMLCFloat, double, self);
-  MLC_TYPE_TABLE_INIT_TYPE(MLCTypeIndex::kMLCPtr, void *, self);
-  MLC_TYPE_TABLE_INIT_TYPE(MLCTypeIndex::kMLCDevice, DLDevice, self);
-  MLC_TYPE_TABLE_INIT_TYPE(MLCTypeIndex::kMLCDataType, DLDataType, self);
-  MLC_TYPE_TABLE_INIT_TYPE(MLCTypeIndex::kMLCRawStr, const char *, self);
+  MLC_TYPE_TABLE_INIT_TYPE(std::nullptr_t, self);
+  MLC_TYPE_TABLE_INIT_TYPE(int64_t, self);
+  MLC_TYPE_TABLE_INIT_TYPE(double, self);
+  MLC_TYPE_TABLE_INIT_TYPE(void *, self);
+  MLC_TYPE_TABLE_INIT_TYPE(DLDevice, self);
+  MLC_TYPE_TABLE_INIT_TYPE(DLDataType, self);
+  MLC_TYPE_TABLE_INIT_TYPE(const char *, self);
 #undef MLC_TYPE_TABLE_INIT_TYPE
   return self;
 }

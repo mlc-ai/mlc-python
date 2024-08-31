@@ -6,16 +6,16 @@ namespace {
 using namespace mlc;
 
 // Custom object for testing object reference types
-class TestObj : public Object {
+class TestTypeObj : public Object {
 public:
   int value;
-  explicit TestObj(int v) : value(v) {}
-  MLC_DEF_DYN_TYPE(TestObj, Object, "TestObj");
+  explicit TestTypeObj(int v) : value(v) {}
+  MLC_DEF_DYN_TYPE(TestTypeObj, Object, "TestType");
 };
 
-class TestRef : public ObjectRef {
+class TestType : public ObjectRef {
 public:
-  MLC_DEF_OBJ_REF(TestRef, TestObj, ObjectRef);
+  MLC_DEF_OBJ_REF(TestType, TestTypeObj, ObjectRef);
 };
 
 // Tests for List<int>
@@ -118,10 +118,10 @@ TEST(ListDoubleTest, BasicOperations) {
 
 // Tests for List<TestRef>
 TEST(ListRefTest, BasicOperations) {
-  List<TestRef> list;
-  list.push_back(TestRef(1));
-  list.push_back(TestRef(2));
-  list.push_back(TestRef(3));
+  List<TestType> list;
+  list.push_back(TestType(1));
+  list.push_back(TestType(2));
+  list.push_back(TestType(3));
 
   EXPECT_EQ(list.size(), 3);
   EXPECT_EQ(list[0]->value, 1);
@@ -134,22 +134,22 @@ TEST(ListRefTest, BasicOperations) {
 }
 
 TEST(ListRefTest, NullObjectHandling) {
-  List<TestRef> list;
-  list.push_back(TestRef{Null}); // Null reference
+  List<TestType> list;
+  list.push_back(TestType{Null}); // Null reference
   EXPECT_EQ(list.size(), 1);
   try {
     list[0];
     FAIL() << "Accessing null object should throw an exception";
   } catch (const std::exception &e) {
-    EXPECT_STREQ(e.what(), "Cannot convert from type `None` to non-nullable `Ref<TestObj>`");
+    EXPECT_STREQ(e.what(), "Cannot convert from type `None` to non-nullable `Ref<TestTypeObj>`");
   }
 }
 
 TEST(ListRefTest, ObjectLifetime) {
-  List<TestRef> list;
+  List<TestType> list;
   void *ptr = nullptr;
   {
-    TestRef obj = TestRef(42);
+    TestType obj = TestType(42);
     list.push_back(obj);
     ptr = obj.get();
   }
@@ -183,13 +183,13 @@ TEST(ListAnyTest, HeterogeneousTypes) {
   list.push_back(Any(42));
   list.push_back(Any(3.14));
   list.push_back(Any("Hello"));
-  list.push_back(Any(Ref<TestObj>::New(100)));
+  list.push_back(Any(Ref<TestTypeObj>::New(100)));
 
   EXPECT_EQ(list.size(), 4);
   EXPECT_EQ(list[0].operator int(), 42);
   EXPECT_DOUBLE_EQ(list[1].operator double(), 3.14);
   EXPECT_STREQ(list[2].operator const char *(), "Hello");
-  EXPECT_EQ(list[3].operator Ref<TestObj>()->value, 100);
+  EXPECT_EQ(list[3].operator Ref<TestTypeObj>()->value, 100);
 }
 
 TEST(ListAnyTest, ModifyingElements) {
@@ -228,7 +228,7 @@ TEST(ListAnyTest, ClearAndResize) {
 }
 
 TEST(ListAnyTest, IterationWithTypeChecking) {
-  List<Any> list{Any(1), Any(2.0), Any("three"), Any(Ref<TestObj>::New(4))};
+  List<Any> list{Any(1), Any(2.0), Any("three"), Any(Ref<TestTypeObj>::New(4))};
 
   std::vector<int> type_checks;
   for (const auto &item : *list) {
@@ -238,7 +238,7 @@ TEST(ListAnyTest, IterationWithTypeChecking) {
       type_checks.push_back(2);
     } else if (item.type_index == static_cast<int32_t>(MLCTypeIndex::kMLCStr)) {
       type_checks.push_back(3);
-    } else if (item.type_index == TestObj::_type_index) {
+    } else if (item.type_index == TestTypeObj::_type_index) {
       type_checks.push_back(4);
     }
   }
@@ -253,7 +253,7 @@ TEST(ListAnyTest, ComplexOperations) {
   list.push_back(Any(10));
   list.push_back(Any(20.5));
   list.push_back(Any("Hello"));
-  list.push_back(Any(Ref<TestObj>::New(30)));
+  list.push_back(Any(Ref<TestTypeObj>::New(30)));
 
   // Modify and check
   list.Set(1, Any("World"));
@@ -268,7 +268,7 @@ TEST(ListAnyTest, ComplexOperations) {
   EXPECT_STREQ(list[0].operator const char *(), "World");
   EXPECT_EQ(list[1].operator int(), 40);
   EXPECT_STREQ(list[2].operator const char *(), "Hello");
-  EXPECT_EQ(list[3].operator Ref<TestObj>()->value, 30);
+  EXPECT_EQ(list[3].operator Ref<TestTypeObj>()->value, 30);
 
   // Iterate and sum numeric values
   double sum = 0;

@@ -10,6 +10,8 @@ namespace base {
 /********** PODTraits: Integer *********/
 
 template <typename Int> struct PODTraits<Int, std::enable_if_t<std::is_integral_v<Int>>> {
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCInt);
+
   MLC_INLINE static void TypeCopyToAny(Int src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCInt);
     ret->v_int64 = static_cast<int64_t>(src);
@@ -31,6 +33,8 @@ template <typename Int> struct PODTraits<Int, std::enable_if_t<std::is_integral_
 /********** PODTraits: Float *********/
 
 template <typename Float> struct PODTraits<Float, std::enable_if_t<std::is_floating_point_v<Float>>> {
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCFloat);
+
   MLC_INLINE static void TypeCopyToAny(Float src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCFloat);
     ret->v_float64 = src;
@@ -54,6 +58,7 @@ template <typename Float> struct PODTraits<Float, std::enable_if_t<std::is_float
 /********** PODTraits: Opaque Pointer *********/
 
 template <> struct PODTraits<void *> {
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCPtr);
   using Ptr = void *;
 
   MLC_INLINE static void TypeCopyToAny(Ptr src, MLCAny *ret) {
@@ -86,6 +91,7 @@ template <> struct PODTraits<void *> {
 
 template <> struct PODTraits<std::nullptr_t> : public PODTraits<void *> {
   MLC_INLINE static const char *Type2Str() { return "None"; }
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
 };
 } // namespace base
 } // namespace mlc

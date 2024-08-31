@@ -117,10 +117,13 @@ jobs:
       url: https://pypi.org/p/mlc-python
     permissions:
       id-token: write
+      contents: write
     steps:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.MLC_PYTHON_VERSION }}
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -132,6 +135,33 @@ jobs:
           mv wheelhouse/wheels-macos/*.whl dist/
           mv wheelhouse/wheels-linux/*.whl dist/
           mv wheelhouse/wheels-windows/*.whl dist/
+      - name: Upload wheels to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.PYMLC_GITHUB_TOKEN }}
+        run: |
+          # Get the release ID
+          release_id=$(gh api repos/${{ github.repository }}/releases/tags/${{ github.ref_name }} --jq '.id')
+          if [ -z "$release_id" ]; then
+            echo "Error: Could not find release with tag ${{ github.ref_name }}"
+            exit 1
+          fi
+          upload_url=https://uploads.github.com/repos/${{ github.repository }}/releases/$release_id/assets
+          echo "Uploading to release ID: $release_id. Upload URL: $upload_url"
+          for wheel in dist/*.whl; do
+            echo "⏫ Uploading $(basename $wheel)"
+            response=$(curl -s -w "%{http_code}" -X POST \
+                 -H "Authorization: token $GITHUB_TOKEN" \
+                 -H "Content-Type: application/octet-stream" \
+                 --data-binary @"$wheel" \
+                 "$upload_url?name=$(basename $wheel)")
+            http_code=${response: -3}
+            if [ $http_code -eq 201 ]; then
+              echo "🎉 Successfully uploaded $(basename $wheel)"
+            else
+              echo "❌ Failed to upload $(basename $wheel). HTTP status: $http_code. Error response: ${response%???}"
+              exit 1
+            fi
+          done
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:

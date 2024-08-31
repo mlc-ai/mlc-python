@@ -7,6 +7,7 @@ namespace mlc {
 namespace base {
 
 template <> struct PODTraits<const char *> {
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
   static void TypeCopyToAny(const char *src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
     ret->v_str = src;
@@ -25,7 +26,16 @@ template <> struct PODTraits<const char *> {
   static std::string __str__(const char *src) { return '"' + std::string(src) + '"'; }
 };
 
+template <> struct PODTraits<char *> {
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
+  static void TypeCopyToAny(char *src, MLCAny *ret) { return PODTraits<const char *>::TypeCopyToAny(src, ret); }
+  static char *AnyCopyToType(const MLCAny *v) { return const_cast<char *>(PODTraits<const char *>::AnyCopyToType(v)); }
+  static const char *Type2Str() { return "const char *"; }
+  static std::string __str__(const char *src) { return '"' + std::string(src) + '"'; }
+};
+
 template <> struct PODTraits<std::string> {
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
   static void TypeCopyToAny(const std::string &src, MLCAny *ret) {
     return PODTraits<const char *>::TypeCopyToAny(src.data(), ret);
   }

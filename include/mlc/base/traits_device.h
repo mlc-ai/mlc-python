@@ -12,6 +12,8 @@ DLDevice String2DLDevice(const std::string &source);
 inline bool DeviceEqual(DLDevice a, DLDevice b) { return a.device_type == b.device_type && a.device_id == b.device_id; }
 
 template <> struct PODTraits<DLDevice> {
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDevice);
+
   MLC_INLINE static void TypeCopyToAny(DLDevice src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDevice);
     ret->v_device = src;

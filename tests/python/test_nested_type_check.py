@@ -36,7 +36,7 @@ def test_list_list_int_fail() -> None:
     assert (
         "Mismatched type on argument #0 when calling: `(0: list[list[int]]) -> list[list[int]]`. "
         "Let input be `A: list[list[int]]`. Type mismatch on `A[2]`: "
-        "Cannot convert from type `int` to `object.List *`" == str(excinfo.value)
+        "Cannot convert from type `int` to `object.ListObj[Any] *`" == str(excinfo.value)
     )
 
 
@@ -67,7 +67,7 @@ def test_dict_str_any_fail() -> None:
     assert (
         "Mismatched type on argument #0 when calling: `(0: dict[object.Str, Any]) -> dict[object.Str, Any]`. "
         "Let input be `A_0: dict[object.Str, Any]`, `A_1: object.Str in A_0.keys()`. "
-        "Type mismatch on `A_1`: Cannot convert from type `int` to `object.Str *`"
+        "Type mismatch on `A_1`: Cannot convert from type `int` to `object.StrObj *`"
         == str(excinfo.value)
     )
 
@@ -84,7 +84,7 @@ def test_dict_any_str_fail() -> None:
     assert (
         "Mismatched type on argument #0 when calling: `(0: dict[Any, object.Str]) -> dict[Any, object.Str]`. "
         "Let input be `A: dict[Any, object.Str]`. "
-        "Type mismatch on `A[[3, 4]]`: Cannot convert from type `object.List` to `object.Str *`"
+        "Type mismatch on `A[[3, 4]]`: Cannot convert from type `object.List` to `object.StrObj *`"
         == str(excinfo.value)
     )
 

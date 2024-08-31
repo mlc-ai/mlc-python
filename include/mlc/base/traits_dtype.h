@@ -14,6 +14,8 @@ inline bool DataTypeEqual(DLDataType a, DLDataType b) {
 }
 
 template <> struct PODTraits<DLDataType> {
+  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
+
   MLC_INLINE static void TypeCopyToAny(DLDataType src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
     ret->v_dtype = src;

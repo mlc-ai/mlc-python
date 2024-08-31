@@ -141,10 +141,11 @@ TEST(Func, Signature) {
   CheckSignature([](DLDevice, const DLDevice, const DLDevice &, DLDevice &&) -> DLDevice { return {}; },
                  "(0: Device, 1: Device, 2: Device, 3: Device) -> Device");
   CheckSignature([](StrObj *, const StrObj *) -> Str { return Str{Null}; },
-                 "(0: object.Str *, 1: object.Str *) -> object.Str");
+                 "(0: object.StrObj *, 1: object.StrObj *) -> object.Str");
   CheckSignature([](Ref<StrObj>, const Ref<StrObj>, const Ref<StrObj> &,
                     Ref<StrObj> &&) -> Ref<StrObj> { return Ref<StrObj>::New("Test"); },
-                 "(0: Ref<object.Str>, 1: Ref<object.Str>, 2: Ref<object.Str>, 3: Ref<object.Str>) -> Ref<object.Str>");
+                 "(0: Ref<object.StrObj>, 1: Ref<object.StrObj>, 2: Ref<object.StrObj>, 3: Ref<object.StrObj>) -> "
+                 "Ref<object.StrObj>");
   CheckSignature([](Str, const Str, const Str &, Str &&) -> Str { return Str{Null}; },
                  "(0: object.Str, 1: object.Str, 2: object.Str, 3: object.Str) -> object.Str");
 }

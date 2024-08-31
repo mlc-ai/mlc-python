@@ -264,29 +264,25 @@ inline Ref<FuncObj> FuncObj::FromForeign(void *self, MLCDeleterType deleter, MLC
 namespace mlc {
 namespace base {
 
-template <typename FieldType> struct ReflectGetter {
-  static int32_t Run(void *addr, MLCAny *ret) {
+template <typename FieldType> struct ReflectGetterSetter {
+  static int32_t Getter(void *addr, MLCAny *ret) {
     MLC_SAFE_CALL_BEGIN();
     *static_cast<Any *>(ret) = *static_cast<FieldType *>(addr);
     MLC_SAFE_CALL_END(static_cast<Any *>(ret));
   }
-};
-template <typename FieldType> struct ReflectSetter {
-  static int32_t Run(void *addr, MLCAny *src) {
+  static int32_t Setter(void *addr, MLCAny *src) {
     MLC_SAFE_CALL_BEGIN();
     *static_cast<FieldType *>(addr) = (static_cast<Any *>(src))->operator FieldType();
     MLC_SAFE_CALL_END(static_cast<Any *>(src));
   }
 };
-template <> struct ReflectGetter<char *> {
-  static int32_t Run(void *addr, MLCAny *ret) {
+template <> struct ReflectGetterSetter<char *> {
+  static int32_t Getter(void *addr, MLCAny *ret) {
     MLC_SAFE_CALL_BEGIN();
     *static_cast<Any *>(ret) = static_cast<const char *>(*static_cast<char **>(addr));
     MLC_SAFE_CALL_END(static_cast<Any *>(ret));
   }
-};
-template <> struct ReflectSetter<char *> {
-  static int32_t Run(void *addr, MLCAny *src) {
+  static int32_t Setter(void *addr, MLCAny *src) {
     MLC_SAFE_CALL_BEGIN();
     *static_cast<char **>(addr) = const_cast<char *>((static_cast<Any *>(src))->operator const char *());
     MLC_SAFE_CALL_END(static_cast<Any *>(src));
@@ -295,18 +291,17 @@ template <> struct ReflectSetter<char *> {
 
 template <typename Super, typename FieldType>
 inline ReflectionHelper &ReflectionHelper::FieldReadOnly(const char *name, FieldType Super::*field) {
-  using PGet = ReflectGetter<FieldType>;
+  using P = ReflectGetterSetter<FieldType>;
   const int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
-  this->fields.emplace_back(MLCTypeField{name, field_offset, &PGet::Run, nullptr});
+  this->fields.emplace_back(MLCTypeField{name, field_offset, &P::Getter, nullptr});
   return *this;
 }
 
 template <typename Super, typename FieldType>
 inline ReflectionHelper &ReflectionHelper::Field(const char *name, FieldType Super::*field) {
-  using PGet = ReflectGetter<FieldType>;
-  using PSet = ReflectSetter<FieldType>;
+  using P = ReflectGetterSetter<FieldType>;
   const int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
-  this->fields.emplace_back(MLCTypeField{name, field_offset, &PGet::Run, &PSet::Run});
+  this->fields.emplace_back(MLCTypeField{name, field_offset, &P::Getter, &P::Setter});
   return *this;
 }
 
