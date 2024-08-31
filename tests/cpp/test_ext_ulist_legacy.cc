@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
 
-using namespace mlc::ffi;
+using namespace mlc;
+using mlc::base::DataTypeEqual;
+using mlc::base::DeviceEqual;
 
 void TestSizeCapacityClear(UListObj *list, int64_t size, int64_t capacity) {
   EXPECT_EQ(list->size(), size);

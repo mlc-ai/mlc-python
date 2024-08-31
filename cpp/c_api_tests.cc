@@ -1,7 +1,7 @@
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace mlc {
-namespace ffi {
+namespace {
 
 /**************** FFI ****************/
 
@@ -95,5 +95,5 @@ MLC_REGISTER_FUNC("mlc.testing.nested_type_checking_list").set_body([](Str name)
   MLC_UNREACHABLE();
 });
 
-} // namespace ffi
+} // namespace
 } // namespace mlc

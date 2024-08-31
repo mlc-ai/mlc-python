@@ -6,10 +6,10 @@
 #else
 #include <dlfcn.h>
 #endif
-#include <mlc/ffi/core/core.h>
+#include <mlc/all.h>
+#include <string>
 
 namespace mlc {
-namespace ffi {
 
 struct DSOLibrary {
   ~DSOLibrary() { Unload(); }
@@ -56,7 +56,6 @@ struct DSOLibrary {
 #endif
 };
 
-} // namespace ffi
 } // namespace mlc
 
 #endif // MLC_DSO_LIBRARY_H_

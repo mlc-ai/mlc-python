@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
 
-using namespace mlc::ffi;
+using namespace mlc;
 
 TEST(UList, DefaultConstructor) {
   UList list;

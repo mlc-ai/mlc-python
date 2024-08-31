@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
-using namespace mlc::ffi;
+using namespace mlc;
 
-static_assert(details::IsObj<Object>, "IsObj<Object> == true");
-static_assert(details::IsObj<FuncObj>, "IsObj<Func> == true");
-static_assert(details::IsObj<StrObj>, "IsObj<Str> == true");
+static_assert(base::IsObj<Object>, "IsObj<Object> == true");
+static_assert(base::IsObj<FuncObj>, "IsObj<Func> == true");
+static_assert(base::IsObj<StrObj>, "IsObj<Str> == true");
 
 struct SubType : public Object {
   int data;

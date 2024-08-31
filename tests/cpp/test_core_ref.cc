@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
-using namespace mlc::ffi;
+using namespace mlc;
 
 // Helper function to get ref count
 template <typename T> int32_t GetRefCount(const T &ref) { return reinterpret_cast<const MLCAny *>(ref.get())->ref_cnt; }
@@ -79,7 +79,7 @@ TEST(Ref, MoveConstructorFromDerived) {
 
 TEST(Ref, ConstructorFromRawPointer) {
   // Testing method Ref<TestObj>::Ref(TestObj*)
-  TestObj *raw_ptr = ::mlc::ffi::details::AllocatorOf<TestObj>::New(42);
+  TestObj *raw_ptr = ::mlc::base::AllocatorOf<TestObj>::New(42);
   EXPECT_EQ(raw_ptr->_mlc_header.ref_cnt, 0);
   Ref<TestObj> ref(raw_ptr);
   EXPECT_EQ(ref->data, 42);
@@ -155,7 +155,7 @@ TEST(ObjectRef, MoveConstructorFromRef) {
 
 TEST(ObjectRef, ConstructorFromRawPointer) {
   // Testing method TestObjRef::TestObjRef(TestObj*)
-  TestObj *raw_ptr = ::mlc::ffi::details::AllocatorOf<TestObj>::New(42);
+  TestObj *raw_ptr = ::mlc::base::AllocatorOf<TestObj>::New(42);
   TestObjRef ref(raw_ptr);
   EXPECT_EQ(ref->data, 42);
   EXPECT_EQ(GetRefCount(ref), 1);

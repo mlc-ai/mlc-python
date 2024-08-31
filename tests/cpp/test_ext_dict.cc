@@ -1,12 +1,12 @@
 #include <algorithm>
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 #include <string>
 #include <vector>
 
 namespace {
 
-using namespace mlc::ffi;
+using namespace mlc;
 
 TEST(DictKV, DefaultConstructor) {
   Dict<int, Str> dict;
@@ -45,7 +45,7 @@ TEST(DictKV, AtMethod) {
   Dict<int, Str> dict{{1, "one"}, {2, "two"}};
   EXPECT_EQ(dict.at(1), "one");
   EXPECT_EQ(dict.at(2), "two");
-  EXPECT_THROW(dict.at(3), mlc::ffi::Exception);
+  EXPECT_THROW(dict.at(3), mlc::Exception);
 }
 
 TEST(DictKV, CountMethod) {
@@ -66,7 +66,7 @@ TEST(DictKV, EraseMethod) {
   dict.erase("key2");
   EXPECT_EQ(dict.size(), 2);
   EXPECT_EQ(dict.count("key2"), 0);
-  EXPECT_THROW(dict.at("key2"), mlc::ffi::Exception);
+  EXPECT_THROW(dict.at("key2"), mlc::Exception);
 }
 
 TEST(DictKV, IteratorBasic) {
@@ -217,7 +217,7 @@ TEST(DictAnyTest, AtMethod) {
   Dict<Any, Any> dict{{Any("key1"), Any(1)}, {Any("key2"), Any("value2")}};
   EXPECT_EQ(int(dict.at("key1")), 1);
   EXPECT_EQ(dict.at("key2").operator std::string(), "value2");
-  EXPECT_THROW(dict.at("non_existent"), mlc::ffi::Exception);
+  EXPECT_THROW(dict.at("non_existent"), mlc::Exception);
 }
 
 TEST(DictAnyTest, CountMethod) {
@@ -238,7 +238,7 @@ TEST(DictAnyTest, EraseMethod) {
   dict.erase("key2");
   EXPECT_EQ(dict.size(), 2);
   EXPECT_EQ(dict.count("key2"), 0);
-  EXPECT_THROW(dict.at("key2"), mlc::ffi::Exception);
+  EXPECT_THROW(dict.at("key2"), mlc::Exception);
 }
 
 TEST(DictAnyTest, IteratorBasic) {
@@ -414,7 +414,7 @@ TEST(DictAnyIntTest, EraseMethod) {
   dict.erase("key2");
   EXPECT_EQ(dict.size(), 2);
   EXPECT_EQ(dict.count("key2"), 0);
-  EXPECT_THROW(dict.at("key2"), mlc::ffi::Exception);
+  EXPECT_THROW(dict.at("key2"), mlc::Exception);
 }
 
 TEST(DictAnyIntTest, MixedKeyTypes) {
@@ -469,7 +469,7 @@ TEST(DictIntAnyTest, EraseMethod) {
   dict.erase(2);
   EXPECT_EQ(dict.size(), 2);
   EXPECT_EQ(dict.count(2), 0);
-  EXPECT_THROW(dict.at(2), mlc::ffi::Exception);
+  EXPECT_THROW(dict.at(2), mlc::Exception);
 }
 
 TEST(DictIntAnyTest, MixedValueTypes) {

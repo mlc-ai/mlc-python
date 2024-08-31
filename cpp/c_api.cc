@@ -1,27 +1,23 @@
 #include "./registry.h"
-#include "mlc/ffi/ext/func.h"
-#include <mlc/ffi/ffi.hpp>
 #if defined(__APPLE__)
 #include <iostream>
 #endif
 
 namespace mlc {
-namespace ffi {
 namespace registry {
 TypeTable *TypeTable::Global() {
   static TypeTable *instance = TypeTable::New();
   return instance;
 }
 } // namespace registry
-} // namespace ffi
 } // namespace mlc
 
-using ::mlc::ffi::Any;
-using ::mlc::ffi::AnyView;
-using ::mlc::ffi::ErrorObj;
-using ::mlc::ffi::FuncObj;
-using ::mlc::ffi::Ref;
-using ::mlc::ffi::registry::TypeTable;
+using ::mlc::Any;
+using ::mlc::AnyView;
+using ::mlc::ErrorObj;
+using ::mlc::FuncObj;
+using ::mlc::Ref;
+using ::mlc::registry::TypeTable;
 
 namespace {
 thread_local Any last_error;
@@ -35,9 +31,10 @@ MLC_API MLCAny MLCGetLastError() {
 }
 
 MLC_API int32_t MLCTypeRegister(MLCTypeTableHandle _self, int32_t parent_type_index, const char *type_key,
-                                int32_t type_index, MLCTypeInfo **out_type_info) {
+                                int32_t type_index, MLCAttrGetterSetter getter, MLCAttrGetterSetter setter,
+                                MLCTypeInfo **out_type_info) {
   MLC_SAFE_CALL_BEGIN();
-  *out_type_info = TypeTable::Get(_self)->TypeRegister(parent_type_index, type_index, type_key);
+  *out_type_info = TypeTable::Get(_self)->TypeRegister(parent_type_index, type_index, type_key, getter, setter);
   MLC_SAFE_CALL_END(&last_error);
 }
 
@@ -86,16 +83,16 @@ MLC_API int32_t MLCDynTypeTypeTableDestroy(MLCTypeTableHandle handle) {
 
 MLC_API int32_t MLCAnyIncRef(MLCAny *any) {
   MLC_SAFE_CALL_BEGIN();
-  if (!::mlc::ffi::details::IsTypeIndexPOD(any->type_index)) {
-    ::mlc::ffi::details::IncRef(any->v_obj);
+  if (!::mlc::base::IsTypeIndexPOD(any->type_index)) {
+    ::mlc::base::IncRef(any->v_obj);
   }
   MLC_SAFE_CALL_END(&last_error);
 }
 
 MLC_API int32_t MLCAnyDecRef(MLCAny *any) {
   MLC_SAFE_CALL_BEGIN();
-  if (!::mlc::ffi::details::IsTypeIndexPOD(any->type_index)) {
-    ::mlc::ffi::details::DecRef(any->v_obj);
+  if (!::mlc::base::IsTypeIndexPOD(any->type_index)) {
+    ::mlc::base::DecRef(any->v_obj);
   }
   MLC_SAFE_CALL_END(&last_error);
 }

@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
 
-using namespace mlc::ffi;
+using namespace mlc;
 
 // Custom object for testing object reference types
 class TestObj : public Object {

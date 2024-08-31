@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
-using namespace mlc::ffi;
+using namespace mlc;
 
 TEST(StrObj, DefaultConstructor) {
   Ref<StrObj> str = Ref<StrObj>::New("");

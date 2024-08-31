@@ -2,7 +2,7 @@ import shutil
 from pathlib import Path
 
 from mlc._cython import SYSTEM
-from mlc.func import Func
+from mlc.core import Func
 
 _C_load_dso = Func.get("mlc.ffi.LoadDSO")
 

@@ -1,10 +1,12 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 #include <unordered_set>
 
 namespace {
 
-using namespace mlc::ffi;
+using namespace mlc;
+using mlc::base::DataTypeEqual;
+using mlc::core::AnyEqual;
 
 TEST(Legacy_UDict_Construtor, Default) {
   UDict dict;

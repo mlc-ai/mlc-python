@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
-using namespace mlc::ffi;
+using namespace mlc;
+using mlc::base::DataTypeEqual;
+using mlc::base::DeviceEqual;
 
 template <typename T> inline void CheckObjPtr(const MLCAny &any, MLCTypeIndex type_index, T *ptr, int32_t ref_cnt) {
   EXPECT_EQ(any.type_index, static_cast<int32_t>(type_index));
@@ -52,7 +54,7 @@ inline void CheckConvertFail(Callable convert, int32_t type_index, const char *e
     FAIL() << "No exception thrown";
   } catch (Exception &ex) {
     std::ostringstream os;
-    os << "Cannot convert from type `" << details::TypeIndex2TypeKey(type_index) << "` to `" << expected_type << "`";
+    os << "Cannot convert from type `" << base::TypeIndex2TypeKey(type_index) << "` to `" << expected_type << "`";
     EXPECT_EQ(ex.what(), os.str());
   }
 }
@@ -75,7 +77,7 @@ template <typename T, typename Callable> inline void CheckConvertFailNullability
     FAIL() << "No exception thrown";
   } catch (Exception &ex) {
     std::ostringstream os;
-    os << "Cannot convert from type `None` to non-nullable `" << Type2Str<Ref<T>>::Run() << "`";
+    os << "Cannot convert from type `None` to non-nullable `" << base::Type2Str<Ref<T>>::Run() << "`";
     EXPECT_EQ(ex.what(), os.str());
   }
 }

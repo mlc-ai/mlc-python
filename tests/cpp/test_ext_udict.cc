@@ -1,10 +1,10 @@
 #include <algorithm>
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
 
-using namespace mlc::ffi;
+using namespace mlc;
 
 TEST(UDict, DefaultConstructor) {
   UDict dict;
@@ -43,7 +43,7 @@ TEST(UDict, AtMethod) {
   UDict dict{{"key1", 1}, {"key2", "value2"}};
   EXPECT_EQ(int(dict->at("key1")), 1);
   EXPECT_EQ(dict->at("key2").operator std::string(), "value2");
-  EXPECT_THROW(dict->at("non_existent"), mlc::ffi::Exception);
+  EXPECT_THROW(dict->at("non_existent"), mlc::Exception);
 }
 
 TEST(UDict, CountMethod) {
@@ -64,7 +64,7 @@ TEST(UDict, EraseMethod) {
   dict->erase("key2");
   EXPECT_EQ(dict->size(), 2);
   EXPECT_EQ(dict->count("key2"), 0);
-  EXPECT_THROW(dict->at("key2"), mlc::ffi::Exception);
+  EXPECT_THROW(dict->at("key2"), mlc::Exception);
 }
 
 TEST(UDict, IteratorBasic) {
@@ -136,7 +136,7 @@ TEST(UDict, ConstAccess) {
   const UDict dict{{"key1", 1}, {"key2", 2}};
   EXPECT_EQ(dict["key1"].operator int(), 1);
   EXPECT_EQ(dict["key2"].operator int(), 2);
-  EXPECT_THROW(dict["non_existent"], mlc::ffi::Exception);
+  EXPECT_THROW(dict["non_existent"], mlc::Exception);
 }
 
 TEST(UDict, CopyConstructor) {

@@ -5,7 +5,7 @@ import shutil
 import warnings
 from pathlib import Path
 
-from mlc._cython import SYSTEM
+from mlc._cython import LIB_PATH, SYSTEM
 
 
 def includedir() -> tuple[Path, ...]:
@@ -20,8 +20,6 @@ def includedir() -> tuple[Path, ...]:
 
 
 def libdir() -> Path:
-    from ._cython import LIB_PATH
-
     return LIB_PATH.parent.resolve()
 
 

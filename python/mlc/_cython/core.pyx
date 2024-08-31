@@ -8,7 +8,7 @@ import ctypes
 import platform
 from .exception_utils import translate_exception_to_c, translate_exception_from_c
 
-cdef extern from "mlc/ffi/c_api.h" nogil:
+cdef extern from "mlc/c_api.h" nogil:
     ctypedef void (*MLCDeleterType)(void *) nogil # no-cython-lint
     ctypedef void (*MLCFuncCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret) nogil # no-cython-lint
     ctypedef int32_t (*MLCFuncSafeCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret) noexcept nogil # no-cython-lint
@@ -74,8 +74,7 @@ cdef extern from "mlc/ffi/c_api.h" nogil:
         char[8] v_bytes
         # }
 
-    ctypedef int32_t (*MLCAttrSetter)(void *addr, MLCAny *view) noexcept nogil # no-cython-lint
-    ctypedef int32_t (*MLCAttrGetter)(void *addr, MLCAny *view) noexcept nogil # no-cython-lint
+    ctypedef int32_t (*MLCAttrGetterSetter)(void *addr, MLCAny *view) noexcept nogil # no-cython-lint
 
     ctypedef struct MLCError:
         MLCAny _mlc_header
@@ -106,8 +105,8 @@ cdef extern from "mlc/ffi/c_api.h" nogil:
     ctypedef struct MLCTypeField:
         const char* name
         int64_t offset
-        MLCAttrGetter getter
-        MLCAttrSetter setter
+        MLCAttrGetterSetter getter
+        MLCAttrGetterSetter setter
 
     ctypedef struct MLCTypeMethod:
         const char* name
@@ -140,7 +139,7 @@ ctypedef int32_t (*_T_FuncGetGlobal)(void*, const char *name, MLCAny *ret) noexc
 ctypedef int32_t (*_T_FuncSafeCall)(MLCFunc* py_func, int32_t num_args, MLCAny *args, MLCAny* ret) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_TypeIndex2Info)(MLCTypeTableHandle self, int32_t type_index, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_TypeKey2Info)(MLCTypeTableHandle self, const char* type_key, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
-ctypedef int32_t (*_T_TypeRegister)(MLCTypeTableHandle self, int32_t parent_type_index, const char *type_key, int32_t type_index, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
+ctypedef int32_t (*_T_TypeRegister)(MLCTypeTableHandle self, int32_t parent_type_index, const char *type_key, int32_t type_index, MLCAttrGetterSetter getter, MLCAttrGetterSetter setter, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_TypeDefReflection)(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields, MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_VTableSet)(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_VTableGet)(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value) noexcept nogil # no-cython-lint
@@ -347,12 +346,12 @@ cdef inline MLCAny _any_py2c(object x, list temporary_storage):
         temporary_storage.append(x)
         y = (<PyAny>x)._mlc_any
     elif isinstance(x, (tuple, list)):
-        from ..list import List  # no-cython-lint
+        from mlc.core.list import List  # no-cython-lint
         x = List(x)
         temporary_storage.append(x)
         y = (<PyAny>x)._mlc_any
     elif isinstance(x, dict):
-        from ..dict import Dict  # no-cython-lint
+        from mlc.core.dict import Dict  # no-cython-lint
         x = Dict(x)
         temporary_storage.append(x)
         y = (<PyAny>x)._mlc_any
@@ -447,7 +446,7 @@ cdef inline MLCTypeInfo* _type_key2info(str type_key):
         raise ValueError(f"MLC cannot find type info for type key: {type_key}")
     return type_info
 
-cdef inline object _make_property_getter(str name, int64_t offset, MLCAttrGetter c_getter):
+cdef inline object _make_property_getter(str name, int64_t offset, MLCAttrGetterSetter c_getter):
     if c_getter == NULL:
         return None
 
@@ -459,7 +458,7 @@ cdef inline object _make_property_getter(str name, int64_t offset, MLCAttrGetter
         return _any_c2py(c_ret)
     return f_getter
 
-cdef inline object _make_property_setter(str name, int64_t offset, MLCAttrSetter c_setter):
+cdef inline object _make_property_setter(str name, int64_t offset, MLCAttrGetterSetter c_setter):
     if c_setter == NULL:
         return None
 
@@ -505,7 +504,7 @@ cpdef object type_reflect(type type_cls, str type_key, dict attrs, dict vtable):
         if name == "__str__":
             _list_set(BUILTIN_STR, type_index, func)
         if not name.startswith("_"):
-            from ..func import Func  # no-cython-lint
+            from ..core.func import Func  # no-cython-lint
             _check_error(_C_AnyIncRef(&func._mlc_any))
             attrs[name] = PyAny._new_from_mlc_any(func._mlc_any)
         methods += 1

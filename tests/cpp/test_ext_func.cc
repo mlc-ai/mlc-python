@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 
 namespace {
-using namespace mlc::ffi;
+using namespace mlc;
 
 // Helper functions for testing
 int TestFuncAdd(int a, int b) { return a + b; }
@@ -110,7 +110,7 @@ TEST(Func, FunctionReturningRef) {
 }
 
 template <typename Callable> void CheckSignature(Callable callable, const char *expected) {
-  using Traits = details::FuncTraits<Callable>;
+  using Traits = core::FuncTraits<Callable>;
   EXPECT_STREQ(Traits::Sig().c_str(), expected);
   Func func(std::move(callable));
   EXPECT_NE(func.get(), nullptr);

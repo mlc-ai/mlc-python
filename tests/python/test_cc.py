@@ -5,10 +5,10 @@ CPP_SOURCE = """
 #ifdef _WIN32
 #pragma comment(lib, "mlc_registry.lib")
 #endif
-#include <mlc/ffi/ffi.hpp>
+#include <mlc/all.h>
 #include <string>
 
-struct MyObj : public mlc::ffi::Object {
+struct MyObj : public mlc::Object {
   std::string x;
   int32_t y;
   MyObj(std::string x, int y) : x(x), y(y) {}
@@ -16,11 +16,11 @@ struct MyObj : public mlc::ffi::Object {
   MLC_DEF_DYN_TYPE(MyObj, Object, "mlc.MyObj");
 };
 
-struct MyObjRef : public mlc::ffi::ObjectRef {
-  MLC_DEF_OBJ_REF(MyObjRef, MyObj, mlc::ffi::ObjectRef)
+struct MyObjRef : public mlc::ObjectRef {
+  MLC_DEF_OBJ_REF(MyObjRef, MyObj, mlc::ObjectRef)
       .Field("x", &MyObj::x)
       .FieldReadOnly("y", &MyObj::y)
-      .Method("__init__", mlc::ffi::InitOf<MyObj, std::string, int32_t>)
+      .Method("__init__", mlc::InitOf<MyObj, std::string, int32_t>)
       .Method("YPlusOne", &MyObj::YPlusOne);
 };
 """

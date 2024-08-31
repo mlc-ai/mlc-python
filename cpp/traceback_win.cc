@@ -4,7 +4,7 @@
 #include <dbghelp.h>
 // clang-format on
 #include "./traceback.h"
-#include <mlc/ffi/c_api.h>
+#include <mlc/c_api.h>
 
 namespace mlc {
 namespace ffi {
