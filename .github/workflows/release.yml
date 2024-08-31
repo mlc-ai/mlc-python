@@ -35,7 +35,7 @@ jobs:
       - name: Show package contents
         run: python scripts/show_wheel_content.py wheelhouse
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels-windows
           path: ./wheelhouse/*.whl
@@ -58,7 +58,7 @@ jobs:
       - name: Show package contents
         run: python scripts/show_wheel_content.py wheelhouse
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels-macos
           path: ./wheelhouse/*.whl
@@ -81,7 +81,7 @@ jobs:
       - name: Show package contents
         run: python scripts/show_wheel_content.py wheelhouse
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-x86
           path: ./wheelhouse/*.whl
@@ -104,7 +104,7 @@ jobs:
       - name: Show package contents
         run: python scripts/show_wheel_content.py wheelhouse
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: wheels-linux
           path: ./wheelhouse/*.whl
@@ -115,12 +115,14 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/mlc-python
+    permissions:
+      id-token: write
     steps:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.MLC_PYTHON_VERSION }}
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: ./wheelhouse
       - name: Prepare distribution files
@@ -134,4 +136,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
-          password: ${{ secrets.MLC_PYPI_API_TOKEN }}

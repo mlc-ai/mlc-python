@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 
 project(
   mlc
-  VERSION 0.0.2
-  DESCRIPTION "MLC's FFI system"
+  VERSION 0.0.3
+  DESCRIPTION "PyMLC"
   LANGUAGES C CXX
 )
 
