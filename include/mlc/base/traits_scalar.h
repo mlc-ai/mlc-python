@@ -1,7 +1,7 @@
-#ifndef MLC_TRAITS_NUMBER_H_
-#define MLC_TRAITS_NUMBER_H_
+#ifndef MLC_BASE_TRAITS_SCALAR_H_
+#define MLC_BASE_TRAITS_SCALAR_H_
 
-#include "./common.h"
+#include "./utils.h"
 #include <type_traits>
 
 namespace mlc {
@@ -96,4 +96,4 @@ template <> struct PODTraits<std::nullptr_t> : public PODTraits<void *> {
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_TRAITS_NUMBER_H_
+#endif // MLC_BASE_TRAITS_SCALAR_H_

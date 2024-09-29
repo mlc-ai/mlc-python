@@ -2,9 +2,6 @@ import mlc
 import pytest
 
 CPP_SOURCE = """
-#ifdef _WIN32
-#pragma comment(lib, "mlc_registry.lib")
-#endif
 #include <mlc/all.h>
 #include <string>
 
@@ -20,8 +17,8 @@ struct MyObjRef : public mlc::ObjectRef {
   MLC_DEF_OBJ_REF(MyObjRef, MyObj, mlc::ObjectRef)
       .Field("x", &MyObj::x)
       .FieldReadOnly("y", &MyObj::y)
-      .Method("__init__", mlc::InitOf<MyObj, std::string, int32_t>)
-      .Method("YPlusOne", &MyObj::YPlusOne);
+      .StaticFn("__init__", mlc::InitOf<MyObj, std::string, int32_t>)
+      .MemFn("YPlusOne", &MyObj::YPlusOne);
 };
 """
 
@@ -29,7 +26,7 @@ struct MyObjRef : public mlc::ObjectRef {
 def test_jit_load() -> None:
     mlc.cc.jit_load(CPP_SOURCE)
 
-    @mlc.register_type("mlc.MyObj")
+    @mlc.c_class("mlc.MyObj")
     class MyObj(mlc.Object):
         x: str
         y: int

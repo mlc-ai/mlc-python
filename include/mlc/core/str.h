@@ -1,5 +1,5 @@
-#ifndef MLC_STR_H_
-#define MLC_STR_H_
+#ifndef MLC_CORE_STR_H_
+#define MLC_CORE_STR_H_
 #include "./object.h"
 #include <cstring>
 #include <sstream>
@@ -8,9 +8,6 @@ namespace mlc {
 namespace base {
 template <> struct ObjPtrTraits<StrObj, void> {
   MLC_INLINE static StrObj *AnyToUnownedPtr(const MLCAny *v) { return ObjPtrTraitsDefault<StrObj>::AnyToUnownedPtr(v); }
-  MLC_INLINE static void PtrToAnyView(const StrObj *v, MLCAny *ret) {
-    return ObjPtrTraitsDefault<StrObj>::PtrToAnyView(v, ret);
-  }
   MLC_INLINE static StrObj *AnyToOwnedPtr(const MLCAny *v) {
     if (v->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCRawStr)) {
       return StrCopyFromCharArray(v->v_str, std::strlen(v->v_str));
@@ -57,7 +54,7 @@ struct StrObj : public MLCStr {
   MLC_DEF_STATIC_TYPE(StrObj, Object, MLCTypeIndex::kMLCStr, "object.Str")
       .FieldReadOnly("length", &MLCStr::length)
       .FieldReadOnly("data", &MLCStr::data)
-      .Method("__str__", &StrObj::__str__);
+      .MemFn("__str__", &StrObj::__str__);
 };
 } // namespace mlc
 
@@ -285,4 +282,4 @@ MLC_INLINE StrObj *StrCopyFromCharArray(const char *source, size_t length) {
 MLC_INLINE uint64_t StrObj::Hash() const { return ::mlc::core::StrHash(reinterpret_cast<const MLCStr *>(this)); }
 } // namespace mlc
 
-#endif // MLC_STR_H_
+#endif // MLC_CORE_STR_H_

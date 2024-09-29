@@ -1,8 +1,13 @@
-PyMLC
-=====
+MLC-Python
+==========
+
+## Installation
+
+```bash
+pip install -U mlc-python
+```
 
 ## Features
-
 
 TBA
 
@@ -15,12 +20,6 @@ TBA
 ```
 
 ## Development
-
-### Install from PyPI
-
-```bash
-pip install mlc-python
-```
 
 ### Build from Source
 

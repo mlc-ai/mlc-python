@@ -13,7 +13,7 @@ from types import MappingProxyType
 from typing import Any
 
 from mlc import config as mlc_config
-from mlc._cython import SYSTEM, str_c2py
+from mlc._cython import SYSTEM
 
 DEFAULT_OPTIONS: Mapping[str, Sequence[str]] = {
     "Linux": (
@@ -85,7 +85,7 @@ def _linux_compile(
     work_dir: Path,
     options: Sequence[str],
 ) -> None:
-    temp_output = work_dir / "main.so"
+    temp_output = "main.so"
     cmd: list[str] = [
         str(mlc_config.probe_compiler()[0]),
         *options,
@@ -98,25 +98,26 @@ def _linux_compile(
     exec_env: dict[str, Any] = os.environ.copy()
     if ccache := shutil.which("ccache", mode=os.X_OK):
         cmd.insert(0, ccache)
-        exec_env["CCACHE_COMPILERCHECK"] = "content"
+        exec_env["CCACHE_COMPILERCHECK"] = "mtime"
         exec_env["CCACHE_NOHASHDIR"] = "1"
+        exec_env["CCACHE_BASEDIR"] = str(work_dir)
     else:
         warnings.warn("ccache not found")
 
     print(f"Executing command: {shlex.join(cmd)}")
-    proc = subprocess.Popen(
+    proc = subprocess.run(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         cwd=str(work_dir),
         env=exec_env,
+        text=True,
+        check=False,
     )
-    (out, _) = proc.communicate()
     if proc.returncode != 0:
-        msg = "Compilation error:\n"
-        msg += str_c2py(out)
+        msg = f"Compilation error (return code {proc.returncode}):\n{proc.stdout}"
         raise RuntimeError(msg)
-    shutil.move(str(temp_output), str(output))
+    shutil.move(str(work_dir / temp_output), str(output))
 
 
 def _windows_compile(
@@ -138,15 +139,10 @@ def _windows_compile(
         str(mlc_config.probe_compiler()[0]),
         *options,
         f"/Fe:{temp_output!s}",
+        str(mlc_config.libdir() / "mlc_registry.lib"),
     ]
     cmd.extend(f"/I{path!s}" for path in mlc_config.includedir())
     cmd.extend(str(source) for source in sources)
-    cmd.extend(
-        (
-            "/link",
-            f"/LIBPATH:{mlc_config.libdir()!s}",
-        )
-    )
     full_cmd = f'"{vcvarsall}" {arch} && {" ".join(_escape(arg) for arg in cmd)}'
     print(f"Executing command: {full_cmd}")
     proc = subprocess.run(
@@ -177,6 +173,6 @@ def _normalize_sources(sources: str | Path | Sequence[Path | str], work_dir: Pat
         else:
             with (work_dir / f"_mlc_source_{cnt}.cc").open("w", encoding="utf-8") as f:
                 f.write(source)
-            result.append((work_dir / f"_mlc_source_{cnt}.cc").resolve())
+            result.append(Path(f"_mlc_source_{cnt}.cc"))
             cnt += 1
     return result

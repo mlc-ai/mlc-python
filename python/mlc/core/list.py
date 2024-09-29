@@ -1,32 +1,47 @@
-import ctypes
-from collections.abc import Iterable
-from typing import Any
+from __future__ import annotations
 
-from mlc._cython import list_dict_init, register_type
+from collections.abc import Iterable, Iterator, Sequence
+from typing import TypeVar, overload
+
+from mlc._cython import Ptr, c_class
 
 from .object import Object
 
+T = TypeVar("T")
 
-@register_type("object.List")
-class List(Object):
+
+@c_class("object.List")
+class List(Object, Sequence[T]):
     capacity: int
     size: int
-    data: ctypes.c_void_p
+    data: Ptr
 
-    def __init__(self, iterable: Iterable[Any] = ()) -> None:
-        list_dict_init(self, tuple(iterable))
+    def __init__(self, iterable: Iterable[T] = ()) -> None:
+        self._mlc_init("__init__", *tuple(iterable))
 
     def __len__(self) -> int:
         return self.size
 
-    def __getitem__(self, index: int) -> Any:
-        length = len(self)
-        if not -length <= index < length:
-            raise IndexError(f"list index out of range: {index}")
-        if index < 0:
-            index += length
-        return List._C("__iter_at__", self, index)
+    @overload
+    def __getitem__(self, index: int) -> T: ...
 
-    def __iter__(self) -> Iterable[Any]:
-        for i in range(len(self)):
-            yield self[i]
+    @overload
+    def __getitem__(self, index: slice) -> Sequence[T]: ...
+
+    def __getitem__(self, index: int | slice) -> T | Sequence[T]:
+        if isinstance(index, int):
+            length = len(self)
+            if not -length <= index < length:
+                raise IndexError(f"list index out of range: {index}")
+            if index < 0:
+                index += length
+            return List._C("__iter_at__", self, index)
+        elif isinstance(index, slice):
+            # Implement slicing
+            start, stop, step = index.indices(len(self))
+            return List([self[i] for i in range(start, stop, step)])
+        else:
+            raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}")
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self[i] for i in range(len(self)))

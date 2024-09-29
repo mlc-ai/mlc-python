@@ -1,9 +1,10 @@
-#ifndef MLC_FUNC_DETAILS_H_
-#define MLC_FUNC_DETAILS_H_
+#ifndef MLC_CORE_FUNC_DETAILS_H_
+#define MLC_CORE_FUNC_DETAILS_H_
 
 #include "./func.h"
 #include <cstring>
 #include <functional>
+#include <iomanip>
 #include <memory>
 
 /********** Section 1. Function signature and FuncTraits *********/
@@ -126,11 +127,11 @@ template <typename Function, typename StorageInfo> struct UnpackCallArgConverter
           return v.CastWithStorage<ObjType>(storage + storage_index);
         }
       } catch (const Exception &e) {
-        if (strcmp(e.data_->kind(), "TypeError") == 0) {
+        if (strcmp(e.Obj()->kind(), "TypeError") == 0) {
           MLC_THROW(TypeError) << "Mismatched type on argument #" << i << " when calling: `"
                                << FuncTraits<Function>::Sig() << "`. Expected `" << ::mlc::base::Type2Str<Type>::Run()
                                << "` but got `" << ::mlc::base::TypeIndex2TypeKey(v.type_index) << "`";
-        } else if (strcmp(e.data_->kind(), "NestedTypeError") == 0) {
+        } else if (strcmp(e.Obj()->kind(), "NestedTypeError") == 0) {
           MLC_THROW(TypeError) << "Mismatched type on argument #" << i << " when calling: `"
                                << FuncTraits<Function>::Sig() << "`. " << e.what();
         } else {
@@ -264,44 +265,41 @@ inline Ref<FuncObj> FuncObj::FromForeign(void *self, MLCDeleterType deleter, MLC
 namespace mlc {
 namespace base {
 
-template <typename FieldType> struct ReflectGetterSetter {
-  static int32_t Getter(void *addr, MLCAny *ret) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<Any *>(ret) = *static_cast<FieldType *>(addr);
-    MLC_SAFE_CALL_END(static_cast<Any *>(ret));
-  }
-  static int32_t Setter(void *addr, MLCAny *src) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<FieldType *>(addr) = (static_cast<Any *>(src))->operator FieldType();
-    MLC_SAFE_CALL_END(static_cast<Any *>(src));
-  }
-};
-template <> struct ReflectGetterSetter<char *> {
-  static int32_t Getter(void *addr, MLCAny *ret) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<Any *>(ret) = static_cast<const char *>(*static_cast<char **>(addr));
-    MLC_SAFE_CALL_END(static_cast<Any *>(ret));
-  }
-  static int32_t Setter(void *addr, MLCAny *src) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<char **>(addr) = const_cast<char *>((static_cast<Any *>(src))->operator const char *());
-    MLC_SAFE_CALL_END(static_cast<Any *>(src));
-  }
-};
+template <typename Super, typename FieldType>
+inline MLCTypeField ReflectionHelper::PrepareField(const char *name, FieldType Super::*field) {
+  int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
+  MLCTypeInfo **ann = [&]() {
+    this->type_annotation_pool.emplace_back();
+    std::vector<MLCTypeInfo *> &type_annotation = this->type_annotation_pool.back();
+    base::Type2Str<FieldType>::GetTypeAnnotation(&type_annotation);
+    type_annotation.push_back(nullptr);
+    return type_annotation.data();
+  }();
+  int32_t is_read_only = false;
+  int32_t is_owned_obj_ptr = base::IsObjRef<FieldType> || base::IsRef<FieldType>;
+  return MLCTypeField{
+      name, field_offset, nullptr, nullptr, ann, is_read_only, is_owned_obj_ptr,
+  };
+}
 
 template <typename Super, typename FieldType>
 inline ReflectionHelper &ReflectionHelper::FieldReadOnly(const char *name, FieldType Super::*field) {
-  using P = ReflectGetterSetter<FieldType>;
-  const int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
-  this->fields.emplace_back(MLCTypeField{name, field_offset, &P::Getter, nullptr});
+  MLCTypeField f = this->PrepareField<Super, FieldType>(name, field);
+  using P = ::mlc::core::ReflectGetterSetter<FieldType>;
+  f.getter = &P::Getter;
+  f.setter = nullptr;
+  f.is_read_only = true;
+  this->fields.emplace_back(f);
   return *this;
 }
 
 template <typename Super, typename FieldType>
 inline ReflectionHelper &ReflectionHelper::Field(const char *name, FieldType Super::*field) {
-  using P = ReflectGetterSetter<FieldType>;
-  const int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
-  this->fields.emplace_back(MLCTypeField{name, field_offset, &P::Getter, &P::Setter});
+  MLCTypeField f = this->PrepareField<Super, FieldType>(name, field);
+  using P = ::mlc::core::ReflectGetterSetter<FieldType>;
+  f.getter = &P::Getter;
+  f.setter = &P::Setter;
+  this->fields.emplace_back(f);
   return *this;
 }
 
@@ -310,21 +308,33 @@ inline ReflectionHelper::ReflectionHelper(int32_t type_index)
 
 inline std::string ReflectionHelper::DefaultStrMethod(AnyView any) {
   std::ostringstream os;
-  os << ::mlc::base::TypeIndex2TypeKey(any.type_index) << '@' << any.v_ptr;
+  os << ::mlc::base::TypeIndex2TypeKey(any.type_index) //
+     << "@0x" << std::setfill('0') << std::setw(12)    //
+     << std::hex << (uintptr_t)(any.v_ptr);
   return os.str();
 }
 
-template <typename Callable> inline ReflectionHelper &ReflectionHelper::Method(const char *name, Callable &&callable) {
+template <typename Callable>
+inline MLCTypeMethod ReflectionHelper::PrepareMethod(const char *name, Callable &&callable) {
   Ref<FuncObj> func_ref = Ref<FuncObj>::New(std::forward<Callable>(callable));
-  for (auto &entry : this->methods) {
-    if (std::strcmp(entry.name, name) == 0) {
-      entry.func = func_ref.get();
-      this->method_pool.push_back(std::move(func_ref));
-      return *this;
-    }
-  }
-  this->methods.emplace_back(MLCTypeMethod{name, func_ref.get()});
+  MLCTypeMethod ret{name, func_ref.get(), -1};
   this->method_pool.push_back(std::move(func_ref));
+  return ret;
+}
+
+template <typename Callable> inline ReflectionHelper &ReflectionHelper::MemFn(const char *name, Callable &&callable) {
+  constexpr int32_t MemFn = 0;
+  MLCTypeMethod m = this->PrepareMethod(name, std::forward<Callable>(callable));
+  m.kind = MemFn;
+  this->methods.emplace_back(m);
+  return *this;
+}
+
+template <typename Callable> ReflectionHelper &ReflectionHelper::StaticFn(const char *name, Callable &&callable) {
+  constexpr int32_t StaticFn = 1;
+  MLCTypeMethod m = this->PrepareMethod(name, std::forward<Callable>(callable));
+  m.kind = StaticFn;
+  this->methods.emplace_back(m);
   return *this;
 }
 
@@ -339,7 +349,7 @@ inline ReflectionHelper::operator int32_t() {
       return false;
     };
     if (!has_method("__str__")) {
-      this->Method("__str__", &ReflectionHelper::DefaultStrMethod);
+      this->MemFn("__str__", &ReflectionHelper::DefaultStrMethod);
     }
     MLCTypeDefReflection(nullptr, this->type_index,                //
                          this->fields.size(), this->fields.data(), //
@@ -350,4 +360,4 @@ inline ReflectionHelper::operator int32_t() {
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_FUNC_DETAILS_H_
+#endif // MLC_CORE_FUNC_DETAILS_H_

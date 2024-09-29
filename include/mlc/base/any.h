@@ -1,6 +1,6 @@
-#ifndef MLC_ANY_H_
-#define MLC_ANY_H_
-#include "./common.h"
+#ifndef MLC_BASE_ANY_H_
+#define MLC_BASE_ANY_H_
+#include "./utils.h"
 #include <cstring>
 #include <type_traits>
 #include <utility>
@@ -160,4 +160,4 @@ template <typename... Args> struct AnyViewArrayFill {
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_CORE_IMPL_H_
+#endif // MLC_BASE_ANY_H_

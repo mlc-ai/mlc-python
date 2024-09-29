@@ -1,5 +1,5 @@
-#ifndef MLC_DICT_H_
-#define MLC_DICT_H_
+#ifndef MLC_CORE_DICT_H_
+#define MLC_CORE_DICT_H_
 #include "./error.h"
 #include "./udict.h"
 #include <initializer_list>
@@ -10,7 +10,6 @@ namespace mlc {
 namespace base {
 template <typename K, typename V> struct ObjPtrTraits<DictObj<K, V>> {
   using T = DictObj<K, V>;
-  MLC_INLINE static void PtrToAnyView(const T *v, MLCAny *ret) { ObjPtrTraitsDefault<T>::PtrToAnyView(v, ret); }
   MLC_INLINE static T *AnyToOwnedPtr(const MLCAny *v) { return AnyToUnownedPtr(v); }
   MLC_INLINE static T *AnyToUnownedPtr(const MLCAny *v) {
     return ObjPtrTraitsDefault<UDictObj>::AnyToUnownedPtr(v)->AsTyped<K, V>();
@@ -132,36 +131,6 @@ template <typename K, typename V> struct Dict : protected UDict {
   MLC_DEF_OBJ_REF(Dict, TSelfDict, UDict);
 };
 
-namespace core {
-
-template <typename K, typename V> MLC_INLINE_NO_MSVC void NestedTypeCheck<Dict<K, V>>::Run(const MLCAny &any) {
-  try {
-    static_cast<const AnyView &>(any).Cast<UDict>();
-  } catch (const Exception &e) {
-    throw NestedTypeError(e.what()).NewFrame(::mlc::base::Type2Str<UDict>::Run());
-  }
-  if constexpr (!std::is_same_v<K, Any> || !std::is_same_v<V, Any>) {
-    DictBase *dict = reinterpret_cast<DictBase *>(any.v_obj);
-    dict->IterateAll([](uint8_t *, MLCAny *key, MLCAny *value) {
-      if constexpr (!std::is_same_v<K, Any>) {
-        try {
-          NestedTypeCheck<K>::Run(*key);
-        } catch (NestedTypeError &e) {
-          throw e.NewFrame(::mlc::base::Type2Str<K>::Run());
-        }
-      }
-      if constexpr (!std::is_same_v<V, Any>) {
-        try {
-          NestedTypeCheck<V>::Run(*value);
-        } catch (NestedTypeError &e) {
-          throw e.NewIndex(*static_cast<AnyView *>(key));
-        }
-      }
-    });
-  }
-}
-} // namespace core
-
 template <typename K, typename V> MLC_INLINE_NO_MSVC Dict<K, V> UDict::AsTyped() const {
   return Dict<K, V>(get()->AsTyped<K, V>());
 }
@@ -179,4 +148,4 @@ template <typename K, typename V> MLC_INLINE_NO_MSVC DictObj<K, V> *UDictObj::As
   return reinterpret_cast<DictObj<K, V> *>(self);
 }
 } // namespace mlc
-#endif // MLC_UDICT_H_
+#endif // MLC_CORE_DICT_H_

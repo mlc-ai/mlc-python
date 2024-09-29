@@ -1,7 +1,7 @@
-#ifndef MLC_REF_H_
-#define MLC_REF_H_
+#ifndef MLC_BASE_REF_H_
+#define MLC_BASE_REF_H_
 
-#include "./common.h"
+#include "./utils.h"
 
 #define MLC_DEF_OBJ_REF(RefType, ObjType, ParentRefType)                                                               \
 private:                                                                                                               \
@@ -69,11 +69,6 @@ namespace base {
 
 template <typename TRef> struct ObjPtrHelper {
   using TObj = typename TRef::TObj;
-
-  MLC_INLINE_NO_MSVC static TObj *TryConvert(const MLCAny *v) {
-    MLC_TRY_CONVERT(ObjPtrTraits<TObj>::AnyToOwnedPtr(v), v->type_index, Type2Str<TObj *>::Run());
-  }
-
   template <typename U, typename ObjPtrType> MLC_INLINE static MLCObject *GetPtr(const ObjPtrType *self) {
     static_assert(::mlc::base::IsDerivedFrom<U, TObj>, "U must be derived from T");
     return self->ptr;
@@ -210,4 +205,4 @@ struct ObjectRefDummyRoot : protected ObjPtrBase {
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_REF_H_
+#endif // MLC_BASE_REF_H_

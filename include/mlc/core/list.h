@@ -1,5 +1,5 @@
-#ifndef MLC_LIST_H_
-#define MLC_LIST_H_
+#ifndef MLC_CORE_LIST_H_
+#define MLC_CORE_LIST_H_
 
 #include "./error.h"
 #include "./ulist.h"
@@ -10,7 +10,6 @@ namespace mlc {
 namespace base {
 template <typename Elem> struct ObjPtrTraits<ListObj<Elem>> {
   using T = ListObj<Elem>;
-  MLC_INLINE static void PtrToAnyView(const T *v, MLCAny *ret) { ObjPtrTraitsDefault<T>::PtrToAnyView(v, ret); }
   MLC_INLINE static T *AnyToOwnedPtr(const MLCAny *v) { return AnyToUnownedPtr(v); }
   MLC_INLINE static T *AnyToUnownedPtr(const MLCAny *v) {
     return ObjPtrTraitsDefault<UListObj>::AnyToUnownedPtr(v)->AsTyped<Elem>();
@@ -154,27 +153,4 @@ template <typename T> MLC_INLINE_NO_MSVC ListObj<T> *UListObj::AsTyped() const {
 }
 } // namespace mlc
 
-namespace mlc {
-namespace core {
-template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<List<T>>::Run(const MLCAny &any) {
-  try {
-    static_cast<const AnyView &>(any).Cast<UList>();
-  } catch (const Exception &e) {
-    throw NestedTypeError(e.what()).NewFrame(::mlc::base::Type2Str<UList>::Run());
-  }
-  if constexpr (!std::is_same_v<T, Any>) {
-    UListObj *list = reinterpret_cast<UListObj *>(any.v_obj);
-    int64_t size = list->size();
-    for (int32_t i = 0; i < size; ++i) {
-      try {
-        NestedTypeCheck<T>::Run(list->data()[i]);
-      } catch (NestedTypeError &e) {
-        throw e.NewIndex(i);
-      }
-    }
-  }
-}
-} // namespace core
-} // namespace mlc
-
-#endif // MLC_LIST_H_
+#endif // MLC_CORE_LIST_H_

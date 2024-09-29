@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from mlc._cython import PyAny, device_as_pair, register_type
+from mlc._cython import PyAny, c_class, device_as_pair
 
 
 class DeviceType(Enum):
@@ -23,7 +23,7 @@ class DeviceType(Enum):
     maia = 17
 
 
-@register_type("Device")
+@c_class("Device")
 class Device(PyAny):
     def __init__(self, device: str | Device) -> None:
         self._mlc_init("__init__", device)

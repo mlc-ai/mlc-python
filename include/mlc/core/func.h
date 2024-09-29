@@ -1,5 +1,5 @@
-#ifndef MLC_FUNC_H_
-#define MLC_FUNC_H_
+#ifndef MLC_CORE_FUNC_H_
+#define MLC_CORE_FUNC_H_
 
 #include "./error.h"
 #include "./str.h"
@@ -42,7 +42,7 @@ struct FuncObj : public MLCFunc {
   }
 
   MLC_DEF_STATIC_TYPE(FuncObj, Object, MLCTypeIndex::kMLCFunc, "object.Func")
-      .Method("__init__", ::mlc::base::ReflectionHelper::DefaultStrMethod);
+      .StaticFn("__init__", ::mlc::base::ReflectionHelper::DefaultStrMethod);
 };
 
 struct FuncObj::Allocator {
@@ -103,4 +103,4 @@ MLC_INLINE void FuncCall(const void *self, int32_t num_args, const MLCAny *args,
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_FUNC_H_
+#endif // MLC_CORE_FUNC_H_

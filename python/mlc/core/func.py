@@ -1,12 +1,12 @@
 from collections.abc import Callable
 from typing import Any
 
-from mlc._cython import func_call, func_init, get_global_func, register_type
+from mlc._cython import c_class, func_call, func_init, get_global_func
 
 from .object import Object
 
 
-@register_type("object.Func")
+@c_class("object.Func")
 class Func(Object):
     def __init__(self, func: Callable) -> None:
         assert callable(func), "func must be callable"

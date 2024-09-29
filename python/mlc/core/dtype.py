@@ -6,7 +6,7 @@ from typing import Any
 import ml_dtypes
 import numpy as np
 
-from mlc._cython import PyAny, dtype_as_triple, register_type
+from mlc._cython import PyAny, c_class, dtype_as_triple
 
 
 class DataTypeCode(Enum):
@@ -40,7 +40,7 @@ PRESET: dict[Any, Any] = {
 }
 
 
-@register_type("dtype")
+@c_class("dtype")
 class DataType(PyAny):
     def __init__(self, dtype: str | np.dtype | DataType) -> None:
         dtype = PRESET.get(dtype, dtype)

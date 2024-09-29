@@ -1,7 +1,7 @@
-#ifndef MLC_TRAITS_DTYPE_H_
-#define MLC_TRAITS_DTYPE_H_
+#ifndef MLC_BASE_TRAITS_DTYPE_H_
+#define MLC_BASE_TRAITS_DTYPE_H_
 
-#include "./common.h"
+#include "./utils.h"
 #include <unordered_map>
 
 namespace mlc {
@@ -145,4 +145,4 @@ inline DLDataType String2DLDataType(const std::string &source) {
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_TRAITS_DTYPE_H_
+#endif // MLC_BASE_TRAITS_DTYPE_H_

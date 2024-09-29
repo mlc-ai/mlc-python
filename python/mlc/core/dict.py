@@ -1,30 +1,33 @@
 from __future__ import annotations
 
-import ctypes
 import itertools
-from collections.abc import Iterable, Mapping
-from typing import Any
+from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, ValuesView
+from typing import TypeVar, overload
 
-from mlc._cython import list_dict_init, register_type
+from mlc._cython import Ptr, c_class
 
 from .object import Object
 
+K = TypeVar("K")
+V = TypeVar("V")
+T = TypeVar("T")
 
-@register_type("object.Dict")
-class Dict(Object):
+
+@c_class("object.Dict")
+class Dict(Object, Mapping[K, V]):
     capacity: int
     size: int
-    data: ctypes.c_void_p
+    data: Ptr
 
     def __init__(
         self,
-        _source: Iterable[tuple[Any, Any]] | Mapping[Any, Any] | None = None,
-        **kwargs: Any,
+        _source: Iterable[tuple[K, V]] | Mapping[K, V] | None = None,
+        **kwargs: V,
     ) -> None:
         if isinstance(_source, Mapping):
             py_args = tuple(_source.items())
         elif isinstance(_source, Iterable):
-            py_args = tuple(_source)
+            py_args = tuple(_source)  # type: ignore[arg-type]
         elif _source is None:
             py_args = ()
         else:
@@ -32,31 +35,110 @@ class Dict(Object):
         if kwargs:
             py_args += tuple(kwargs.items())
         py_args = tuple(itertools.chain.from_iterable(py_args))
-        list_dict_init(self, py_args)
+        self._mlc_init("__init__", *py_args)
 
     def __len__(self) -> int:
         return self.size
 
-    def __iter__(self) -> Iterable[Any]:
-        return self.keys()
+    def __iter__(self) -> Iterator[K]:
+        return self._keys_iterator()
 
-    def keys(self) -> Iterable[Any]:
+    def _keys_iterator(self) -> Iterator[K]:
         cap = self.capacity
         i = -1
         while (i := Dict._C("__iter_advance__", self, i)) < cap:
             yield Dict._C("__iter_get_key__", self, i)
 
-    def values(self) -> Iterable[Any]:
+    def _values_iterator(self) -> Iterator[V]:
         cap = self.capacity
         i = -1
         while (i := Dict._C("__iter_advance__", self, i)) < cap:
             yield Dict._C("__iter_get_value__", self, i)
 
-    def items(self) -> Iterable[tuple[Any, Any]]:
+    def _items_iterator(self) -> Iterator[tuple[K, V]]:
         cap = self.capacity
         i = -1
         while (i := Dict._C("__iter_advance__", self, i)) < cap:
             yield Dict._C("__iter_get_key__", self, i), Dict._C("__iter_get_value__", self, i)
 
-    def __getitem__(self, key: Any) -> Any:
+    def keys(self) -> KeysView[K]:
+        return _DictKeysView(self)
+
+    def values(self) -> ValuesView[V]:
+        return _DictValuesView(self)
+
+    def items(self) -> ItemsView[K, V]:
+        return _DictItemsView(self)
+
+    def __getitem__(self, key: K) -> V:
         return Dict._C("__getitem__", self, key)
+
+    # Additional methods required by the Mapping ABC
+    def __contains__(self, key: object) -> bool:
+        try:
+            self[key]  # type: ignore
+            return True
+        except KeyError:
+            return False
+
+    @overload
+    def get(self, key: K) -> V | None: ...
+
+    @overload
+    def get(self, key: K, default: V | T) -> V | T: ...
+
+    def get(self, key: K, default: V | T | None = None) -> V | T | None:
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+
+class _DictKeysView(KeysView[K]):
+    def __init__(self, mapping: Dict[K, V]) -> None:
+        self._mapping = mapping
+
+    def __len__(self) -> int:
+        return len(self._mapping)
+
+    def __iter__(self) -> Iterator[K]:
+        return self._mapping._keys_iterator()
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._mapping
+
+
+class _DictValuesView(ValuesView[V]):
+    def __init__(self, mapping: Dict[K, V]) -> None:
+        self._mapping = mapping
+
+    def __len__(self) -> int:
+        return len(self._mapping)
+
+    def __iter__(self) -> Iterator[V]:
+        return self._mapping._values_iterator()
+
+    def __contains__(self, value: object) -> bool:
+        return any(v == value for v in self)
+
+
+class _DictItemsView(ItemsView[K, V]):
+    def __init__(self, mapping: Dict[K, V]) -> None:
+        self._mapping = mapping
+
+    def __len__(self) -> int:
+        return len(self._mapping)
+
+    def __iter__(self) -> Iterator[tuple[K, V]]:
+        return self._mapping._items_iterator()
+
+    def __contains__(self, item: object) -> bool:
+        if not isinstance(item, tuple) or len(item) != 2:
+            return False
+        key, value = item
+        try:
+            v = self._mapping[key]
+        except KeyError:
+            return False
+        else:
+            return v == value

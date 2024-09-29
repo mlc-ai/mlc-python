@@ -1,6 +1,7 @@
-#ifndef MLC_UDICT_BASE_H_
-#define MLC_UDICT_BASE_H_
+#ifndef MLC_CORE_UDICT_BASE_H_
+#define MLC_CORE_UDICT_BASE_H_
 #include "./object.h"
+#include <iostream>
 #include <iterator>
 #include <type_traits>
 #include <unordered_map>
@@ -376,8 +377,10 @@ template <typename SubObject> struct DictBase::ffi {
   static void New(int32_t num_args, const AnyView *args, Any *any_ret) {
     Ref<SubObject> ret = Ref<SubObject>::New(num_args * 2);
     DictBase *dict_ptr = ret.get();
-    for (auto it = args; it != args + num_args; it += 2) {
-      static_cast<Any &>(dict_ptr->InsertOrLookup<SubObject>(Any(*it))->second) = Any(*(it + 1));
+    for (int32_t i = 0; i < num_args; i += 2) {
+      const AnyView *k = args + i;
+      const AnyView *v = args + i + 1;
+      static_cast<Any &>(dict_ptr->InsertOrLookup<SubObject>(Any(*k))->second) = Any(*v);
     }
     *any_ret = std::move(ret);
   }
@@ -393,4 +396,4 @@ template <typename SubObject> struct DictBase::ffi {
 
 } // namespace core
 } // namespace mlc
-#endif // MLC_UDICT_BASE_H_
+#endif // MLC_CORE_UDICT_BASE_H_

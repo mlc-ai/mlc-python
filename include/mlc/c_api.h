@@ -64,6 +64,7 @@ typedef enum {
 #endif
 
 struct MLCAny;
+struct MLCTypeInfo;
 typedef struct MLCAny MLCObject;
 typedef void (*MLCDeleterType)(void *);
 typedef void (*MLCFuncCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret);
@@ -128,21 +129,26 @@ typedef struct {
   void *data;
 } MLCDict;
 
-typedef int32_t (*MLCAttrGetterSetter)(void *addr, MLCAny *);
+typedef struct MLCTypeField MLCTypeField;
+typedef int32_t (*MLCAttrGetterSetter)(MLCTypeField *, void *addr, MLCAny *);
 
-typedef struct {
+typedef struct MLCTypeField {
   const char *name;
   int64_t offset;
   MLCAttrGetterSetter getter;
   MLCAttrGetterSetter setter;
+  MLCTypeInfo **type_annotation;
+  int32_t is_read_only;
+  int32_t is_owned_obj_ptr;
 } MLCTypeField;
 
 typedef struct {
   const char *name;
   MLCFunc *func;
+  int32_t kind; // 0 for member method; 1 for static method
 } MLCTypeMethod;
 
-typedef struct {
+typedef struct MLCTypeInfo {
   int32_t type_index;
   const char *type_key;
   int32_t type_depth;
@@ -165,8 +171,7 @@ MLC_API int32_t MLCFuncSafeCall(MLCFunc *func, int32_t num_args, MLCAny *args, M
 MLC_API int32_t MLCTypeIndex2Info(MLCTypeTableHandle self, int32_t type_index, MLCTypeInfo **out_type_info);
 MLC_API int32_t MLCTypeKey2Info(MLCTypeTableHandle self, const char *type_key, MLCTypeInfo **out_type_info);
 MLC_API int32_t MLCTypeRegister(MLCTypeTableHandle self, int32_t parent_type_index, const char *type_key,
-                                int32_t type_index, MLCAttrGetterSetter getter, MLCAttrGetterSetter setter,
-                                MLCTypeInfo **out_type_info);
+                                int32_t type_index, MLCTypeInfo **out_type_info);
 MLC_API int32_t MLCTypeDefReflection(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields,
                                      MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods);
 MLC_API int32_t MLCVTableSet(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value);
@@ -174,6 +179,8 @@ MLC_API int32_t MLCVTableGet(MLCTypeTableHandle self, int32_t type_index, const 
 MLC_API int32_t MLCErrorCreate(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret);
 MLC_API int32_t MLCErrorGetInfo(MLCAny error, int32_t *num_strs, const char ***strs);
 MLC_API MLCByteArray MLCTraceback(const char *filename, const char *lineno, const char *func_name);
+MLC_API void *MLCExtObjCreate(int32_t bytes, int32_t type_index);
+MLC_API void MLCExtObjDelete(void *objptr);
 #ifdef __cplusplus
 } // MLC_EXTERN_C
 #endif

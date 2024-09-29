@@ -1,7 +1,7 @@
-#ifndef MLC_OBJECT_H_
-#define MLC_OBJECT_H_
+#ifndef MLC_CORE_OBJECT_H_
+#define MLC_CORE_OBJECT_H_
 
-#include <mlc/base/all.h>
+#include "./utils.h"
 
 namespace mlc {
 
@@ -20,9 +20,10 @@ struct Object {
 };
 
 struct ObjectRef : protected ::mlc::base::ObjectRefDummyRoot {
-  MLC_DEF_OBJ_REF(ObjectRef, Object, ::mlc::base::ObjectRefDummyRoot).Method("__init__", InitOf<Object>);
+  MLC_DEF_OBJ_REF(ObjectRef, Object, ::mlc::base::ObjectRefDummyRoot) //
+      .StaticFn("__init__", InitOf<Object>);
 };
 
 } // namespace mlc
 
-#endif // MLC_OBJECT_H_
+#endif // MLC_CORE_OBJECT_H_

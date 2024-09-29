@@ -18,7 +18,8 @@ def test_list_init_len_iter() -> None:
 
 @pytest.mark.parametrize("index", [-5, 4])
 def test_list_index_out_of_bound(index: int) -> None:
-    a = List(i * i for i in range(4))
+    a: List[int]
+    a = List[int](i * i for i in range(4))
     try:
         a[index]
     except IndexError as e:
@@ -26,7 +27,7 @@ def test_list_index_out_of_bound(index: int) -> None:
 
 
 def test_list_init_with_list() -> None:
-    a = List([1, 4, 9, 16])
+    a = List[int]([1, 4, 9, 16])
     b = List(a)
     assert list(a) == list(b)
 

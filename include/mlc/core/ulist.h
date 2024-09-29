@@ -1,5 +1,5 @@
-#ifndef MLC_ULIST_H_
-#define MLC_ULIST_H_
+#ifndef MLC_CORE_ULIST_H_
+#define MLC_CORE_ULIST_H_
 #include "./ulist_base.h"
 #include <initializer_list>
 #include <iterator>
@@ -62,9 +62,9 @@ struct UListObj : protected core::ListBase {
       .FieldReadOnly("size", &MLCList::size)
       .FieldReadOnly("capacity", &MLCList::capacity)
       .FieldReadOnly("data", &MLCList::data)
-      .Method("__str__", &UListObj::__str__)
-      .Method("__init__", &ffi<UListObj>::New)
-      .Method("__iter_at__", &ffi<UListObj>::At);
+      .StaticFn("__init__", &ffi<UListObj>::New)
+      .MemFn("__str__", &UListObj::__str__)
+      .MemFn("__iter_at__", &ffi<UListObj>::At);
 };
 
 struct UListObj::Iterator : public core::ListBaseIterator<UListObj::Iterator> {
@@ -128,4 +128,4 @@ struct UList : public ObjectRef {
 
 } // namespace mlc
 
-#endif // MLC_ULIST_H_
+#endif // MLC_CORE_ULIST_H_

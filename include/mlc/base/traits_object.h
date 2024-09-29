@@ -1,69 +1,12 @@
-#ifndef MLC_TRAITS_OBJECT_H_
-#define MLC_TRAITS_OBJECT_H_
+#ifndef MLC_BASE_TRAITS_OBJECT_H_
+#define MLC_BASE_TRAITS_OBJECT_H_
 
-#include "./common.h"
+#include "./utils.h"
 
 namespace mlc {
 namespace base {
 
-#define MLC_DEF_COMMON_(SelfType, ParentType, TypeIndex, TypeKey)                                                      \
-public:                                                                                                                \
-  template <typename, typename> friend struct ::mlc::base::DefaultObjectAllocator;                                     \
-  template <typename> friend struct ::mlc::Ref;                                                                        \
-  friend struct ::mlc::Any;                                                                                            \
-  friend struct ::mlc::AnyView;                                                                                        \
-  template <typename DerivedType> MLC_INLINE bool IsInstance() const {                                                 \
-    return ::mlc::base::IsInstanceOf<DerivedType, SelfType>(reinterpret_cast<const MLCAny *>(this));                   \
-  }                                                                                                                    \
-  MLC_INLINE const char *GetTypeKey() const {                                                                          \
-    return ::mlc::base::TypeIndex2TypeKey(reinterpret_cast<const MLCAny *>(this));                                     \
-  }                                                                                                                    \
-  static int32_t _ObjPtrGetter(void *addr, MLCAny *ret) {                                                              \
-    ::mlc::base::ObjPtrTraits<SelfType>::PtrToAnyView(static_cast<SelfType *>(addr), ret);                             \
-    return 0;                                                                                                          \
-  }                                                                                                                    \
-  static int32_t _ObjPtrSetter(void *addr, MLCAny *src) {                                                              \
-    try {                                                                                                              \
-      *static_cast<SelfType *>(addr) = *::mlc::base::ObjPtrTraits<SelfType>::AnyToUnownedPtr(src);                     \
-    } catch (const ::mlc::base::TemporaryTypeError &) {                                                                \
-      std::ostringstream oss;                                                                                          \
-      oss << "Cannot convert from type `" << ::mlc::base::TypeIndex2TypeKey(src->type_index) << "` to `" << (TypeKey)  \
-          << " *`";                                                                                                    \
-      *static_cast<::mlc::Any *>(src) = MLC_MAKE_ERROR_HERE("TypeError", oss.str());                                   \
-      return -2;                                                                                                       \
-    }                                                                                                                  \
-    return 0;                                                                                                          \
-  }                                                                                                                    \
-  [[maybe_unused]] static constexpr const char *_type_key = TypeKey;                                                   \
-  [[maybe_unused]] static inline MLCTypeInfo *_type_info =                                                             \
-      ::mlc::base::TypeRegister(static_cast<int32_t>(ParentType::_type_index), static_cast<int32_t>(TypeIndex),        \
-                                TypeKey, &SelfType::_ObjPtrGetter, &SelfType::_ObjPtrSetter);                          \
-  [[maybe_unused]] static inline int32_t *_type_ancestors = _type_info->type_ancestors;                                \
-  [[maybe_unused]] static constexpr int32_t _type_depth = ParentType::_type_depth + 1;                                 \
-  using _type_parent [[maybe_unused]] = ParentType
-
-#define MLC_DEF_STATIC_TYPE(SelfType, ParentType, TypeIndex, TypeKey)                                                  \
-public:                                                                                                                \
-  MLC_DEF_COMMON_(SelfType, ParentType, TypeIndex, TypeKey);                                                           \
-  [[maybe_unused]] static constexpr int32_t _type_index = static_cast<int32_t>(TypeIndex);                             \
-  MLC_DEF_REFLECTION(SelfType)
-
-#define MLC_DEF_DYN_TYPE(SelfType, ParentType, TypeKey)                                                                \
-public:                                                                                                                \
-  MLC_DEF_COMMON_(SelfType, ParentType, -1, TypeKey);                                                                  \
-  [[maybe_unused]] static inline int32_t _type_index = _type_info->type_index;                                         \
-  MLC_DEF_REFLECTION(SelfType)
-
 template <typename T> struct ObjPtrTraitsDefault {
-  MLC_INLINE static void PtrToAnyView(const T *v, MLCAny *ret) {
-    if (v == nullptr) {
-      ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
-      ret->v_obj = nullptr;
-    } else {
-      ret->type_index = v->_mlc_header.type_index;
-      ret->v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(v));
-    }
-  }
   MLC_INLINE static T *AnyToUnownedPtr(const MLCAny *v) {
     if (::mlc::base::IsTypeIndexNone(v->type_index)) {
       return nullptr;
@@ -78,7 +21,6 @@ template <typename T> struct ObjPtrTraitsDefault {
 };
 
 template <typename T> struct ObjPtrTraits<T, void> {
-  MLC_INLINE static void PtrToAnyView(const T *v, MLCAny *ret) { ObjPtrTraitsDefault<T>::PtrToAnyView(v, ret); }
   MLC_INLINE static T *AnyToUnownedPtr(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToUnownedPtr(v); }
   MLC_INLINE static T *AnyToOwnedPtr(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToOwnedPtr(v); }
 };
@@ -185,4 +127,4 @@ template <typename DerivedType, typename SelfType> MLC_INLINE bool IsInstanceOf(
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_TRAITS_OBJECT_H_
+#endif // MLC_BASE_TRAITS_OBJECT_H_

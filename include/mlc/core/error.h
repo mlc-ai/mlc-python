@@ -1,5 +1,5 @@
-#ifndef MLC_ERROR_H_
-#define MLC_ERROR_H_
+#ifndef MLC_CORE_ERROR_H_
+#define MLC_CORE_ERROR_H_
 
 #include "./object.h"
 #include <string>
@@ -47,7 +47,7 @@ struct ErrorObj : public MLCError {
 
   MLC_DEF_STATIC_TYPE(ErrorObj, Object, MLCTypeIndex::kMLCError, "object.Error")
       .FieldReadOnly("kind", &MLCError::kind)
-      .Method("__str__", &ErrorObj::__str__);
+      .MemFn("__str__", &ErrorObj::__str__);
 };
 
 struct ErrorObj::Allocator {
@@ -77,42 +77,13 @@ inline Ref<ErrorObj> ErrorObj::AppendWith(MLCByteArray traceback) const {
   return Ref<ErrorObj>::New(MLCError::kind, self, traceback);
 }
 
-struct Exception : public std::exception {
-  Ref<ErrorObj> data_;
-
-  Exception(Ref<ErrorObj> data) : data_(data) {}
-  Exception(const Exception &other) : data_(other.data_) {}
-  Exception(Exception &&other) : data_(std::move(other.data_)) {}
-  Exception &operator=(const Exception &other) {
-    this->data_ = other.data_;
-    return *this;
+inline const char *Exception::what() const noexcept(true) {
+  if (data_.get() == nullptr) {
+    return "mlc::ffi::Exception: Unspecified";
   }
-  Exception &operator=(Exception &&other) {
-    this->data_ = std::move(other.data_);
-    return *this;
-  }
-
-  const char *what() const noexcept(true) override {
-    if (data_.get() == nullptr) {
-      return "mlc::ffi::Exception: Unspecified";
-    }
-    return data_->ByteArray();
-  }
-
-  void MoveToAny(Any *v) { *v = std::move(this->data_); }
-};
-} // namespace mlc
-
-namespace mlc {
-namespace core {
-template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<T>::Run(const MLCAny &any) {
-  try {
-    static_cast<const AnyView &>(any).Cast<T>();
-  } catch (const Exception &e) {
-    throw NestedTypeError(e.what()).NewFrame(base::Type2Str<T>::Run());
-  }
+  return Obj()->ByteArray();
 }
-} // namespace core
+
 } // namespace mlc
 
 namespace mlc {
@@ -126,4 +97,4 @@ inline Any MLCCreateError(const char *kind, const std::string &message, MLCByteA
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_ERROR_H_
+#endif // MLC_CORE_ERROR_H_

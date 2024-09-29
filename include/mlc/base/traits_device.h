@@ -1,7 +1,7 @@
-#ifndef MLC_TRAITS_DEVICE_H_
-#define MLC_TRAITS_DEVICE_H_
+#ifndef MLC_BASE_TRAITS_DEVICE_H_
+#define MLC_BASE_TRAITS_DEVICE_H_
 
-#include "./common.h"
+#include "./utils.h"
 #include <unordered_map>
 
 namespace mlc {
@@ -123,4 +123,4 @@ inline DLDevice String2DLDevice(const std::string &source) {
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_TRAITS_DEVICE_H_
+#endif // MLC_BASE_TRAITS_DEVICE_H_

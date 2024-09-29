@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from mlc import Object, register_type
+from mlc import Object, c_class
 
 
-@register_type("mlc.testing.ReflectionTestObj")
+@c_class("mlc.testing.ReflectionTestObj")
 class ReflectionTestObj(Object):
     x_mutable: str
     y_immutable: int

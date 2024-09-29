@@ -1,7 +1,5 @@
 #include "./registry.h"
-#if defined(__APPLE__)
 #include <iostream>
-#endif
 
 namespace mlc {
 namespace registry {
@@ -31,10 +29,9 @@ MLC_API MLCAny MLCGetLastError() {
 }
 
 MLC_API int32_t MLCTypeRegister(MLCTypeTableHandle _self, int32_t parent_type_index, const char *type_key,
-                                int32_t type_index, MLCAttrGetterSetter getter, MLCAttrGetterSetter setter,
-                                MLCTypeInfo **out_type_info) {
+                                int32_t type_index, MLCTypeInfo **out_type_info) {
   MLC_SAFE_CALL_BEGIN();
-  *out_type_info = TypeTable::Get(_self)->TypeRegister(parent_type_index, type_index, type_key, getter, setter);
+  *out_type_info = TypeTable::Get(_self)->TypeRegister(parent_type_index, type_index, type_key);
   MLC_SAFE_CALL_END(&last_error);
 }
 
@@ -145,4 +142,34 @@ MLC_API int32_t MLCErrorGetInfo(MLCAny error, int32_t *num_strs, const char ***s
   *num_strs = static_cast<int32_t>(ret.size());
   *strs = ret.data();
   MLC_SAFE_CALL_END(&last_error);
+}
+
+MLC_API void *MLCExtObjCreate(int32_t bytes, int32_t type_index) {
+  char *data = new char[bytes]();
+  std::memset(data, 0, bytes);
+  MLCAny *header = reinterpret_cast<MLCAny *>(data);
+  header->type_index = type_index;
+  header->ref_cnt = 0;
+  header->deleter = MLCExtObjDelete;
+  return data;
+}
+
+MLC_API void MLCExtObjDelete(void *objptr) {
+  MLCAny *header = reinterpret_cast<MLCAny *>(objptr);
+  MLCTypeInfo *info = TypeTable::Global()->GetTypeInfo(header->type_index);
+  if (info == nullptr) { // TODO: error handling
+    std::cerr << "Cannot find type info for type index: " << header->type_index << std::endl;
+    std::abort();
+  }
+  MLCTypeField *fields = info->fields;
+  for (int32_t i = 0;; i++) {
+    MLCTypeField &field = fields[i];
+    if (field.name == nullptr) {
+      break;
+    }
+    if (field.is_owned_obj_ptr) {
+      MLCObject *ptr = reinterpret_cast<MLCObjPtr *>(static_cast<char *>(objptr) + field.offset)->ptr;
+      ::mlc::base::DecRef(ptr);
+    }
+  }
 }

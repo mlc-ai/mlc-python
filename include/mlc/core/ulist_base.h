@@ -1,5 +1,5 @@
-#ifndef MLC_ULIST_BASE_H_
-#define MLC_ULIST_BASE_H_
+#ifndef MLC_CORE_ULIST_BASE_H_
+#define MLC_CORE_ULIST_BASE_H_
 
 #include "./object.h"
 #include <vector>
@@ -165,4 +165,4 @@ private:
 } // namespace core
 } // namespace mlc
 
-#endif // MLC_ULIST_BASE_H_
+#endif // MLC_CORE_ULIST_BASE_H_

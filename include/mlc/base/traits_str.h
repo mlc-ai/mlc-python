@@ -1,7 +1,7 @@
-#ifndef MLC_TRAITS_STR_H_
-#define MLC_TRAITS_STR_H_
+#ifndef MLC_BASE_TRAITS_STR_H_
+#define MLC_BASE_TRAITS_STR_H_
 
-#include "./common.h"
+#include "./utils.h"
 
 namespace mlc {
 namespace base {
@@ -49,4 +49,4 @@ template <size_t N> struct PODTraits<char[N]> : public PODTraits<const char *> {
 } // namespace base
 } // namespace mlc
 
-#endif // MLC_TRAITS_STR_H_
+#endif // MLC_BASE_TRAITS_STR_H_

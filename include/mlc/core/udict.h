@@ -1,5 +1,5 @@
-#ifndef MLC_UDICT_H_
-#define MLC_UDICT_H_
+#ifndef MLC_CORE_UDICT_H_
+#define MLC_CORE_UDICT_H_
 #include "./str.h"
 #include "./udict_base.h"
 #include <iterator>
@@ -90,12 +90,12 @@ struct UDictObj : protected ::mlc::core::DictBase {
       .FieldReadOnly("capacity", &MLCDict::capacity)
       .FieldReadOnly("size", &MLCDict::size)
       .FieldReadOnly("data", &MLCDict::data)
-      .Method("__str__", &UDictObj::__str__)
-      .Method("__init__", DictBase::ffi<UDictObj>::New)
-      .Method("__getitem__", DictBase::ffi<UDictObj>::GetItem)
-      .Method("__iter_get_key__", DictBase::ffi<UDictObj>::GetKey)
-      .Method("__iter_get_value__", DictBase::ffi<UDictObj>::GetValue)
-      .Method("__iter_advance__", DictBase::ffi<UDictObj>::Advance);
+      .StaticFn("__init__", DictBase::ffi<UDictObj>::New)
+      .MemFn("__str__", &UDictObj::__str__)
+      .MemFn("__getitem__", DictBase::ffi<UDictObj>::GetItem)
+      .MemFn("__iter_get_key__", DictBase::ffi<UDictObj>::GetKey)
+      .MemFn("__iter_get_value__", DictBase::ffi<UDictObj>::GetValue)
+      .MemFn("__iter_advance__", DictBase::ffi<UDictObj>::Advance);
 };
 
 struct UDictObj::Iterator : public core::DictBaseIterator<UDictObj::Iterator> {
@@ -160,4 +160,4 @@ struct UDict : public ObjectRef {
 };
 
 } // namespace mlc
-#endif // MLC_UDICT_H_
+#endif // MLC_CORE_UDICT_H_

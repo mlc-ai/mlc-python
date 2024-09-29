@@ -30,8 +30,8 @@ struct ReflectionTest : public ObjectRef {
   MLC_DEF_OBJ_REF(ReflectionTest, ReflectionTestObj, ObjectRef)
       .Field("x_mutable", &ReflectionTestObj::x_mutable)
       .FieldReadOnly("y_immutable", &ReflectionTestObj::y_immutable)
-      .Method("__init__", InitOf<ReflectionTestObj, std::string, int32_t>)
-      .Method("YPlusOne", &ReflectionTestObj::YPlusOne);
+      .StaticFn("__init__", InitOf<ReflectionTestObj, std::string, int32_t>)
+      .MemFn("YPlusOne", &ReflectionTestObj::YPlusOne);
 };
 
 /**************** Traceback ****************/
@@ -52,7 +52,7 @@ MLC_REGISTER_FUNC("mlc.testing.throw_exception_from_ffi").set_body([](FuncObj *f
   try {
     (*func)();
   } catch (Exception &error) {
-    error.MoveToAny(&ret);
+    ret = std::move(error.data_);
   }
   return ret;
 });

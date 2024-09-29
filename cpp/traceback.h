@@ -1,5 +1,5 @@
-#ifndef MLC_TRACEBACK_H_
-#define MLC_TRACEBACK_H_
+#ifndef MLC_CPP_TRACEBACK_H_
+#define MLC_CPP_TRACEBACK_H_
 
 #include <cstring>
 #include <inttypes.h>
@@ -75,4 +75,4 @@ struct TracebackStorage {
 } // namespace ffi
 } // namespace mlc
 
-#endif
+#endif // MLC_CPP_TRACEBACK_H_

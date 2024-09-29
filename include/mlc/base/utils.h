@@ -1,5 +1,5 @@
-#ifndef MLC_UTILS_H_
-#define MLC_UTILS_H_
+#ifndef MLC_BASE_UTILS_H_
+#define MLC_BASE_UTILS_H_
 #define MLC_DEBUG_MODE 0
 #ifndef MLC_DEBUG_MODE
 #define MLC_DEBUG_MODE 0
@@ -15,6 +15,7 @@
 #include <bit>
 #endif
 #include <cstdlib>
+#include <functional>
 #include <memory>
 #include <mlc/c_api.h>
 #include <sstream>
@@ -65,22 +66,6 @@
 #define MLC_TRACEBACK_HERE() MLCTraceback(__FILE__, MLC_STR(__LINE__), MLC_FUNC_SIG)
 #define MLC_THROW(ErrorKind) ::mlc::base::ErrorBuilder(#ErrorKind, MLC_TRACEBACK_HERE()).Get()
 #define MLC_MAKE_ERROR_HERE(ErrorKind, Msg) ::mlc::base::MLCCreateError(#ErrorKind, Msg, MLC_TRACEBACK_HERE())
-
-#define MLC_SAFE_CALL_BEGIN()                                                                                          \
-  try {                                                                                                                \
-  (void)0
-#define MLC_SAFE_CALL_END(err_ret)                                                                                     \
-  return 0;                                                                                                            \
-  }                                                                                                                    \
-  catch (::mlc::Exception & err) {                                                                                     \
-    err.MoveToAny(err_ret);                                                                                            \
-    return -2;                                                                                                         \
-  }                                                                                                                    \
-  catch (std::exception & err) {                                                                                       \
-    *(err_ret) = ::mlc::Ref<::mlc::StrObj>::New(err.what());                                                           \
-    return -1;                                                                                                         \
-  }                                                                                                                    \
-  MLC_UNREACHABLE()
 
 #define MLC_DEF_ASSIGN(SelfType, SourceType)                                                                           \
   MLC_INLINE SelfType &operator=(SourceType other) {                                                                   \
@@ -237,10 +222,9 @@ template <typename, typename = void> struct PODTraits {};
  * \brief ObjPtrTraits<T> is a template class that provides the following set of
  * static methods that are associated with a specific object type `T`.
  *
- * 1) PtrToAnyView<T>: (const T *, MLCAny *) -> void
- * 2) AnyToUnownedPtr<T>: (const MLCAny *) -> T *
- * 3) AnyToOwnedPtr<T>: (const MLCAny *) -> T *
- * 4) AnyToOwnedPtrWithStorage<T>: (const MLCAny *, Any *) -> T * (optional)
+ * 1) AnyToUnownedPtr<T>: (const MLCAny *) -> T *
+ * 2) AnyToOwnedPtr<T>: (const MLCAny *) -> T *
+ * 3) AnyToOwnedPtrWithStorage<T>: (const MLCAny *, Any *) -> T * (optional)
  */
 template <typename T, typename = void> struct ObjPtrTraits;
 template <typename T> struct ObjPtrTraits<ListObj<T>, void>;
@@ -301,7 +285,9 @@ MLC_INLINE const char *TypeIndex2TypeKey(const MLCAny *self) {
 MLC_INLINE MLCTypeInfo *TypeRegister(int32_t parent_type_index, int32_t type_index, const char *type_key,
                                      MLCAttrGetterSetter getter, MLCAttrGetterSetter setter) {
   MLCTypeInfo *info = nullptr;
-  MLCTypeRegister(nullptr, parent_type_index, type_key, type_index, getter, setter, &info);
+  MLCTypeRegister(nullptr, parent_type_index, type_key, type_index, &info);
+  info->setter = setter;
+  info->getter = getter;
   return info;
 }
 
@@ -356,7 +342,7 @@ template <typename _T> struct Type2Str {
     }
   }
 
-  static void CollectTypeInfo(std::vector<MLCTypeInfo *> *info) {
+  static void GetTypeAnnotation(std::vector<MLCTypeInfo *> *info) {
     if constexpr (std::is_same_v<T, Any> || std::is_same_v<T, AnyView>) {
       info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCNone)));
     } else if constexpr (std::is_same_v<T, void>) {
@@ -367,14 +353,14 @@ template <typename _T> struct Type2Str {
       info->push_back(TypeIndex2TypeInfo(PODTraits<T>::default_type_index));
     } else if constexpr (IsRawObjPtr<T>) {
       using U = std::remove_pointer_t<T>;
-      Type2Str<Ref<U>>::CollectTypeInfo(info);
+      Type2Str<Ref<U>>::GetTypeAnnotation(info);
     } else if constexpr (std::is_base_of_v<UList, T>) {
       info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCList)));
-      Type2Str<typename T::TElem>::CollectTypeInfo(info);
+      Type2Str<typename T::TElem>::GetTypeAnnotation(info);
     } else if constexpr (std::is_base_of_v<UDict, T>) {
       info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCDict)));
-      Type2Str<typename T::TKey>::CollectTypeInfo(info);
-      Type2Str<typename T::TValue>::CollectTypeInfo(info);
+      Type2Str<typename T::TKey>::GetTypeAnnotation(info);
+      Type2Str<typename T::TValue>::GetTypeAnnotation(info);
     } else if constexpr (IsRef<T> || IsObjRef<T>) {
       using U = typename T::TObj;
       info->push_back(TypeIndex2TypeInfo(U::_type_index));
@@ -383,6 +369,38 @@ template <typename _T> struct Type2Str {
     }
   }
 };
+
+inline std::string TypeAnnotation2Str(MLCTypeInfo **ann) {
+  std::function<std::string(int *)> f;
+  f = [ann, &f](int *i) -> std::string {
+    MLCTypeInfo *info = ann[*i];
+    ++(*i);
+    if (info->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCNone)) {
+      return "Any";
+    } else if (info->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCList)) {
+      std::string elem = f(i);
+      return "list[" + elem + "]";
+    } else if (info->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCDict)) {
+      std::string key = f(i);
+      std::string value = f(i);
+      return "dict[" + key + ", " + value + "]";
+    } else {
+      return info->type_key;
+    }
+  };
+  int i = 0;
+  return f(&i);
+}
+
+template <typename TObj> MLC_INLINE static void PtrToAnyView(const TObj *v, MLCAny *ret) {
+  if (v == nullptr) {
+    ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
+    ret->v_obj = nullptr;
+  } else {
+    ret->type_index = v->_mlc_header.type_index;
+    ret->v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(v));
+  }
+}
 
 MLC_INLINE void IncRef(MLCObject *obj) {
   if (obj != nullptr) {
@@ -477,4 +495,4 @@ struct PODArrayFinally {
 #pragma warning(pop)
 #endif
 
-#endif // MLC_UTILS_H_
+#endif // MLC_BASE_UTILS_H_
