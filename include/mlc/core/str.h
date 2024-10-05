@@ -6,21 +6,23 @@
 
 namespace mlc {
 namespace base {
-template <> struct ObjPtrTraits<StrObj, void> {
-  MLC_INLINE static StrObj *AnyToUnownedPtr(const MLCAny *v) { return ObjPtrTraitsDefault<StrObj>::AnyToUnownedPtr(v); }
-  MLC_INLINE static StrObj *AnyToOwnedPtr(const MLCAny *v) {
+template <> struct TypeTraits<StrObj *> {
+  using T = StrObj;
+  MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) { ObjPtrTraitsDefault<T>::TypeToAny(src, ret); }
+  MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToTypeUnowned(v); }
+  MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) {
     if (v->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCRawStr)) {
       return StrCopyFromCharArray(v->v_str, std::strlen(v->v_str));
     }
-    return AnyToUnownedPtr(v);
+    return AnyToTypeUnowned(v);
   }
-  MLC_INLINE static StrObj *AnyToOwnedPtrWithStorage(const MLCAny *v, Any *storage) {
+  MLC_INLINE static T *AnyToTypeWithStorage(const MLCAny *v, Any *storage) {
     if (v->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCRawStr)) {
       StrObj *ret = StrCopyFromCharArray(v->v_str, std::strlen(v->v_str));
       *storage = reinterpret_cast<Object *>(ret);
       return ret;
     }
-    return AnyToUnownedPtr(v);
+    return AnyToTypeUnowned(v);
   }
 };
 } // namespace base
@@ -61,8 +63,8 @@ struct StrObj : public MLCStr {
 namespace mlc {
 namespace core {
 struct StrStd : public StrObj {
-  using Allocator = ::mlc::base::DefaultObjectAllocator<StrStd, void>;
-  template <typename, typename> friend struct ::mlc::base::DefaultObjectAllocator;
+  using Allocator = ::mlc::base::DefaultObjectAllocator<StrStd>;
+  template <typename> friend struct ::mlc::base::DefaultObjectAllocator;
 
   MLC_INLINE StrStd(std::string &&str) : StrObj(), container(std::move(str)) {
     this->MLCStr::length = static_cast<int64_t>(container.length());
@@ -73,8 +75,8 @@ struct StrStd : public StrObj {
 };
 
 struct StrPad : public StrObj {
-  using Allocator = ::mlc::base::DefaultObjectAllocator<StrPad, void>;
-  template <typename, typename> friend struct ::mlc::base::DefaultObjectAllocator;
+  using Allocator = ::mlc::base::DefaultObjectAllocator<StrPad>;
+  template <typename> friend struct ::mlc::base::DefaultObjectAllocator;
 
   MLC_INLINE StrPad(const char *str, size_t N) : StrObj() {
     char *str_copy = reinterpret_cast<char *>(this) + sizeof(StrObj);

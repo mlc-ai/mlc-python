@@ -1,6 +1,6 @@
 [project]
 name = "mlc-python"
-version = "0.0.5"
+version = "0.0.6"
 dependencies = ['numpy >= 1.22', "ml-dtypes >= 0.1", 'setuptools ; platform_system == "Windows"',]
 description = ""
 requires-python = ">=3.9"
@@ -13,7 +13,7 @@ classifiers = [
 keywords = []
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [{ name = "PyMLC Authors", email = "junrushao@apache.org" }]
+authors = [{ name = "MLC Authors", email = "junrushao@apache.org" }]
 
 [project.scripts]
 "mlc.config" = "mlc.config:main"

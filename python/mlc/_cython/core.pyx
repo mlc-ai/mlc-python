@@ -323,17 +323,16 @@ cdef class PyAny:
 
     def _mlc_init(self, init_func, *init_args) -> None:
         cdef PyAny func
+        if isinstance(init_func, str):
+            init_func = TYPE_VTABLE[type(self)][init_func]
         try:
-            if isinstance(init_func, str):
-                func = TYPE_VTABLE[type(self)][init_func]
-            else:
-                func = <PyAny>init_func
+            func = <PyAny>init_func
             assert func._mlc_any.type_index == kMLCFunc
-        except:  # no-cython-lint
+        except Exception as e:  # no-cython-lint
             raise TypeError(
                 "Unsupported type of `init_func`. "
                 f"Expected `str` or `mlc.Func`, but got: {type(init_func)}"
-            )
+            ) from e
         _func_call_impl(<MLCFunc*>(func._mlc_any.v_obj), init_args, &self._mlc_any)
 
     @staticmethod

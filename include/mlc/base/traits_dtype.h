@@ -2,6 +2,7 @@
 #define MLC_BASE_TRAITS_DTYPE_H_
 
 #include "./utils.h"
+#include <cstdlib>
 #include <unordered_map>
 
 namespace mlc {
@@ -13,15 +14,16 @@ inline bool DataTypeEqual(DLDataType a, DLDataType b) {
   return a.code == b.code && a.bits == b.bits && a.lanes == b.lanes;
 }
 
-template <> struct PODTraits<DLDataType> {
+template <> struct TypeTraits<DLDataType> {
   static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
+  static constexpr const char *type_str = "dtype";
 
-  MLC_INLINE static void TypeCopyToAny(DLDataType src, MLCAny *ret) {
+  MLC_INLINE static void TypeToAny(DLDataType src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
     ret->v_dtype = src;
   }
 
-  MLC_INLINE static DLDataType AnyCopyToType(const MLCAny *v) {
+  MLC_INLINE static DLDataType AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
     if (type_index == MLCTypeIndex::kMLCDataType) {
       return v->v_dtype;
@@ -35,7 +37,7 @@ template <> struct PODTraits<DLDataType> {
     throw TemporaryTypeError();
   }
 
-  MLC_INLINE static const char *Type2Str() { return "dtype"; }
+  MLC_INLINE static DLDataType AnyToTypeUnowned(const MLCAny *v) { return AnyToTypeOwned(v); }
 
   MLC_INLINE static std::string __str__(DLDataType dtype) {
     int32_t code = static_cast<int32_t>(dtype.code);
@@ -105,41 +107,49 @@ MLC_INLINE const char *DLDataTypeCode2Str(int32_t type_code) {
 }
 
 inline DLDataType String2DLDataType(const std::string &source) {
-  using Traits = PODTraits<DLDataType>;
+  constexpr int64_t u16_max = 65535;
+  constexpr int64_t u8_max = 255;
+  using Traits = TypeTraits<DLDataType>;
   if (auto it = Traits::preset.find(source); it != Traits::preset.end()) {
     return it->second;
   }
-#define MLC_DTYPE_PARSE(str, dtype_lanes, prefix, prefix_len, dtype_code)                                              \
-  if (str.length() >= prefix_len && str.compare(0, prefix_len, prefix) == 0) {                                         \
-    return {static_cast<uint8_t>(dtype_code), static_cast<uint8_t>(std::stoi(str.substr(prefix_len))),                 \
-            static_cast<uint16_t>(dtype_lanes)};                                                                       \
-  }
   try {
-    uint16_t lanes = 1;
+    int64_t dtype_lanes = 1;
     std::string dtype_str;
     if (size_t x_pos = source.rfind('x'); x_pos != std::string::npos) {
       dtype_str = source.substr(0, x_pos);
-      lanes = static_cast<uint16_t>(std::stoi(&source[x_pos + 1]));
+      dtype_lanes = StrToInt(source, x_pos + 1);
+      if (dtype_lanes < 0 || dtype_lanes > u16_max) {
+        throw std::runtime_error("Invalid DLDataType");
+      }
     } else {
       dtype_str = source;
     }
     if (dtype_str == "float8_e4m3fn") {
-      return {kDLDataTypeFloat8E4M3FN, 8, lanes};
+      return {static_cast<uint8_t>(kDLDataTypeFloat8E4M3FN), 8, static_cast<uint16_t>(dtype_lanes)};
     }
     if (dtype_str == "float8_e5m2") {
-      return {kDLDataTypeFloat8E5M2, 8, lanes};
+      return {static_cast<uint8_t>(kDLDataTypeFloat8E5M2), 8, static_cast<uint16_t>(dtype_lanes)};
     }
-    MLC_DTYPE_PARSE(dtype_str, lanes, "int", 3, kDLInt)
-    MLC_DTYPE_PARSE(dtype_str, lanes, "uint", 4, kDLUInt)
-    MLC_DTYPE_PARSE(dtype_str, lanes, "float", 5, kDLFloat)
-    MLC_DTYPE_PARSE(dtype_str, lanes, "ptr", 3, kDLOpaqueHandle)
-    MLC_DTYPE_PARSE(dtype_str, lanes, "bfloat", 6, kDLBfloat)
-    MLC_DTYPE_PARSE(dtype_str, lanes, "complex", 7, kDLComplex)
+#define MLC_DTYPE_PARSE_(str, prefix, prefix_len, dtype_code)                                                          \
+  if (str.length() >= prefix_len && str.compare(0, prefix_len, prefix) == 0) {                                         \
+    int64_t dtype_bits = StrToInt(str, prefix_len);                                                                    \
+    if (dtype_bits < 0 || dtype_bits > u8_max) {                                                                       \
+      throw std::runtime_error("Invalid DLDataType");                                                                  \
+    }                                                                                                                  \
+    return {static_cast<uint8_t>(dtype_code), static_cast<uint8_t>(dtype_bits), static_cast<uint16_t>(dtype_lanes)};   \
+  }
+    MLC_DTYPE_PARSE_(dtype_str, "int", 3, kDLInt)
+    MLC_DTYPE_PARSE_(dtype_str, "uint", 4, kDLUInt)
+    MLC_DTYPE_PARSE_(dtype_str, "float", 5, kDLFloat)
+    MLC_DTYPE_PARSE_(dtype_str, "ptr", 3, kDLOpaqueHandle)
+    MLC_DTYPE_PARSE_(dtype_str, "bfloat", 6, kDLBfloat)
+    MLC_DTYPE_PARSE_(dtype_str, "complex", 7, kDLComplex)
+#undef MLC_DTYPE_PARSE_
   } catch (...) {
   }
   MLC_THROW(ValueError) << "Cannot convert to `dtype` from string: " << source;
   MLC_UNREACHABLE();
-#undef MLC_DTYPE_PARSE
 }
 
 } // namespace base

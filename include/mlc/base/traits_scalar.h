@@ -7,40 +7,34 @@
 namespace mlc {
 namespace base {
 
-/********** PODTraits: Integer *********/
-
-template <typename Int> struct PODTraits<Int, std::enable_if_t<std::is_integral_v<Int>>> {
+template <typename Int> struct TypeTraits<Int, std::enable_if_t<std::is_integral_v<Int>>> {
   static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCInt);
+  static constexpr const char *type_str = "int";
 
-  MLC_INLINE static void TypeCopyToAny(Int src, MLCAny *ret) {
+  MLC_INLINE static void TypeToAny(Int src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCInt);
     ret->v_int64 = static_cast<int64_t>(src);
   }
-
-  MLC_INLINE static Int AnyCopyToType(const MLCAny *v) {
+  MLC_INLINE static Int AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
     if (type_index == MLCTypeIndex::kMLCInt) {
       return static_cast<Int>(v->v_int64);
     }
     throw TemporaryTypeError();
   }
-
-  MLC_INLINE static const char *Type2Str() { return "int"; }
-
-  MLC_INLINE static std::string __str__(int64_t src) { return std::to_string(src); }
+  MLC_INLINE static Int AnyToTypeUnowned(const MLCAny *v) { return AnyToTypeOwned(v); }
+  MLC_INLINE static std::string __str__(Int src) { return std::to_string(src); }
 };
 
-/********** PODTraits: Float *********/
-
-template <typename Float> struct PODTraits<Float, std::enable_if_t<std::is_floating_point_v<Float>>> {
+template <typename Float> struct TypeTraits<Float, std::enable_if_t<std::is_floating_point_v<Float>>> {
   static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCFloat);
+  static constexpr const char *type_str = "float";
 
-  MLC_INLINE static void TypeCopyToAny(Float src, MLCAny *ret) {
+  MLC_INLINE static void TypeToAny(Float src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCFloat);
     ret->v_float64 = src;
   }
-
-  MLC_INLINE static Float AnyCopyToType(const MLCAny *v) {
+  MLC_INLINE static Float AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
     if (type_index == MLCTypeIndex::kMLCFloat) {
       return v->v_float64;
@@ -49,25 +43,20 @@ template <typename Float> struct PODTraits<Float, std::enable_if_t<std::is_float
     }
     throw TemporaryTypeError();
   }
-
-  MLC_INLINE static const char *Type2Str() { return "float"; }
-
-  MLC_INLINE static std::string __str__(double src) { return std::to_string(src); }
+  MLC_INLINE static Float AnyToTypeUnowned(const MLCAny *v) { return AnyToTypeOwned(v); }
+  MLC_INLINE static std::string __str__(Float src) { return std::to_string(src); }
 };
 
-/********** PODTraits: Opaque Pointer *********/
-
-template <> struct PODTraits<void *> {
+template <> struct TypeTraits<void *> {
   static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCPtr);
-  using Ptr = void *;
+  static constexpr const char *type_str = "Ptr";
 
-  MLC_INLINE static void TypeCopyToAny(Ptr src, MLCAny *ret) {
+  MLC_INLINE static void TypeToAny(void *src, MLCAny *ret) {
     ret->type_index =
         (src == nullptr) ? static_cast<int32_t>(MLCTypeIndex::kMLCNone) : static_cast<int32_t>(MLCTypeIndex::kMLCPtr);
     ret->v_ptr = src;
   }
-
-  MLC_INLINE static Ptr AnyCopyToType(const MLCAny *v) {
+  MLC_INLINE static void *AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
     if (type_index == MLCTypeIndex::kMLCPtr || type_index == MLCTypeIndex::kMLCRawStr ||
         type_index == MLCTypeIndex::kMLCNone) {
@@ -75,10 +64,8 @@ template <> struct PODTraits<void *> {
     }
     throw TemporaryTypeError();
   }
-
-  MLC_INLINE static const char *Type2Str() { return "Ptr"; }
-
-  MLC_INLINE static std::string __str__(Ptr src) {
+  MLC_INLINE static void *AnyToTypeUnowned(const MLCAny *v) { return AnyToTypeOwned(v); }
+  MLC_INLINE static std::string __str__(void *src) {
     if (src == nullptr) {
       return "None";
     } else {
@@ -89,10 +76,11 @@ template <> struct PODTraits<void *> {
   }
 };
 
-template <> struct PODTraits<std::nullptr_t> : public PODTraits<void *> {
-  MLC_INLINE static const char *Type2Str() { return "None"; }
+template <> struct TypeTraits<std::nullptr_t> : public TypeTraits<void *> {
   static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
+  static constexpr const char *type_str = "None";
 };
+
 } // namespace base
 } // namespace mlc
 

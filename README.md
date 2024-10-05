@@ -11,14 +11,6 @@ pip install -U mlc-python
 
 TBA
 
-**Configuration Tool.** PyMLC provides LLVM-style configuration tools for compiling and linking.
-
-```
->>> mlc.config --includedir --libdir
-/home/user/Projects/pymlc/.venv/lib/python3.12/site-packages/include;/home/user/Projects/pymlc/.venv/lib/python3.12/site-packages/3rdparty/dlpack/include
-/home/user/Projects/pymlc/.venv/lib/python3.12/site-packages/mlc/lib
-```
-
 ## Development
 
 ### Build from Source
@@ -32,7 +24,7 @@ pre-commit install
 
 ### Create Wheels
 
-See `.github/workflows/wheels.yml` for more details. PyMLC uses `cibuildwheel` to build cross-platform wheels.
+See `.github/workflows/wheels.yml` for more details. This project uses `cibuildwheel` to build cross-platform wheels.
 
 ```bash
 export CIBW_BUILD_VERBOSITY=3

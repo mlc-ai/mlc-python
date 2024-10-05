@@ -42,7 +42,7 @@ struct FuncObj : public MLCFunc {
   }
 
   MLC_DEF_STATIC_TYPE(FuncObj, Object, MLCTypeIndex::kMLCFunc, "object.Func")
-      .StaticFn("__init__", ::mlc::base::ReflectionHelper::DefaultStrMethod);
+      .StaticFn("__init__", ::mlc::core::ReflectionHelper::DefaultStrMethod);
 };
 
 struct FuncObj::Allocator {
@@ -79,9 +79,9 @@ struct FuncRegistryHelper {
 
 MLC_INLINE void HandleSafeCallError(int32_t err_code, MLCAny *ret) noexcept(false) {
   if (err_code == -1) { // string errors
-    MLC_THROW(InternalError) << "Error: " << static_cast<Any &>(*ret).operator Ref<StrObj>()->data();
+    MLC_THROW(InternalError) << "Error: " << Ref<StrObj>(static_cast<Any &>(*ret))->data();
   } else if (err_code == -2) { // error objects
-    throw Exception(static_cast<Any &>(*ret).operator Ref<ErrorObj>()->AppendWith(MLC_TRACEBACK_HERE()));
+    throw Exception(Ref<ErrorObj>(static_cast<Any &>(*ret))->AppendWith(MLC_TRACEBACK_HERE()));
   } else { // error code
     MLC_THROW(InternalError) << "Error code: " << err_code;
   }

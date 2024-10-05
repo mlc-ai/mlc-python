@@ -172,4 +172,5 @@ MLC_API void MLCExtObjDelete(void *objptr) {
       ::mlc::base::DecRef(ptr);
     }
   }
+  delete[] reinterpret_cast<char *>(objptr);
 }

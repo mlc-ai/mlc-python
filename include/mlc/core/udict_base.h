@@ -1,7 +1,6 @@
 #ifndef MLC_CORE_UDICT_BASE_H_
 #define MLC_CORE_UDICT_BASE_H_
 #include "./object.h"
-#include <iostream>
 #include <iterator>
 #include <type_traits>
 #include <unordered_map>

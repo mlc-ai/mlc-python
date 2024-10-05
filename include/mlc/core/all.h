@@ -22,7 +22,7 @@ template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<T>::Run(const MLCA
 
 template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<List<T>>::Run(const MLCAny &any) {
   try {
-    static_cast<const AnyView &>(any).Cast<UList>();
+    UList(static_cast<const AnyView &>(any));
   } catch (const Exception &e) {
     throw NestedTypeError(e.what()).NewFrame(::mlc::base::Type2Str<UList>::Run());
   }
@@ -41,7 +41,7 @@ template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<List<T>>::Run(cons
 
 template <typename K, typename V> MLC_INLINE_NO_MSVC void NestedTypeCheck<Dict<K, V>>::Run(const MLCAny &any) {
   try {
-    static_cast<const AnyView &>(any).Cast<UDict>();
+    UDict(static_cast<const AnyView &>(any));
   } catch (const Exception &e) {
     throw NestedTypeError(e.what()).NewFrame(::mlc::base::Type2Str<UDict>::Run());
   }

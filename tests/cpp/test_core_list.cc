@@ -141,7 +141,7 @@ TEST(ListRefTest, NullObjectHandling) {
     list[0];
     FAIL() << "Accessing null object should throw an exception";
   } catch (const std::exception &e) {
-    EXPECT_STREQ(e.what(), "Cannot convert from type `None` to non-nullable `Ref<TestTypeObj>`");
+    EXPECT_STREQ(e.what(), "Cannot convert from type `None` to non-nullable `TestType`");
   }
 }
 

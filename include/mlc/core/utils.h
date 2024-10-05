@@ -20,45 +20,10 @@
   }                                                                                                                    \
   MLC_UNREACHABLE()
 
-#define MLC_DEF_TYPE_COMMON_(SelfType, ParentType, TypeIndex, TypeKey)                                                 \
-public:                                                                                                                \
-  template <typename, typename> friend struct ::mlc::base::DefaultObjectAllocator;                                     \
-  template <typename> friend struct ::mlc::Ref;                                                                        \
-  friend struct ::mlc::Any;                                                                                            \
-  friend struct ::mlc::AnyView;                                                                                        \
-  template <typename DerivedType> MLC_INLINE bool IsInstance() const {                                                 \
-    return ::mlc::base::IsInstanceOf<DerivedType, SelfType>(reinterpret_cast<const MLCAny *>(this));                   \
-  }                                                                                                                    \
-  MLC_INLINE const char *GetTypeKey() const {                                                                          \
-    return ::mlc::base::TypeIndex2TypeKey(reinterpret_cast<const MLCAny *>(this));                                     \
-  }                                                                                                                    \
-  [[maybe_unused]] static constexpr const char *_type_key = TypeKey;                                                   \
-  [[maybe_unused]] static inline MLCTypeInfo *_type_info =                                                             \
-      ::mlc::base::TypeRegister(static_cast<int32_t>(ParentType::_type_index), /**/                                    \
-                                static_cast<int32_t>(TypeIndex), TypeKey,      /**/                                    \
-                                &::mlc::core::ObjPtrGetter<SelfType>,          /**/                                    \
-                                &::mlc::core::ObjPtrSetter<SelfType>);                                                 \
-  [[maybe_unused]] static inline int32_t *_type_ancestors = _type_info->type_ancestors;                                \
-  [[maybe_unused]] static constexpr int32_t _type_depth = ParentType::_type_depth + 1;                                 \
-  using _type_parent [[maybe_unused]] = ParentType;                                                                    \
-  static_assert(sizeof(::mlc::Ref<SelfType>) == sizeof(MLCObjPtr), "Size mismatch")
-
-#define MLC_DEF_STATIC_TYPE(SelfType, ParentType, TypeIndex, TypeKey)                                                  \
-public:                                                                                                                \
-  MLC_DEF_TYPE_COMMON_(SelfType, ParentType, TypeIndex, TypeKey);                                                      \
-  [[maybe_unused]] static constexpr int32_t _type_index = static_cast<int32_t>(TypeIndex);                             \
-  MLC_DEF_REFLECTION(SelfType)
-
-#define MLC_DEF_DYN_TYPE(SelfType, ParentType, TypeKey)                                                                \
-public:                                                                                                                \
-  MLC_DEF_TYPE_COMMON_(SelfType, ParentType, -1, TypeKey);                                                             \
-  [[maybe_unused]] static inline int32_t _type_index = _type_info->type_index;                                         \
-  MLC_DEF_REFLECTION(SelfType)
-
 namespace mlc {
 
 struct Exception : public std::exception {
-  Exception(Ref<ErrorObj> data) : data_(data) {}
+  Exception(Ref<ErrorObj> data);
   Exception(const Exception &other) : data_(other.data_) {}
   Exception(Exception &&other) : data_(std::move(other.data_)) {}
   Exception &operator=(const Exception &other) {
@@ -80,41 +45,58 @@ struct Exception : public std::exception {
 namespace mlc {
 namespace core {
 
+struct ReflectionHelper {
+  explicit ReflectionHelper(int32_t type_index);
+  template <typename Super, typename FieldType>
+  ReflectionHelper &FieldReadOnly(const char *name, FieldType Super::*field);
+  template <typename Super, typename FieldType> ReflectionHelper &Field(const char *name, FieldType Super::*field);
+  template <typename Callable> ReflectionHelper &MemFn(const char *name, Callable &&method);
+  template <typename Callable> ReflectionHelper &StaticFn(const char *name, Callable &&method);
+  operator int32_t();
+  static std::string DefaultStrMethod(AnyView any);
+
+private:
+  template <typename Cls, typename FieldType> constexpr std::ptrdiff_t ReflectOffset(FieldType Cls::*member) {
+    return reinterpret_cast<std::ptrdiff_t>(&((Cls *)(nullptr)->*member));
+  }
+  template <typename Super, typename FieldType> MLCTypeField PrepareField(const char *name, FieldType Super::*field);
+  template <typename Callable> MLCTypeMethod PrepareMethod(const char *name, Callable &&method);
+
+  int32_t type_index;
+  std::vector<MLCTypeField> fields;
+  std::vector<MLCTypeMethod> methods;
+  std::vector<Any> method_pool;
+  std::vector<std::vector<MLCTypeInfo *>> type_annotation_pool;
+};
+
 template <typename SelfType> MLC_INLINE int32_t ObjPtrGetter(MLCTypeField *, void *addr, MLCAny *ret) {
   using RefT = Ref<SelfType>;
-  ::mlc::base::PtrToAnyView<SelfType>(static_cast<RefT *>(addr)->get(), ret);
+  const SelfType *v = static_cast<RefT *>(addr)->get();
+  if (v == nullptr) {
+    ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
+    ret->v_obj = nullptr;
+  } else {
+    ret->type_index = v->_mlc_header.type_index;
+    ret->v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(v));
+  }
   return 0;
 }
 
 template <typename SelfType> MLC_INLINE int32_t ObjPtrSetter(MLCTypeField *, void *addr, MLCAny *src) {
+  using namespace ::mlc::base;
   using RefT = Ref<SelfType>;
   static_assert(sizeof(RefT) == sizeof(MLCObjPtr), "Size mismatch");
   try {
-    *static_cast<RefT *>(addr) = ::mlc::base::ObjPtrTraits<SelfType>::AnyToOwnedPtr(src);
-  } catch (const ::mlc::base::TemporaryTypeError &) {
+    *static_cast<RefT *>(addr) = TypeTraits<SelfType *>::AnyToTypeOwned(src);
+  } catch (const TemporaryTypeError &) {
     std::ostringstream oss;
-    oss << "Cannot convert from type `" << ::mlc::base::TypeIndex2TypeKey(src->type_index) << "` to `"
-        << SelfType::_type_key << " *`";
+    oss << "Cannot convert from type `" << TypeIndex2TypeKey(src->type_index) << "` to `" << SelfType::_type_key
+        << " *`";
     *static_cast<::mlc::Any *>(src) = MLC_MAKE_ERROR_HERE(TypeError, oss.str());
     return -2;
   }
   return 0;
 }
-
-template <typename FieldType> struct ReflectGetterSetter {
-  static int32_t Getter(MLCTypeField *, void *addr, MLCAny *ret) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<Any *>(ret) = *static_cast<FieldType *>(addr);
-    MLC_SAFE_CALL_END(static_cast<Any *>(ret));
-  }
-  static int32_t Setter(MLCTypeField *, void *addr, MLCAny *src) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<FieldType *>(addr) = (static_cast<Any *>(src))->operator FieldType();
-    MLC_SAFE_CALL_END(static_cast<Any *>(src));
-  }
-};
-
-template <> struct ReflectGetterSetter<char *> : public ReflectGetterSetter<const char *> {};
 
 struct NestedTypeError : public std::runtime_error {
   explicit NestedTypeError(const char *msg) : std::runtime_error(msg) {}

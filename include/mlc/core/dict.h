@@ -8,11 +8,12 @@
 
 namespace mlc {
 namespace base {
-template <typename K, typename V> struct ObjPtrTraits<DictObj<K, V>> {
+template <typename K, typename V> struct TypeTraits<DictObj<K, V> *> {
   using T = DictObj<K, V>;
-  MLC_INLINE static T *AnyToOwnedPtr(const MLCAny *v) { return AnyToUnownedPtr(v); }
-  MLC_INLINE static T *AnyToUnownedPtr(const MLCAny *v) {
-    return ObjPtrTraitsDefault<UDictObj>::AnyToUnownedPtr(v)->AsTyped<K, V>();
+  MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) { ObjPtrTraitsDefault<UDictObj>::TypeToAny(src, ret); }
+  MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) { return AnyToTypeUnowned(v); }
+  MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) {
+    return ObjPtrTraitsDefault<UDictObj>::AnyToTypeUnowned(v)->AsTyped<K, V>();
   }
 };
 } // namespace base

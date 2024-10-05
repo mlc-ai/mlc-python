@@ -7,7 +7,16 @@ namespace mlc {
 namespace base {
 
 template <typename T> struct ObjPtrTraitsDefault {
-  MLC_INLINE static T *AnyToUnownedPtr(const MLCAny *v) {
+  MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) {
+    if (src == nullptr) {
+      ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
+      ret->v_obj = nullptr;
+    } else {
+      ret->type_index = src->_mlc_header.type_index;
+      ret->v_obj = reinterpret_cast<MLCAny *>(src);
+    }
+  }
+  MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) {
     if (::mlc::base::IsTypeIndexNone(v->type_index)) {
       return nullptr;
     }
@@ -16,21 +25,17 @@ template <typename T> struct ObjPtrTraitsDefault {
     }
     throw TemporaryTypeError();
   }
-  MLC_INLINE static T *AnyToOwnedPtr(const MLCAny *v) { return AnyToUnownedPtr(v); }
-  MLC_INLINE static T *AnyToOwnedPtrWithStorage(const MLCAny *v, Any *storage) = delete;
+  MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) { return AnyToTypeUnowned(v); }
+  MLC_INLINE static T *AnyToTypeWithStorage(const MLCAny *v, Any *storage) = delete;
 };
 
-template <typename T> struct ObjPtrTraits<T, void> {
-  MLC_INLINE static T *AnyToUnownedPtr(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToUnownedPtr(v); }
-  MLC_INLINE static T *AnyToOwnedPtr(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToOwnedPtr(v); }
+template <typename T> struct TypeTraits<T *, std::enable_if_t<IsObj<T> && !IsTemplate<T>>> {
+  MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) { ObjPtrTraitsDefault<T>::TypeToAny(src, ret); }
+  MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToTypeUnowned(v); }
+  MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToTypeOwned(v); }
 };
 
-struct ObjectDummyRoot {
-  static constexpr int32_t _type_depth = -1;
-  static constexpr int32_t _type_index = -1;
-};
-
-template <typename ObjectType> struct DefaultObjectAllocator<ObjectType, void> {
+template <typename ObjectType> struct DefaultObjectAllocator {
   using Storage = typename std::aligned_storage<sizeof(ObjectType), alignof(ObjectType)>::type;
   template <typename... Args> static constexpr bool CanConstruct = std::is_constructible_v<ObjectType, Args...>;
 
@@ -74,16 +79,6 @@ template <typename ObjectType> struct DefaultObjectAllocator<ObjectType, void> {
     tptr->ObjectType::~ObjectType();
     delete[] reinterpret_cast<Storage *>(tptr);
   }
-};
-
-template <typename T> struct IsDerivedFromImpl<T, T> {
-  static constexpr bool value = true;
-};
-template <typename Base> struct IsDerivedFromImpl<ObjectDummyRoot, Base> {
-  static constexpr bool value = false;
-};
-template <typename Derived, typename Base> struct IsDerivedFromImpl {
-  static constexpr bool value = IsDerivedFromImpl<typename Derived::_type_parent, Base>::value;
 };
 
 template <typename DerivedType, typename SelfType> MLC_INLINE bool IsInstanceOf(const MLCAny *self) {

@@ -71,13 +71,14 @@ inline void CheckConvertFailStr(Callable convert, const char *expected_type, con
   }
 }
 
-template <typename T, typename Callable> inline void CheckConvertFailNullability(Callable convert) {
+template <typename T, typename Callable>
+inline void CheckConvertFailNullability(Callable convert, const char *type_key) {
   try {
     convert();
     FAIL() << "No exception thrown";
   } catch (Exception &ex) {
     std::ostringstream os;
-    os << "Cannot convert from type `None` to non-nullable `" << base::Type2Str<Ref<T>>::Run() << "`";
+    os << "Cannot convert from type `None` to non-nullable `" << type_key << "`";
     EXPECT_EQ(ex.what(), os.str());
   }
 }
@@ -106,7 +107,7 @@ template <typename AnyType> struct Checker_Constructor_Default {
     CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
     CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
     CheckConvert<Ref<Object>>([&]() { return v.operator Ref<Object>(); }, Ref<Object>());
-    CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); });
+    CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); }, "object.ObjectRef");
   }
 };
 
@@ -223,7 +224,7 @@ template <typename AnyType> struct Checker_Constructor_Ptr_Null {
     CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
     CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
     CheckConvert<Ref<Object>>([&]() { return v.operator Ref<Object>(); }, Ref<Object>());
-    CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); });
+    CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); }, "object.ObjectRef");
   }
 };
 
@@ -359,6 +360,7 @@ struct Checker_Constructor_StrObj_Ref {
       CheckerAny::Check(Any(str.get()), const_cast<char *>(str->c_str()), str.get(), 2); // Ptr
       // move
       Any v(std::move(str));
+      str.Reset();
       EXPECT_EQ(v.type_index, static_cast<int32_t>(MLCTypeIndex::kMLCStr));
       EXPECT_EQ(v.small_len, 0);
       MLCAny *v_obj = v.v_obj;
@@ -420,7 +422,7 @@ template <typename AnyType> struct Checker_Constructor_NullObj_Ref {
     CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
     CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
     CheckConvert<Ref<Object>>([&]() { return v.operator Ref<Object>(); }, Ref<Object>());
-    CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); });
+    CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); }, "object.ObjectRef");
   }
 };
 

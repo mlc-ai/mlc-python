@@ -11,15 +11,16 @@ const char *DLDeviceType2Str(DLDeviceType type);
 DLDevice String2DLDevice(const std::string &source);
 inline bool DeviceEqual(DLDevice a, DLDevice b) { return a.device_type == b.device_type && a.device_id == b.device_id; }
 
-template <> struct PODTraits<DLDevice> {
+template <> struct TypeTraits<DLDevice> {
   static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDevice);
+  static constexpr const char *type_str = "Device";
 
-  MLC_INLINE static void TypeCopyToAny(DLDevice src, MLCAny *ret) {
+  MLC_INLINE static void TypeToAny(DLDevice src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDevice);
     ret->v_device = src;
   }
 
-  MLC_INLINE static DLDevice AnyCopyToType(const MLCAny *v) {
+  MLC_INLINE static DLDevice AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
     if (type_index == MLCTypeIndex::kMLCDevice) {
       return v->v_device;
@@ -33,7 +34,7 @@ template <> struct PODTraits<DLDevice> {
     throw TemporaryTypeError();
   }
 
-  MLC_INLINE static const char *Type2Str() { return "Device"; }
+  MLC_INLINE static DLDevice AnyToTypeUnowned(const MLCAny *v) { return AnyToTypeOwned(v); }
 
   MLC_INLINE static std::string __str__(DLDevice device) {
     std::ostringstream os;
@@ -103,17 +104,21 @@ MLC_INLINE const char *DLDeviceType2Str(DLDeviceType type) {
 }
 
 inline DLDevice String2DLDevice(const std::string &source) {
-  using Traits = PODTraits<DLDevice>;
+  constexpr int64_t i32_max = 2147483647;
+  using Traits = TypeTraits<DLDevice>;
   DLDeviceType device_type;
-  int32_t device_id = 0;
+  int64_t device_id = 0;
   try {
     if (size_t c_pos = source.rfind(':'); c_pos != std::string::npos) {
       device_type = Traits::str2device_type.at(source.substr(0, c_pos));
-      device_id = static_cast<int32_t>(std::stoi(&source[c_pos + 1]));
+      device_id = StrToInt(source, c_pos + 1);
     } else {
       device_type = Traits::str2device_type.at(source);
     }
-    return DLDevice{device_type, device_id};
+    if (device_id < 0 || device_id > i32_max) {
+      throw std::runtime_error("Invalid device id");
+    }
+    return DLDevice{device_type, static_cast<int32_t>(device_id)};
   } catch (...) {
   }
   MLC_THROW(ValueError) << "Cannot convert to `Device` from string: " << source;

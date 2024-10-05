@@ -84,6 +84,8 @@ inline const char *Exception::what() const noexcept(true) {
   return Obj()->ByteArray();
 }
 
+inline Exception::Exception(Ref<ErrorObj> data) : data_(data.get()) {}
+
 } // namespace mlc
 
 namespace mlc {

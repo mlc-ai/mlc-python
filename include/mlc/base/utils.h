@@ -14,10 +14,10 @@
 #if __cplusplus >= 202002L
 #include <bit>
 #endif
+#include "./base_traits.h"
 #include <cstdlib>
 #include <functional>
 #include <memory>
-#include <mlc/c_api.h>
 #include <sstream>
 #include <type_traits>
 #include <vector>
@@ -67,16 +67,6 @@
 #define MLC_THROW(ErrorKind) ::mlc::base::ErrorBuilder(#ErrorKind, MLC_TRACEBACK_HERE()).Get()
 #define MLC_MAKE_ERROR_HERE(ErrorKind, Msg) ::mlc::base::MLCCreateError(#ErrorKind, Msg, MLC_TRACEBACK_HERE())
 
-#define MLC_DEF_ASSIGN(SelfType, SourceType)                                                                           \
-  MLC_INLINE SelfType &operator=(SourceType other) {                                                                   \
-    if constexpr (std::is_rvalue_reference_v<SourceType>) {                                                            \
-      SelfType(std::move(other)).Swap(*this);                                                                          \
-    } else {                                                                                                           \
-      SelfType(other).Swap(*this);                                                                                     \
-    }                                                                                                                  \
-    return *this;                                                                                                      \
-  }
-
 #define MLC_TRY_CONVERT(Expr, TypeIndex, TypeStr)                                                                      \
   try {                                                                                                                \
     return Expr;                                                                                                       \
@@ -86,150 +76,10 @@
   }                                                                                                                    \
   MLC_UNREACHABLE()
 
-#define MLC_DEF_REFLECTION(ObjType)                                                                                    \
-  static inline const int32_t _type_reflect = ::mlc::base::ReflectionHelper(static_cast<int32_t>(ObjType::_type_index))
-
-namespace mlc {
-struct Exception;
-struct NullType {};
-constexpr NullType Null{};
-
-struct AnyView;
-struct Any;
-template <std::size_t N> struct AnyViewArray;
-template <typename> struct Ref;
-struct Object;
-struct ObjectRef;
-struct ErrorObj;
-struct Error;
-struct StrObj;
-struct Str;
-struct FuncObj;
-struct Func;
-struct UListObj;
-struct UList;
-template <typename> struct ListObj;
-template <typename> struct List;
-struct UDictObj;
-struct UDict;
-template <typename, typename> struct DictObj;
-template <typename, typename> struct Dict;
-template <typename T, typename... Args> Ref<Object> InitOf(Args &&...args);
-} // namespace mlc
-
 namespace mlc {
 namespace base {
 
-/********** Section 1. Forward declaration of any/ref/objects *********/
-
-template <size_t N> using CharArray = const char[N];
-template <typename T> using RemoveCR = std::remove_const_t<std::remove_reference_t<T>>;
-
-// clang-format off
-// IsPOD<>
-template <typename T, typename = void> struct IsPODImpl : std::false_type {};
-template <> struct IsPODImpl<DLDevice> : std::true_type {};
-template <> struct IsPODImpl<DLDataType> : std::true_type {};
-template <typename Int> struct IsPODImpl<Int, std::enable_if_t<std::is_integral_v<Int>>> : std::true_type {};
-template <typename Float> struct IsPODImpl<Float, std::enable_if_t<std::is_floating_point_v<Float>>> : std::true_type {};
-template <> struct IsPODImpl<void *> : std::true_type {};
-template <> struct IsPODImpl<std::nullptr_t> : std::true_type {};
-template <> struct IsPODImpl<const char *> : std::true_type {};
-template <> struct IsPODImpl<std::string> : std::true_type {};
-template <size_t N> struct IsPODImpl<char[N]> : std::true_type {};
-template <typename T> constexpr bool IsPOD = IsPODImpl<T>::value;
-// clang-format on
-
-// clang-format off
-// Object and Object::Allocator
-template <typename, typename = void> struct IsObjImpl : std::false_type {};
-template <typename T> struct IsObjImpl<T, std::void_t<decltype(T::_type_info)>> : std::true_type {};
-template <typename T> constexpr static bool IsObj = IsObjImpl<T>::value;
-template <typename T> constexpr static bool IsRawObjPtr = std::is_pointer_v<T> && IsObj<std::remove_pointer_t<T>>;
-template <typename ObjectType, typename = std::enable_if_t<IsObj<ObjectType>>> struct DefaultObjectAllocator;
-template <typename T, typename = void> struct AllocatorOfImplImpl { using Type = DefaultObjectAllocator<T>; };
-template <typename T> struct AllocatorOfImplImpl<T, std::void_t<typename T::Allocator>> { using Type = typename T::Allocator; };
-template <typename T, typename = std::enable_if_t<IsObj<T>>> struct AllocatorOfImpl { using Type = typename AllocatorOfImplImpl<T>::Type; };
-template <typename T> using AllocatorOf = typename AllocatorOfImpl<T>::Type;
-// clang-format on
-
-// clang-format off
-// Ref<T> and TObjectRef
-template <typename> struct IsRefImpl;
-template <typename T> constexpr bool IsRef = IsRefImpl<T>::value;
-template <typename T> struct IsObjRefImpl { static constexpr bool value = std::is_base_of_v<ObjectRef, T>; };
-template <typename T> constexpr bool IsObjRef = IsObjRefImpl<T>::value;
-// clang-format on
-
-// clang-format off
-template <typename Derived, typename Base> struct IsDerivedFromImpl;
-template <typename Derived, typename Base> constexpr bool IsDerivedFrom = std::conjunction_v<IsObjImpl<Derived>, IsObjImpl<Base>, IsDerivedFromImpl<Derived, Base>>;
-
-template <typename T, typename = void> struct HasFuncTraitsImpl : std::false_type {};
-template <typename T> constexpr bool HasFuncTraits = HasFuncTraitsImpl<T>::value;
-
-struct NewableImpl {
-  template <typename, typename, typename...> static std::false_type test(...);
-  template <typename Allocator, typename Ret, typename... Args>
-  static auto test(int) -> decltype(std::is_same<decltype(Allocator::New(std::declval<Args>()...)), Ret>{});
-};
-template <typename T, typename... Args>
-constexpr bool Newable = decltype(NewableImpl::test<AllocatorOf<T>, T*, Args...>(0))::value;
-// clang-format on
-
-namespace tag {
-// Tags for static dispatching
-struct POD {};
-struct ObjPtr {};
-struct RawObjPtr {};
-template <typename T, typename = void> struct TagImpl {
-  using type = void;
-};
-template <typename T> struct TagImpl<T, std::enable_if_t<IsPOD<T>>> {
-  using type = tag::POD;
-};
-template <typename T> struct TagImpl<T, std::enable_if_t<std::is_base_of_v<MLCObjPtr, T>>> {
-  using type = tag::ObjPtr;
-};
-template <typename T> struct TagImpl<T *, std::enable_if_t<IsObj<T>>> {
-  using type = tag::RawObjPtr;
-};
-template <typename T> using Tag = typename TagImpl<RemoveCR<T>>::type;
-template <typename T> constexpr bool Exists = std::is_same_v<T, RemoveCR<T>> && !std::is_same_v<Tag<T>, void>;
-} // namespace tag
-
-template <typename T>
-constexpr bool IsContainerElement = std::is_same_v<T, RemoveCR<T>>       //
-                                    && (std::is_same_v<T, Any> ||        //
-                                        std::is_integral_v<T> ||         //
-                                        std::is_floating_point_v<T> ||   //
-                                        std::is_same_v<T, DLDevice> ||   //
-                                        std::is_same_v<T, DLDataType> || //
-                                        std::is_same_v<tag::Tag<T>, tag::ObjPtr>);
-
-/********** Section 2. Traits *********/
-/*!
- * \brief PODTraits<T> is a template class that provides the following set of
- * static methods that are associated with a specific POD type `T`.
- *
- * 0) Type2Str<T>: () -> std::string
- * 1) AnyCopyToType<T>: (const MLCAny *) -> T
- * 2) TypeCopyToAny<T>: (T, MLCAny *) -> void
- */
-template <typename, typename = void> struct PODTraits {};
-
-/*!
- * \brief ObjPtrTraits<T> is a template class that provides the following set of
- * static methods that are associated with a specific object type `T`.
- *
- * 1) AnyToUnownedPtr<T>: (const MLCAny *) -> T *
- * 2) AnyToOwnedPtr<T>: (const MLCAny *) -> T *
- * 3) AnyToOwnedPtrWithStorage<T>: (const MLCAny *, Any *) -> T * (optional)
- */
-template <typename T, typename = void> struct ObjPtrTraits;
-template <typename T> struct ObjPtrTraits<ListObj<T>, void>;
-
-/********** Section 3. Errors *********/
+/********** Section 1. Errors *********/
 
 struct TemporaryTypeError : public std::exception {};
 
@@ -253,7 +103,7 @@ struct ErrorBuilder {
   std::ostringstream &Get() { return this->oss; }
 };
 
-/********** Section 4. Util methods *********/
+/********** Section 2. Util methods *********/
 
 StrObj *StrCopyFromCharArray(const char *source, size_t length);
 void FuncCall(const void *func, int32_t num_args, const MLCAny *args, MLCAny *ret);
@@ -313,7 +163,7 @@ template <typename _T> struct Type2Str {
     } else if constexpr (std::is_same_v<T, ObjectRef>) {
       return "object.ObjectRef";
     } else if constexpr (IsPOD<T>) {
-      return PODTraits<T>::Type2Str();
+      return TypeTraits<T>::type_str;
     } else if constexpr (IsRawObjPtr<T>) {
       using U = std::remove_pointer_t<T>;
       return Type2Str<U>::Run() + " *";
@@ -348,9 +198,9 @@ template <typename _T> struct Type2Str {
     } else if constexpr (std::is_same_v<T, void>) {
       MLC_THROW(TypeError) << "`void` is not allowed in type annotation";
     } else if constexpr (std::is_same_v<T, char *>) {
-      info->push_back(TypeIndex2TypeInfo(PODTraits<_T>::default_type_index));
+      info->push_back(TypeIndex2TypeInfo(TypeTraits<_T>::default_type_index));
     } else if constexpr (IsPOD<T>) {
-      info->push_back(TypeIndex2TypeInfo(PODTraits<T>::default_type_index));
+      info->push_back(TypeIndex2TypeInfo(TypeTraits<T>::default_type_index));
     } else if constexpr (IsRawObjPtr<T>) {
       using U = std::remove_pointer_t<T>;
       Type2Str<Ref<U>>::GetTypeAnnotation(info);
@@ -392,16 +242,6 @@ inline std::string TypeAnnotation2Str(MLCTypeInfo **ann) {
   return f(&i);
 }
 
-template <typename TObj> MLC_INLINE static void PtrToAnyView(const TObj *v, MLCAny *ret) {
-  if (v == nullptr) {
-    ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
-    ret->v_obj = nullptr;
-  } else {
-    ret->type_index = v->_mlc_header.type_index;
-    ret->v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(v));
-  }
-}
-
 MLC_INLINE void IncRef(MLCObject *obj) {
   if (obj != nullptr) {
 #ifdef _MSC_VER
@@ -414,8 +254,7 @@ MLC_INLINE void IncRef(MLCObject *obj) {
       int32_t type_index = obj->type_index;
       int32_t ref_cnt = obj->ref_cnt;
       void *addr = obj;
-      std::cout << "IncRef: type_index = " << type_index << ", ref_cnt = " << ref_cnt << ", addr = " << addr
-                << std::endl;
+      std::cout << "IncRef @ " << addr << ": type_index = " << type_index << ", ref_cnt = " << ref_cnt << std::endl;
       if (type_index < 0 || type_index >= 1000) {
         std::cout << "Something is seriously wrong here!!!!!!!!" << std::endl;
         std::abort();
@@ -433,8 +272,7 @@ MLC_INLINE void DecRef(MLCObject *obj) {
       int32_t ref_cnt = obj->ref_cnt;
       void *addr = obj;
       ref_cnt -= 1;
-      std::cout << "DecRef: type_index = " << type_index << ", ref_cnt = " << ref_cnt << ", addr = " << addr
-                << std::endl;
+      std::cout << "DecRef @ " << addr << ": type_index = " << type_index << ", ref_cnt = " << ref_cnt << std::endl;
       if (type_index < 0 || type_index >= 1000 || ref_cnt < 0) {
         std::cout << "Something is seriously wrong here!!!!!!!!" << std::endl;
         std::abort();
@@ -488,6 +326,19 @@ struct PODArrayFinally {
   void *data;
   ~PODArrayFinally() { std::free(data); }
 };
+
+inline int64_t StrToInt(const std::string &str, size_t start_pos = 0) {
+  if (start_pos >= str.size()) {
+    throw std::runtime_error("Invalid integer string");
+  }
+  const char *c_str = str.c_str() + start_pos;
+  char *endptr = nullptr;
+  int64_t result = std::strtoll(c_str, &endptr, 10);
+  if (*endptr != '\0') {
+    throw std::runtime_error("Invalid integer string");
+  }
+  return result;
+}
 } // namespace base
 } // namespace mlc
 

@@ -12,6 +12,21 @@
 namespace mlc {
 namespace core {
 
+template <typename FieldType> struct ReflectGetterSetter {
+  static int32_t Getter(MLCTypeField *, void *addr, MLCAny *ret) {
+    MLC_SAFE_CALL_BEGIN();
+    *static_cast<Any *>(ret) = *static_cast<FieldType *>(addr);
+    MLC_SAFE_CALL_END(static_cast<Any *>(ret));
+  }
+  static int32_t Setter(MLCTypeField *, void *addr, MLCAny *src) {
+    MLC_SAFE_CALL_BEGIN();
+    *static_cast<FieldType *>(addr) = (static_cast<Any *>(src))->operator FieldType();
+    MLC_SAFE_CALL_END(static_cast<Any *>(src));
+  }
+};
+
+template <> struct ReflectGetterSetter<char *> : public ReflectGetterSetter<const char *> {};
+
 template <typename R, typename... Args> struct Func2Str {
   template <size_t i> static void Apply(std::ostream &os) {
     using Arg = std::tuple_element_t<i, std::tuple<Args...>>;
@@ -94,7 +109,7 @@ template <typename T, typename = void> struct MayUseStorage {
   static constexpr int32_t value = 0;
 };
 template <typename T>
-struct MayUseStorage<T *, std::void_t<decltype(::mlc::base::ObjPtrTraits<T>::AnyToOwnedPtrWithStorage)>> {
+struct MayUseStorage<T *, std::void_t<decltype(::mlc::base::TypeTraits<T *>::AnyToTypeWithStorage)>> {
   static constexpr int32_t value = 1;
 };
 
@@ -122,9 +137,8 @@ template <typename Function, typename StorageInfo> struct UnpackCallArgConverter
           return v.template Cast<Type>();
         } else {
           constexpr int32_t storage_index = IndexIntSeq<i, typename StorageInfo::indices>::value;
-          using ObjType = std::remove_pointer_t<Type>;
           static_assert(storage_index >= 0, "Invalid storage index");
-          return v.CastWithStorage<ObjType>(storage + storage_index);
+          return v.CastWithStorage<Type>(storage + storage_index);
         }
       } catch (const Exception &e) {
         if (strcmp(e.Obj()->kind(), "TypeError") == 0) {
@@ -263,7 +277,7 @@ inline Ref<FuncObj> FuncObj::FromForeign(void *self, MLCDeleterType deleter, MLC
 /********** Section 4. ReflectionHelper *********/
 
 namespace mlc {
-namespace base {
+namespace core {
 
 template <typename Super, typename FieldType>
 inline MLCTypeField ReflectionHelper::PrepareField(const char *name, FieldType Super::*field) {
@@ -357,7 +371,7 @@ inline ReflectionHelper::operator int32_t() {
   }
   return 0;
 }
-} // namespace base
+} // namespace core
 } // namespace mlc
 
 #endif // MLC_CORE_FUNC_DETAILS_H_

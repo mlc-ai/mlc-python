@@ -81,16 +81,16 @@ struct TypeInfoWrapper {
 template <typename T> struct PODGetterSetter {
   static int32_t Getter(MLCTypeField *, void *addr, MLCAny *ret) {
     using namespace ::mlc::base;
-    PODTraits<T>::TypeCopyToAny(*static_cast<T *>(addr), ret);
+    TypeTraits<T>::TypeToAny(*static_cast<T *>(addr), ret);
     return 0;
   }
   static int32_t Setter(MLCTypeField *, void *addr, MLCAny *src) {
     using namespace mlc::base;
     try {
-      *static_cast<T *>(addr) = PODTraits<T>::AnyCopyToType(src);
+      *static_cast<T *>(addr) = TypeTraits<T>::AnyToTypeUnowned(src);
     } catch (const TemporaryTypeError &) {
       std::ostringstream oss;
-      oss << "Cannot convert from type `" << TypeIndex2TypeKey(src->type_index) << "` to `" << PODTraits<T>::Type2Str()
+      oss << "Cannot convert from type `" << TypeIndex2TypeKey(src->type_index) << "` to `" << TypeTraits<T>::type_str
           << "`";
       *static_cast<::mlc::Any *>(src) = MLC_MAKE_ERROR_HERE(TypeError, oss.str());
       return -2;
@@ -324,24 +324,29 @@ struct TypeTable {
 };
 
 struct _POD_REG {
-  inline static const int32_t _none = base::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCNone))
-                                          .MemFn("__str__", &base::PODTraits<std::nullptr_t>::__str__);
-  inline static const int32_t _int = base::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCInt))
-                                         .MemFn("__str__", &base::PODTraits<int64_t>::__str__);
-  inline static const int32_t _float = base::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCFloat))
-                                           .MemFn("__str__", &base::PODTraits<double>::__str__);
-  inline static const int32_t _ptr = base::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCPtr))
-                                         .MemFn("__str__", &base::PODTraits<void *>::__str__);
-  inline static const int32_t _device =
-      base::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDevice))
+  inline static const int32_t _none = //
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCNone))
+          .MemFn("__str__", &::mlc::base::TypeTraits<std::nullptr_t>::__str__);
+  inline static const int32_t _int = //
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCInt))
+          .MemFn("__str__", &::mlc::base::TypeTraits<int64_t>::__str__);
+  inline static const int32_t _float = //
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCFloat))
+          .MemFn("__str__", &::mlc::base::TypeTraits<double>::__str__);
+  inline static const int32_t _ptr = //
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCPtr))
+          .MemFn("__str__", &::mlc::base::TypeTraits<void *>::__str__);
+  inline static const int32_t _device = //
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDevice))
           .StaticFn("__init__", [](AnyView device) { return device.operator DLDevice(); })
-          .MemFn("__str__", &base::PODTraits<DLDevice>::__str__);
-  inline static const int32_t _dtype =
-      base::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDataType))
+          .MemFn("__str__", &::mlc::base::TypeTraits<DLDevice>::__str__);
+  inline static const int32_t _dtype = //
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDataType))
           .StaticFn("__init__", [](AnyView dtype) { return dtype.operator DLDataType(); })
-          .MemFn("__str__", &base::PODTraits<DLDataType>::__str__);
-  inline static const int32_t _str = base::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCRawStr))
-                                         .MemFn("__str__", &base::PODTraits<const char *>::__str__);
+          .MemFn("__str__", &::mlc::base::TypeTraits<DLDataType>::__str__);
+  inline static const int32_t _str = //
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCRawStr))
+          .MemFn("__str__", &::mlc::base::TypeTraits<const char *>::__str__);
 };
 
 inline TypeTable *TypeTable::New() {
@@ -351,12 +356,11 @@ inline TypeTable *TypeTable::New() {
   self->num_types = static_cast<int32_t>(MLCTypeIndex::kMLCDynObjectBegin);
 #define MLC_TYPE_TABLE_INIT_TYPE(UnderlyingType, Self)                                                                 \
   {                                                                                                                    \
-    MLCTypeInfo *info = Self->TypeRegister(-1, ::mlc::base::PODTraits<UnderlyingType>::default_type_index,             \
-                                           ::mlc::base::PODTraits<UnderlyingType>::Type2Str());                        \
+    MLCTypeInfo *info = Self->TypeRegister(-1, ::mlc::base::TypeTraits<UnderlyingType>::default_type_index,            \
+                                           ::mlc::base::TypeTraits<UnderlyingType>::type_str);                         \
     info->setter = PODGetterSetter<UnderlyingType>::Setter;                                                            \
     info->getter = PODGetterSetter<UnderlyingType>::Getter;                                                            \
   }
-
   MLC_TYPE_TABLE_INIT_TYPE(std::nullptr_t, self);
   MLC_TYPE_TABLE_INIT_TYPE(int64_t, self);
   MLC_TYPE_TABLE_INIT_TYPE(double, self);

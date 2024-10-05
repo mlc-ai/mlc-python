@@ -8,11 +8,12 @@
 
 namespace mlc {
 namespace base {
-template <typename Elem> struct ObjPtrTraits<ListObj<Elem>> {
-  using T = ListObj<Elem>;
-  MLC_INLINE static T *AnyToOwnedPtr(const MLCAny *v) { return AnyToUnownedPtr(v); }
-  MLC_INLINE static T *AnyToUnownedPtr(const MLCAny *v) {
-    return ObjPtrTraitsDefault<UListObj>::AnyToUnownedPtr(v)->AsTyped<Elem>();
+template <typename E> struct TypeTraits<ListObj<E> *> {
+  using T = ListObj<E>;
+  MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) { ObjPtrTraitsDefault<UListObj>::TypeToAny(src, ret); }
+  MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) { return AnyToTypeUnowned(v); }
+  MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) {
+    return ObjPtrTraitsDefault<UListObj>::AnyToTypeUnowned(v)->AsTyped<E>();
   }
 };
 } // namespace base
@@ -61,9 +62,9 @@ template <typename T> struct ListObj : protected UListObj {
   MLC_INLINE void resize(int64_t new_size) {
     int64_t cur_size = size();
     UListObj::resize(new_size);
-    if constexpr (!std::is_same_v<::mlc::base::tag::Tag<T>, ::mlc::base::tag::ObjPtr>) {
+    if constexpr (!(::mlc::base::IsObjRef<T> || ::mlc::base::IsRef<T>)) {
       for (int64_t i = cur_size; i < new_size; ++i) {
-        UListObj::operator[](i) = T{};
+        UListObj::operator[](i) = Any(T{});
       }
     }
   }
