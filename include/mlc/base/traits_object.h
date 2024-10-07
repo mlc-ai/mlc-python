@@ -13,7 +13,7 @@ template <typename T> struct ObjPtrTraitsDefault {
       ret->v_obj = nullptr;
     } else {
       ret->type_index = src->_mlc_header.type_index;
-      ret->v_obj = reinterpret_cast<MLCAny *>(src);
+      ret->v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(src));
     }
   }
   MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) {
@@ -33,52 +33,6 @@ template <typename T> struct TypeTraits<T *, std::enable_if_t<IsObj<T> && !IsTem
   MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) { ObjPtrTraitsDefault<T>::TypeToAny(src, ret); }
   MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToTypeUnowned(v); }
   MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToTypeOwned(v); }
-};
-
-template <typename ObjectType> struct DefaultObjectAllocator {
-  using Storage = typename std::aligned_storage<sizeof(ObjectType), alignof(ObjectType)>::type;
-  template <typename... Args> static constexpr bool CanConstruct = std::is_constructible_v<ObjectType, Args...>;
-
-  template <typename... Args, typename = std::enable_if_t<CanConstruct<Args...>>>
-  MLC_INLINE_NO_MSVC static ObjectType *New(Args &&...args) {
-    Storage *data = new Storage[1];
-    try {
-      new (data) ObjectType(std::forward<Args>(args)...);
-    } catch (...) {
-      delete[] data;
-      throw;
-    }
-    return InitIntrusive(data);
-  }
-
-  template <typename PadType, typename... Args, typename = std::enable_if_t<CanConstruct<Args...>>>
-  MLC_INLINE_NO_MSVC static ObjectType *NewWithPad(size_t pad_size, Args &&...args) {
-    size_t num_storages = (sizeof(ObjectType) + pad_size * sizeof(PadType) + sizeof(Storage) - 1) / sizeof(Storage);
-    Storage *data = new Storage[num_storages];
-    try {
-      new (data) ObjectType(std::forward<Args>(args)...);
-    } catch (...) {
-      delete[] data;
-      throw;
-    }
-    return InitIntrusive(data);
-  }
-
-  MLC_INLINE static ObjectType *InitIntrusive(Storage *data) {
-    MLCAny header;
-    header.type_index = ObjectType::_type_index;
-    header.ref_cnt = 0;
-    header.deleter = DefaultObjectAllocator::Deleter;
-    ObjectType *ret = reinterpret_cast<ObjectType *>(data);
-    ret->_mlc_header = header;
-    return ret;
-  }
-
-  static void Deleter(void *objptr) {
-    ObjectType *tptr = static_cast<ObjectType *>(objptr);
-    tptr->ObjectType::~ObjectType();
-    delete[] reinterpret_cast<Storage *>(tptr);
-  }
 };
 
 template <typename DerivedType, typename SelfType> MLC_INLINE bool IsInstanceOf(const MLCAny *self) {

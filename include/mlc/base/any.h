@@ -13,8 +13,6 @@ public:
   MLC_INLINE AnyView() : MLCAny() {}
   MLC_INLINE AnyView(std::nullptr_t) : MLCAny() {}
   MLC_INLINE AnyView(NullType) : MLCAny() {}
-  MLC_INLINE AnyView &operator=(std::nullptr_t) { return this->Reset(); }
-  MLC_INLINE AnyView &operator=(NullType) { return this->Reset(); }
   MLC_INLINE AnyView &Reset() {
     *(static_cast<MLCAny *>(this)) = MLCAny();
     return *this;
@@ -22,22 +20,20 @@ public:
   /***** Section 2. Conversion between Any/AnyView *****/
   MLC_INLINE AnyView(const AnyView &src) = default;
   MLC_INLINE AnyView(AnyView &&src) = default;
-  MLC_INLINE AnyView(const Any &src);
-  MLC_INLINE AnyView(Any &&src);
   MLC_INLINE AnyView &operator=(const AnyView &src) = default;
   MLC_INLINE AnyView &operator=(AnyView &&src) = default;
-  MLC_INLINE AnyView &operator=(const Any &src);
-  MLC_INLINE AnyView &operator=(Any &&src);
+  MLC_INLINE AnyView(const Any &src);
+  MLC_INLINE AnyView(Any &&src);
   /***** Section 3. Conversion between POD and object pointers *****/
   template <typename T> MLC_INLINE_NO_MSVC T Cast() const;
   template <typename T> MLC_INLINE_NO_MSVC T CastWithStorage(Any *storage) const;
   template <typename T> MLC_INLINE operator T() const { return this->Cast<T>(); }
   template <typename T> MLC_INLINE AnyView(const T &src);
-  template <typename T> MLC_INLINE AnyView &operator=(const T &src) {
-    AnyView(src).Swap(*this);
+  /***** Misc *****/
+  template <typename T> MLC_INLINE AnyView &operator=(T &&src) { // Forward everything
+    AnyView(std::forward<T>(src)).Swap(*this);
     return *this;
   }
-  /***** Misc *****/
   Str str() const;
   friend std::ostream &operator<<(std::ostream &os, const AnyView &src);
 
@@ -56,8 +52,6 @@ struct Any : public MLCAny {
   MLC_INLINE Any() : MLCAny() {}
   MLC_INLINE Any(std::nullptr_t) : MLCAny() {}
   MLC_INLINE Any(NullType) : MLCAny() {}
-  MLC_INLINE Any &operator=(std::nullptr_t) { return this->Reset(); }
-  MLC_INLINE Any &operator=(NullType) { return this->Reset(); }
   MLC_INLINE Any &Reset() {
     this->DecRef();
     *(static_cast<MLCAny *>(this)) = MLCAny();
@@ -66,19 +60,17 @@ struct Any : public MLCAny {
   /***** Section 2. Conversion between Any/AnyView *****/
   MLC_INLINE Any(const Any &src);
   MLC_INLINE Any(Any &&src);
-  MLC_INLINE Any(const AnyView &src);
-  MLC_INLINE Any(AnyView &&src);
   MLC_INLINE Any &operator=(const Any &src);
   MLC_INLINE Any &operator=(Any &&src);
-  MLC_INLINE Any &operator=(const AnyView &src);
-  MLC_INLINE Any &operator=(AnyView &&src);
+  MLC_INLINE Any(const AnyView &src);
+  MLC_INLINE Any(AnyView &&src);
   /***** Section 3. Conversion between POD and object pointers *****/
   template <typename T> MLC_INLINE_NO_MSVC T Cast() const;
   template <typename T> MLC_INLINE_NO_MSVC T CastWithStorage(Any *storage) const;
   template <typename T> MLC_INLINE operator T() const { return this->Cast<T>(); }
   template <typename T> MLC_INLINE Any(const T &src);
-  template <typename T> MLC_INLINE Any &operator=(const T &src) {
-    Any(src).Swap(*this);
+  template <typename T> MLC_INLINE Any &operator=(T &&src) { // Forward everything
+    Any(std::forward<T>(src)).Swap(*this);
     return *this;
   }
   /***** Misc *****/
@@ -132,6 +124,8 @@ template <typename... Args> struct AnyViewArrayFill {
     (void)TExpander{0, (Apply<I>(v, std::forward<Args>(args)), 0)...};
   }
 };
+template <typename T> inline AnyView AnyViewFromPODPtr(const T *src) { return src ? AnyView(*src) : AnyView(); }
+template <typename T> inline Any AnyFromPODPtr(const T *src) { return src ? Any(*src) : Any(); }
 } // namespace base
 } // namespace mlc
 

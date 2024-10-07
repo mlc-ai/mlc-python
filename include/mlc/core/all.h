@@ -1,14 +1,15 @@
 #ifndef MLC_CORE_ALL_H_
 #define MLC_CORE_ALL_H_
-#include "./dict.h"
-#include "./error.h"
-#include "./func.h"
-#include "./func_details.h"
-#include "./list.h"
-#include "./object.h"
-#include "./str.h"
-#include "./udict.h"
-#include "./ulist.h"
+#include "./dict.h"         // IWYU pragma: export
+#include "./error.h"        // IWYU pragma: export
+#include "./func.h"         // IWYU pragma: export
+#include "./func_details.h" // IWYU pragma: export
+#include "./func_traits.h"  // IWYU pragma: export
+#include "./list.h"         // IWYU pragma: export
+#include "./object.h"       // IWYU pragma: export
+#include "./str.h"          // IWYU pragma: export
+#include "./udict.h"        // IWYU pragma: export
+#include "./ulist.h"        // IWYU pragma: export
 
 namespace mlc {
 namespace core {

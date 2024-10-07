@@ -15,7 +15,7 @@ inline bool DataTypeEqual(DLDataType a, DLDataType b) {
 }
 
 template <> struct TypeTraits<DLDataType> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
   static constexpr const char *type_str = "dtype";
 
   MLC_INLINE static void TypeToAny(DLDataType src, MLCAny *ret) {
@@ -24,14 +24,14 @@ template <> struct TypeTraits<DLDataType> {
   }
 
   MLC_INLINE static DLDataType AnyToTypeOwned(const MLCAny *v) {
-    MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
-    if (type_index == MLCTypeIndex::kMLCDataType) {
+    MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
+    if (ty == MLCTypeIndex::kMLCDataType) {
       return v->v_dtype;
     }
-    if (type_index == MLCTypeIndex::kMLCRawStr) {
+    if (ty == MLCTypeIndex::kMLCRawStr) {
       return String2DLDataType(v->v_str);
     }
-    if (type_index == MLCTypeIndex::kMLCStr) {
+    if (ty == MLCTypeIndex::kMLCStr) {
       return String2DLDataType(reinterpret_cast<const MLCStr *>(v->v_obj)->data);
     }
     throw TemporaryTypeError();

@@ -45,6 +45,20 @@ struct ErrorObj : public MLCError {
     }
   }
 
+  void FormatExc(std::ostream &os) const {
+    std::vector<const char *> info;
+    this->GetInfo(&info);
+    os << "Traceback (most recent call last):" << std::endl;
+    int frame_id = 0;
+    for (size_t i = 1; i < info.size(); i += 3) {
+      const char *filename = info[i];
+      const char *funcname = info[i + 2];
+      os << "  [" << ++frame_id << "] File \"" << filename << "\", line " << info[i + 1] << ", in " << funcname
+         << std::endl;
+    }
+    os << this->kind() << ": " << info[0] << std::endl;
+  }
+
   MLC_DEF_STATIC_TYPE(ErrorObj, Object, MLCTypeIndex::kMLCError, "object.Error")
       .FieldReadOnly("kind", &MLCError::kind)
       .MemFn("__str__", &ErrorObj::__str__);
@@ -52,11 +66,11 @@ struct ErrorObj : public MLCError {
 
 struct ErrorObj::Allocator {
   MLC_INLINE static ErrorObj *New(const char *kind, MLCByteArray message, MLCByteArray traceback) {
-    return ::mlc::base::DefaultObjectAllocator<ErrorObj>::NewWithPad<char>(message.num_bytes + traceback.num_bytes + 2,
-                                                                           kind, message, traceback);
+    return ::mlc::DefaultObjectAllocator<ErrorObj>::NewWithPad<char>(message.num_bytes + traceback.num_bytes + 2, kind,
+                                                                     message, traceback);
   }
   MLC_INLINE static ErrorObj *New(const char *kind, int64_t num_bytes, const char *bytes) {
-    return ::mlc::base::DefaultObjectAllocator<ErrorObj>::NewWithPad<char>(num_bytes + 1, kind, num_bytes, bytes);
+    return ::mlc::DefaultObjectAllocator<ErrorObj>::NewWithPad<char>(num_bytes + 1, kind, num_bytes, bytes);
   }
 };
 
@@ -85,6 +99,14 @@ inline const char *Exception::what() const noexcept(true) {
 }
 
 inline Exception::Exception(Ref<ErrorObj> data) : data_(data.get()) {}
+
+inline void Exception::FormatExc(std::ostream &os) const {
+  if (data_.get()) {
+    Obj()->FormatExc(os);
+  } else {
+    os << "mlc.Exception: Unspecified";
+  }
+}
 
 } // namespace mlc
 

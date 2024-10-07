@@ -8,7 +8,7 @@ namespace mlc {
 namespace base {
 
 template <typename Int> struct TypeTraits<Int, std::enable_if_t<std::is_integral_v<Int>>> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCInt);
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCInt);
   static constexpr const char *type_str = "int";
 
   MLC_INLINE static void TypeToAny(Int src, MLCAny *ret) {
@@ -16,8 +16,8 @@ template <typename Int> struct TypeTraits<Int, std::enable_if_t<std::is_integral
     ret->v_int64 = static_cast<int64_t>(src);
   }
   MLC_INLINE static Int AnyToTypeOwned(const MLCAny *v) {
-    MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
-    if (type_index == MLCTypeIndex::kMLCInt) {
+    MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
+    if (ty == MLCTypeIndex::kMLCInt) {
       return static_cast<Int>(v->v_int64);
     }
     throw TemporaryTypeError();
@@ -27,7 +27,7 @@ template <typename Int> struct TypeTraits<Int, std::enable_if_t<std::is_integral
 };
 
 template <typename Float> struct TypeTraits<Float, std::enable_if_t<std::is_floating_point_v<Float>>> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCFloat);
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCFloat);
   static constexpr const char *type_str = "float";
 
   MLC_INLINE static void TypeToAny(Float src, MLCAny *ret) {
@@ -35,10 +35,10 @@ template <typename Float> struct TypeTraits<Float, std::enable_if_t<std::is_floa
     ret->v_float64 = src;
   }
   MLC_INLINE static Float AnyToTypeOwned(const MLCAny *v) {
-    MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
-    if (type_index == MLCTypeIndex::kMLCFloat) {
-      return v->v_float64;
-    } else if (type_index == MLCTypeIndex::kMLCInt) {
+    MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
+    if (ty == MLCTypeIndex::kMLCFloat) {
+      return static_cast<Float>(v->v_float64);
+    } else if (ty == MLCTypeIndex::kMLCInt) {
       return static_cast<Float>(v->v_int64);
     }
     throw TemporaryTypeError();
@@ -48,7 +48,7 @@ template <typename Float> struct TypeTraits<Float, std::enable_if_t<std::is_floa
 };
 
 template <> struct TypeTraits<void *> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCPtr);
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCPtr);
   static constexpr const char *type_str = "Ptr";
 
   MLC_INLINE static void TypeToAny(void *src, MLCAny *ret) {
@@ -57,9 +57,8 @@ template <> struct TypeTraits<void *> {
     ret->v_ptr = src;
   }
   MLC_INLINE static void *AnyToTypeOwned(const MLCAny *v) {
-    MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
-    if (type_index == MLCTypeIndex::kMLCPtr || type_index == MLCTypeIndex::kMLCRawStr ||
-        type_index == MLCTypeIndex::kMLCNone) {
+    MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
+    if (ty == MLCTypeIndex::kMLCPtr || ty == MLCTypeIndex::kMLCRawStr || ty == MLCTypeIndex::kMLCNone) {
       return v->v_ptr;
     }
     throw TemporaryTypeError();
@@ -77,7 +76,7 @@ template <> struct TypeTraits<void *> {
 };
 
 template <> struct TypeTraits<std::nullptr_t> : public TypeTraits<void *> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
   static constexpr const char *type_str = "None";
 };
 

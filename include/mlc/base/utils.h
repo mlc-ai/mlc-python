@@ -162,6 +162,8 @@ template <typename _T> struct Type2Str {
       return "object.Object";
     } else if constexpr (std::is_same_v<T, ObjectRef>) {
       return "object.ObjectRef";
+    } else if constexpr (std::is_same_v<T, Str>) {
+      return "str";
     } else if constexpr (IsPOD<T>) {
       return TypeTraits<T>::type_str;
     } else if constexpr (IsRawObjPtr<T>) {
@@ -183,6 +185,8 @@ template <typename _T> struct Type2Str {
       return "dict[" + Type2Str<K>::Run() + ", " + Type2Str<V>::Run() + "]";
     } else if constexpr (IsRef<T>) {
       return "Ref<" + Type2Str<typename T::TObj>::Run() + ">";
+    } else if constexpr (IsOptional<T>) {
+      return "Optional<" + Type2Str<typename T::TObj>::Run() + ">";
     } else if constexpr (IsObjRef<T>) {
       return std::string(T::TObj::_type_key);
     } else if constexpr (IsObj<T>) {
@@ -198,9 +202,9 @@ template <typename _T> struct Type2Str {
     } else if constexpr (std::is_same_v<T, void>) {
       MLC_THROW(TypeError) << "`void` is not allowed in type annotation";
     } else if constexpr (std::is_same_v<T, char *>) {
-      info->push_back(TypeIndex2TypeInfo(TypeTraits<_T>::default_type_index));
+      info->push_back(TypeIndex2TypeInfo(TypeTraits<_T>::type_index));
     } else if constexpr (IsPOD<T>) {
-      info->push_back(TypeIndex2TypeInfo(TypeTraits<T>::default_type_index));
+      info->push_back(TypeIndex2TypeInfo(TypeTraits<T>::type_index));
     } else if constexpr (IsRawObjPtr<T>) {
       using U = std::remove_pointer_t<T>;
       Type2Str<Ref<U>>::GetTypeAnnotation(info);

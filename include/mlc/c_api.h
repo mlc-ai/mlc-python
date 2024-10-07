@@ -1,7 +1,7 @@
 #ifndef MLC_C_FFI_ABI_H_
 #define MLC_C_FFI_ABI_H_
 
-#include <dlpack/dlpack.h>
+#include <dlpack/dlpack.h> // IWYU pragma: export
 #include <stdint.h>
 
 #if !defined(MLC_API) && defined(__EMSCRIPTEN__)

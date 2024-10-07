@@ -63,8 +63,8 @@ struct StrObj : public MLCStr {
 namespace mlc {
 namespace core {
 struct StrStd : public StrObj {
-  using Allocator = ::mlc::base::DefaultObjectAllocator<StrStd>;
-  template <typename> friend struct ::mlc::base::DefaultObjectAllocator;
+  using Allocator = ::mlc::DefaultObjectAllocator<StrStd>;
+  template <typename> friend struct ::mlc::DefaultObjectAllocator;
 
   MLC_INLINE StrStd(std::string &&str) : StrObj(), container(std::move(str)) {
     this->MLCStr::length = static_cast<int64_t>(container.length());
@@ -75,8 +75,8 @@ struct StrStd : public StrObj {
 };
 
 struct StrPad : public StrObj {
-  using Allocator = ::mlc::base::DefaultObjectAllocator<StrPad>;
-  template <typename> friend struct ::mlc::base::DefaultObjectAllocator;
+  using Allocator = ::mlc::DefaultObjectAllocator<StrPad>;
+  template <typename> friend struct ::mlc::DefaultObjectAllocator;
 
   MLC_INLINE StrPad(const char *str, size_t N) : StrObj() {
     char *str_copy = reinterpret_cast<char *>(this) + sizeof(StrObj);
@@ -198,9 +198,10 @@ inline Str Object::str() const {
   return Str(os.str());
 }
 
-template <typename ObjectType> MLC_INLINE Str Ref<ObjectType>::str() const {
+template <typename T> MLC_INLINE Str Ref<T>::str() const {
+  AnyView v(this->operator AnyView());
   std::ostringstream os;
-  os << *this;
+  os << v;
   return Str(os.str());
 }
 
@@ -214,7 +215,7 @@ inline std::ostream &operator<<(std::ostream &os, const Any &src) {
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const ::mlc::base::ObjPtrBase &src) {
+inline std::ostream &operator<<(std::ostream &os, const ::mlc::base::PtrBase &src) {
   MLCAny v{};
   if (src.ptr != nullptr) {
     v.type_index = src.ptr->type_index;

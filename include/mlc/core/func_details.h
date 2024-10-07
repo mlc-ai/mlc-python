@@ -3,29 +3,13 @@
 
 #include "./func.h"
 #include <cstring>
-#include <functional>
 #include <iomanip>
 #include <memory>
-
-/********** Section 1. Function signature and FuncTraits *********/
 
 namespace mlc {
 namespace core {
 
-template <typename FieldType> struct ReflectGetterSetter {
-  static int32_t Getter(MLCTypeField *, void *addr, MLCAny *ret) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<Any *>(ret) = *static_cast<FieldType *>(addr);
-    MLC_SAFE_CALL_END(static_cast<Any *>(ret));
-  }
-  static int32_t Setter(MLCTypeField *, void *addr, MLCAny *src) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<FieldType *>(addr) = (static_cast<Any *>(src))->operator FieldType();
-    MLC_SAFE_CALL_END(static_cast<Any *>(src));
-  }
-};
-
-template <> struct ReflectGetterSetter<char *> : public ReflectGetterSetter<const char *> {};
+/********** Section 1. Function signature and FuncTraits *********/
 
 template <typename R, typename... Args> struct Func2Str {
   template <size_t i> static void Apply(std::ostream &os) {
@@ -47,52 +31,8 @@ template <typename R, typename... Args> struct Func2Str {
   }
 };
 
-template <typename R, typename... Args> struct FuncTraitsImpl {
-  using FType = R(Args...);
-  using ArgType = std::tuple<Args...>;
-  using RetType = R;
-  static constexpr bool packed = std::is_convertible_v<FType, std::function<void(int32_t, const AnyView *, Any *)>>;
-  static constexpr bool unpacked =
-      (std::is_convertible_v<AnyView, Args> && ...) && (std::is_void_v<R> || std::is_convertible_v<R, Any>);
-  static MLC_INLINE std::string Sig() { return Func2Str<R, Args...>::Run(std::index_sequence_for<Args...>{}); }
-  static MLC_INLINE void CheckIsUnpacked() { CheckIsUnpackedRun(std::index_sequence_for<Args...>{}); }
-
-protected:
-  template <size_t i> static MLC_INLINE void CheckIsUnpackedApply() {
-    using Arg = std::tuple_element_t<i, ArgType>;
-    static_assert(std::is_convertible_v<AnyView, Arg>, "Invalid argument type");
-  }
-  template <size_t... I> static MLC_INLINE void CheckIsUnpackedRun(std::index_sequence<I...>) {
-    static_assert((std::is_void_v<RetType> || std::is_convertible_v<RetType, Any>), "Invalid return type");
-    using TExpander = int[];
-    (void)TExpander{0, (CheckIsUnpackedApply<I>(), 0)...};
-  }
-};
-
-template <typename, typename = void> struct FuncTraits;
-template <typename Functor>
-struct FuncTraits<Functor, std::void_t<decltype(&Functor::operator())>>
-    : public FuncTraits<decltype(&Functor::operator())> {};
-template <typename R, typename... Args> struct FuncTraits<R(Args...), void> : public FuncTraitsImpl<R, Args...> {};
-template <typename R, typename... Args> struct FuncTraits<R (*)(Args...), void> : public FuncTraitsImpl<R, Args...> {};
-template <typename Cls, typename R, typename... Args>
-struct FuncTraits<R (Cls::*)(Args...) const> : public FuncTraitsImpl<R, Args...> {};
-template <typename Cls, typename R, typename... Args>
-struct FuncTraits<R (Cls::*)(Args...)> : public FuncTraitsImpl<R, Args...> {};
-} // namespace core
-} // namespace mlc
-
-namespace mlc {
-namespace base {
-template <typename T>
-struct HasFuncTraitsImpl<T, std::void_t<decltype(::mlc::core::FuncTraits<T>::packed)>> : std::true_type {};
-} // namespace base
-} // namespace mlc
-
 /********** Section 2. UnpackCall and index sequence-related *********/
 
-namespace mlc {
-namespace core {
 template <int32_t i, typename> struct PrependIntegerSeq;
 template <int32_t i, int32_t... Is> struct PrependIntegerSeq<i, std::integer_sequence<int32_t, Is...>> {
   using type = std::integer_sequence<int32_t, i, Is...>;
@@ -189,13 +129,8 @@ template <typename RetType, typename... Args> struct UnpackCall<RetType, std::tu
     }
   }
 };
-} // namespace core
-} // namespace mlc
 
 /********** Section 3. Func::Allocator *********/
-
-namespace mlc {
-namespace core {
 
 template <typename FuncType> void FuncCallPacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
   static_cast<const FuncImpl<FuncType> *>(obj)->func_(num_args, args, ret);
@@ -249,35 +184,23 @@ struct FuncAllocatorImpl<R (Obj::*)(Args...), std::enable_if_t<FuncTraits<R(Obj 
     return FuncAllocatorImpl<decltype(wrapped)>::Run(wrapped);
   }
 };
-} // namespace core
-} // namespace mlc
-
-namespace mlc {
-template <typename FuncType, typename> MLC_INLINE FuncObj *FuncObj::Allocator::New(FuncType func) {
-  return ::mlc::core::FuncAllocatorImpl<FuncType>::Run(std::forward<FuncType>(func));
-}
-inline Ref<FuncObj> FuncObj::FromForeign(void *self, MLCDeleterType deleter, MLCFuncSafeCallType safe_call) {
-  if (deleter == nullptr) {
-    return Ref<FuncObj>::New([self, safe_call](int32_t num_args, const MLCAny *args, MLCAny *ret) {
-      if (int32_t err_code = safe_call(self, num_args, args, ret); err_code != 0) {
-        ::mlc::core::HandleSafeCallError(err_code, ret);
-      }
-    });
-  } else {
-    return Ref<FuncObj>::New(
-        [self = std::shared_ptr<void>(self, deleter), safe_call](int32_t num_args, const MLCAny *args, MLCAny *ret) {
-          if (int32_t err_code = safe_call(self.get(), num_args, args, ret); err_code != 0) {
-            ::mlc::core::HandleSafeCallError(err_code, ret);
-          }
-        });
-  }
-}
-} // namespace mlc
 
 /********** Section 4. ReflectionHelper *********/
 
-namespace mlc {
-namespace core {
+template <typename FieldType> struct ReflectGetterSetter {
+  static int32_t Getter(MLCTypeField *, void *addr, MLCAny *ret) {
+    MLC_SAFE_CALL_BEGIN();
+    *static_cast<Any *>(ret) = *static_cast<FieldType *>(addr);
+    MLC_SAFE_CALL_END(static_cast<Any *>(ret));
+  }
+  static int32_t Setter(MLCTypeField *, void *addr, MLCAny *src) {
+    MLC_SAFE_CALL_BEGIN();
+    *static_cast<FieldType *>(addr) = (static_cast<Any *>(src))->operator FieldType();
+    MLC_SAFE_CALL_END(static_cast<Any *>(src));
+  }
+};
+
+template <> struct ReflectGetterSetter<char *> : public ReflectGetterSetter<const char *> {};
 
 template <typename Super, typename FieldType>
 inline MLCTypeField ReflectionHelper::PrepareField(const char *name, FieldType Super::*field) {
@@ -372,6 +295,31 @@ inline ReflectionHelper::operator int32_t() {
   return 0;
 }
 } // namespace core
+} // namespace mlc
+
+namespace mlc {
+template <typename R, typename... Args> MLC_INLINE std::string FuncTraitsImpl<R, Args...>::Sig() {
+  return ::mlc::core::Func2Str<R, Args...>::Run(std::index_sequence_for<Args...>{});
+}
+template <typename FuncType, typename> MLC_INLINE FuncObj *FuncObj::Allocator::New(FuncType func) {
+  return ::mlc::core::FuncAllocatorImpl<FuncType>::Run(std::forward<FuncType>(func));
+}
+inline Ref<FuncObj> FuncObj::FromForeign(void *self, MLCDeleterType deleter, MLCFuncSafeCallType safe_call) {
+  if (deleter == nullptr) {
+    return Ref<FuncObj>::New([self, safe_call](int32_t num_args, const MLCAny *args, MLCAny *ret) {
+      if (int32_t err_code = safe_call(self, num_args, args, ret); err_code != 0) {
+        ::mlc::core::HandleSafeCallError(err_code, ret);
+      }
+    });
+  } else {
+    return Ref<FuncObj>::New(
+        [self = std::shared_ptr<void>(self, deleter), safe_call](int32_t num_args, const MLCAny *args, MLCAny *ret) {
+          if (int32_t err_code = safe_call(self.get(), num_args, args, ret); err_code != 0) {
+            ::mlc::core::HandleSafeCallError(err_code, ret);
+          }
+        });
+  }
+}
 } // namespace mlc
 
 #endif // MLC_CORE_FUNC_DETAILS_H_

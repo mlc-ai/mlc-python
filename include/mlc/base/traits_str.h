@@ -7,19 +7,19 @@ namespace mlc {
 namespace base {
 
 template <> struct TypeTraits<const char *> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
-  static constexpr const char *type_str = "const char *";
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
+  static constexpr const char *type_str = "char *";
 
   static void TypeToAny(const char *src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
     ret->v_str = src;
   }
   static const char *AnyToTypeOwned(const MLCAny *v) {
-    MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
-    if (type_index == MLCTypeIndex::kMLCRawStr) {
+    MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
+    if (ty == MLCTypeIndex::kMLCRawStr) {
       return v->v_str;
     }
-    if (type_index == MLCTypeIndex::kMLCStr) {
+    if (ty == MLCTypeIndex::kMLCStr) {
       return reinterpret_cast<MLCStr *>(v->v_obj)->data;
     }
     throw TemporaryTypeError();
@@ -29,7 +29,7 @@ template <> struct TypeTraits<const char *> {
 };
 
 template <> struct TypeTraits<char *> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
   static constexpr const char *type_str = "char *";
 
   static void TypeToAny(char *src, MLCAny *ret) { return TypeTraits<const char *>::TypeToAny(src, ret); }
@@ -41,8 +41,8 @@ template <> struct TypeTraits<char *> {
 };
 
 template <> struct TypeTraits<std::string> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
-  static constexpr const char *type_str = "str";
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
+  static constexpr const char *type_str = "char *";
 
   static void TypeToAny(const std::string &src, MLCAny *ret) {
     return TypeTraits<const char *>::TypeToAny(src.data(), ret);

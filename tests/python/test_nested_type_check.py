@@ -65,8 +65,8 @@ def test_dict_str_any_fail() -> None:
     with pytest.raises(TypeError) as excinfo:
         func({"a": 1, "b": "two", 1: 3})
     assert (
-        "Mismatched type on argument #0 when calling: `(0: dict[object.Str, Any]) -> dict[object.Str, Any]`. "
-        "Let input be `A_0: dict[object.Str, Any]`, `A_1: object.Str in A_0.keys()`. "
+        "Mismatched type on argument #0 when calling: `(0: dict[str, Any]) -> dict[str, Any]`. "
+        "Let input be `A_0: dict[str, Any]`, `A_1: str in A_0.keys()`. "
         "Type mismatch on `A_1`: Cannot convert from type `int` to `object.StrObj *`"
         == str(excinfo.value)
     )
@@ -82,8 +82,8 @@ def test_dict_any_str_fail() -> None:
     with pytest.raises(TypeError) as excinfo:
         func({1: "one", "two": "dos", (3, 4): [5, 6]})
     assert (
-        "Mismatched type on argument #0 when calling: `(0: dict[Any, object.Str]) -> dict[Any, object.Str]`. "
-        "Let input be `A: dict[Any, object.Str]`. "
+        "Mismatched type on argument #0 when calling: `(0: dict[Any, str]) -> dict[Any, str]`. "
+        "Let input be `A: dict[Any, str]`. "
         "Type mismatch on `A[[3, 4]]`: Cannot convert from type `object.List` to `object.StrObj *`"
         == str(excinfo.value)
     )
@@ -104,8 +104,8 @@ def test_dict_str_list_int_fail() -> None:
     with pytest.raises(TypeError) as excinfo:
         func({"evens": [2, 4, 6], "odds": [1, 3, [5]]})
     assert (
-        "Mismatched type on argument #0 when calling: `(0: dict[object.Str, list[int]]) -> dict[object.Str, list[int]]`. "
-        "Let input be `A: dict[object.Str, list[int]]`. "
+        "Mismatched type on argument #0 when calling: `(0: dict[str, list[int]]) -> dict[str, list[int]]`. "
+        "Let input be `A: dict[str, list[int]]`. "
         'Type mismatch on `A["odds"][2]`: Cannot convert from type `object.List` to `int`'
         == str(excinfo.value)
     )

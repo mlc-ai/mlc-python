@@ -123,13 +123,51 @@ TEST(UDict, ComplexKeys) {
   DLDataType dtype{kDLFloat, 32, 1};
   Ref<Object> obj = Ref<Object>::New();
 
+  dict[nullptr] = "Null";
   dict[device] = "CPU";
   dict[dtype] = "Float32";
   dict[obj] = "Object";
 
+  EXPECT_EQ(dict[nullptr].operator std::string(), "Null");
   EXPECT_EQ(dict[device].operator std::string(), "CPU");
   EXPECT_EQ(dict[dtype].operator std::string(), "Float32");
   EXPECT_EQ(dict[obj].operator std::string(), "Object");
+}
+
+TEST(UDict, ComplexValues) {
+  UDict dict;
+  DLDevice device{kDLCPU, 0};
+  DLDataType dtype{kDLFloat, 32, 1};
+  Ref<Object> obj = Ref<Object>::New();
+
+  dict["Null"] = nullptr;
+  dict["device"] = device;
+  dict["dtype"] = dtype;
+  dict["object"] = obj;
+
+  if (Optional<int> v = dict["Null"]) {
+    FAIL() << "Expected to return nullptr, but got: " << *v.get();
+  } else {
+    EXPECT_EQ(v.get(), nullptr);
+  }
+  if (Optional<DLDevice> v = dict["device"]) {
+    EXPECT_EQ(v->device_type, kDLCPU);
+    EXPECT_EQ(v->device_id, 0);
+  } else {
+    FAIL() << "Expected DLDevice value not found";
+  }
+  if (Optional<DLDataType> v = dict["dtype"]) {
+    EXPECT_EQ(v->code, kDLFloat);
+    EXPECT_EQ(v->bits, 32);
+    EXPECT_EQ(v->lanes, 1);
+  } else {
+    FAIL() << "Expected DLDataType value not found";
+  }
+  if (Optional<ObjectRef> v = dict["object"]) {
+    EXPECT_EQ(v.get(), obj.get());
+  } else {
+    FAIL() << "Expected Object value not found";
+  }
 }
 
 TEST(UDict, ConstAccess) {

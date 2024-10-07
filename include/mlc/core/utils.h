@@ -1,6 +1,7 @@
 #ifndef MLC_CORE_UTILS_H_
 #define MLC_CORE_UTILS_H_
 
+#include "./func_traits.h" // IWYU pragma: export
 #include <mlc/base/all.h>
 
 #define MLC_SAFE_CALL_BEGIN()                                                                                          \
@@ -36,6 +37,7 @@ struct Exception : public std::exception {
   }
   const ErrorObj *Obj() const { return reinterpret_cast<const ErrorObj *>(data_.get()); }
   const char *what() const noexcept(true) override;
+  void FormatExc(std::ostream &os) const;
 
   Ref<Object> data_;
 };

@@ -10,7 +10,7 @@ namespace mlc {
 
 #define MLC_DEF_TYPE_COMMON_(SelfType, ParentType, TypeIndex, TypeKey)                                                 \
 public:                                                                                                                \
-  template <typename> friend struct ::mlc::base::DefaultObjectAllocator;                                               \
+  template <typename> friend struct ::mlc::DefaultObjectAllocator;                                                     \
   template <typename> friend struct ::mlc::Ref;                                                                        \
   friend struct ::mlc::Any;                                                                                            \
   friend struct ::mlc::AnyView;                                                                                        \
@@ -44,8 +44,12 @@ public:                                                                         
   MLC_DEF_REFLECTION(SelfType)
 
 #define MLC_DEF_OBJ_REF(SelfType, ObjType, ParentType)                                                                 \
+public:                                                                                                                \
+  MLC_INLINE const ObjType *get() const { return reinterpret_cast<const ObjType *>(this->ptr); }                       \
+  MLC_INLINE ObjType *get() { return reinterpret_cast<ObjType *>(ptr); }                                               \
+  MLC_DEF_OBJ_PTR_METHODS_(SelfType, ObjType, ParentType);                                                             \
+                                                                                                                       \
 private:                                                                                                               \
-  MLC_DEF_OBJ_PTR_METHODS_(SelfType, ObjType);                                                                         \
   MLC_INLINE void CheckNull() const {                                                                                  \
     if (this->ptr == nullptr) {                                                                                        \
       MLC_THROW(TypeError) << "Cannot convert from type `None` to non-nullable `"                                      \
@@ -55,65 +59,41 @@ private:                                                                        
                                                                                                                        \
 public:                                                                                                                \
   /***** Section 1. Default constructor/destructors *****/                                                             \
-  MLC_INLINE ~SelfType() = default;                                                                                    \
   SelfType(std::nullptr_t) = delete;                                                                                   \
   SelfType &operator=(std::nullptr_t) = delete;                                                                        \
-  MLC_INLINE SelfType(::mlc::NullType) : ParentType(::mlc::Null) {}                                                    \
-  MLC_INLINE SelfType &operator=(::mlc::NullType) { return this->Reset(); }                                            \
-  MLC_INLINE SelfType &Reset() {                                                                                       \
-    TBase::Reset();                                                                                                    \
-    return *this;                                                                                                      \
-  }                                                                                                                    \
-  /***** Section 2. Conversion between `SelfType` *****/                                                               \
-  MLC_INLINE SelfType(const SelfType &src) : ParentType(::mlc::Null) {                                                 \
-    this->_SetObjPtr(src.ptr);                                                                                         \
-    this->IncRef();                                                                                                    \
-  }                                                                                                                    \
-  MLC_INLINE SelfType(SelfType &&src) : ParentType(::mlc::Null) {                                                      \
-    this->_SetObjPtr(src.ptr);                                                                                         \
-    src.ptr = nullptr;                                                                                                 \
-  }                                                                                                                    \
-  MLC_INLINE TSelf &operator=(const SelfType &other) {                                                                 \
-    TSelf(other).Swap(*this);                                                                                          \
-    return *this;                                                                                                      \
-  }                                                                                                                    \
-  MLC_INLINE TSelf &operator=(SelfType &&other) {                                                                      \
-    TSelf(std::move(other)).Swap(*this);                                                                               \
-    return *this;                                                                                                      \
-  }                                                                                                                    \
-  /***** Section 3. Conversion between `Ref<U>` / `U *` where `U` is derived from `ObjType` *****/                     \
-  template <typename U, typename = std::enable_if_t<::mlc::base::IsDerivedFrom<U, ObjType>>>                           \
+  /***** Section 2. Conversion between `Ref<U>` / `U *` where `U` is derived from `ObjType` *****/                     \
+  template <typename U, typename = Derived<U>>                                                                         \
   MLC_INLINE SelfType(const ::mlc::Ref<U> &src) : ParentType(::mlc::Null) {                                            \
     this->_SetObjPtr(::mlc::base::ObjPtrHelper<::mlc::Ref<U>>::GetPtr(&src));                                          \
     this->CheckNull();                                                                                                 \
     this->IncRef();                                                                                                    \
   }                                                                                                                    \
-  template <typename U, typename = std::enable_if_t<::mlc::base::IsDerivedFrom<U, ObjType>>>                           \
+  template <typename U, typename = Derived<U>> /**/                                                                    \
   MLC_INLINE SelfType(::mlc::Ref<U> &&src) : ParentType(::mlc::Null) {                                                 \
     this->_SetObjPtr(::mlc::base::ObjPtrHelper<::mlc::Ref<U>>::MovePtr(&src));                                         \
     this->CheckNull();                                                                                                 \
   }                                                                                                                    \
-  template <typename U, typename = std::enable_if_t<::mlc::base::IsDerivedFrom<U, ObjType>>>                           \
+  template <typename U, typename = Derived<U>> /**/                                                                    \
   MLC_INLINE TSelf &operator=(const ::mlc::Ref<U> &other) {                                                            \
     TSelf(other).Swap(*this);                                                                                          \
     return *this;                                                                                                      \
   }                                                                                                                    \
-  template <typename U, typename = std::enable_if_t<::mlc::base::IsDerivedFrom<U, ObjType>>>                           \
+  template <typename U, typename = Derived<U>> /**/                                                                    \
   MLC_INLINE TSelf &operator=(::mlc::Ref<U> &&other) {                                                                 \
     TSelf(std::move(other)).Swap(*this);                                                                               \
     return *this;                                                                                                      \
   }                                                                                                                    \
-  template <typename U, typename = std::enable_if_t<::mlc::base::IsDerivedFrom<U, ObjType>>>                           \
+  template <typename U, typename = Derived<U>> /**/                                                                    \
   MLC_INLINE explicit SelfType(U *src) : ParentType(::mlc::Null) {                                                     \
     this->_SetObjPtr(reinterpret_cast<MLCObject *>(src));                                                              \
     this->CheckNull();                                                                                                 \
     this->IncRef();                                                                                                    \
   }                                                                                                                    \
-  /***** Section 4. The `new` operator *****/                                                                          \
+  /***** Section 3. The `new` operator *****/                                                                          \
   template <typename... Args, typename = std::enable_if_t<::mlc::base::Newable<ObjType, Args...>>>                     \
   MLC_INLINE SelfType(Args &&...args)                                                                                  \
       : SelfType(::mlc::base::AllocatorOf<ObjType>::New(std::forward<Args>(args)...)) {}                               \
-  /***** Section 5. Conversion between AnyView/Any *****/                                                              \
+  /***** Section 4. Conversion between AnyView/Any *****/                                                              \
   MLC_INLINE SelfType(const ::mlc::AnyView &src) : ParentType(::mlc::Null) {                                           \
     TBase::_Init<ObjType>(src);                                                                                        \
     this->CheckNull();                                                                                                 \
@@ -122,35 +102,8 @@ public:                                                                         
     TBase::_Init<ObjType>(src);                                                                                        \
     this->CheckNull();                                                                                                 \
   }                                                                                                                    \
-  MLC_INLINE operator ::mlc::AnyView() const {                                                                         \
-    if (this->ptr != nullptr) {                                                                                        \
-      ::mlc::AnyView ret;                                                                                              \
-      ret.type_index = this->ptr->type_index;                                                                          \
-      ret.v_obj = this->ptr;                                                                                           \
-      return ret;                                                                                                      \
-    }                                                                                                                  \
-    return ::mlc::AnyView();                                                                                           \
-  };                                                                                                                   \
-  MLC_INLINE operator ::mlc::Any() const & {                                                                           \
-    if (this->ptr != nullptr) {                                                                                        \
-      ::mlc::Any ret;                                                                                                  \
-      ret.type_index = this->ptr->type_index;                                                                          \
-      ret.v_obj = this->ptr;                                                                                           \
-      ::mlc::base::IncRef(this->ptr);                                                                                  \
-      return ret;                                                                                                      \
-    }                                                                                                                  \
-    return ::mlc::Any();                                                                                               \
-  }                                                                                                                    \
-  MLC_INLINE operator ::mlc::Any() && {                                                                                \
-    if (this->ptr != nullptr) {                                                                                        \
-      ::mlc::Any ret;                                                                                                  \
-      ret.type_index = this->ptr->type_index;                                                                          \
-      ret.v_obj = this->ptr;                                                                                           \
-      this->ptr = nullptr;                                                                                             \
-      return ret;                                                                                                      \
-    }                                                                                                                  \
-    return ::mlc::Any();                                                                                               \
-  }                                                                                                                    \
+  MLC_INLINE operator ::mlc::AnyView() const { return ::mlc::AnyView(this->get()); };                                  \
+  MLC_INLINE operator ::mlc::Any() const { return ::mlc::Any(this->get()); }                                           \
   MLC_DEF_REFLECTION(ObjType)
 
 struct Object {

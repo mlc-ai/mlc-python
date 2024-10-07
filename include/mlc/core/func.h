@@ -47,7 +47,7 @@ struct FuncObj : public MLCFunc {
 
 struct FuncObj::Allocator {
 public:
-  template <typename FuncType, typename = std::enable_if_t<::mlc::base::HasFuncTraits<FuncType>>>
+  template <typename FuncType, typename = std::enable_if_t<HasFuncTraits<FuncType>>>
   MLC_INLINE static FuncObj *New(FuncType func);
 };
 
@@ -63,7 +63,7 @@ namespace mlc {
 namespace core {
 template <typename FuncType> struct FuncImpl : public FuncObj {
   using TSelf = FuncImpl<FuncType>;
-  using Allocator = ::mlc::base::DefaultObjectAllocator<TSelf>;
+  using Allocator = ::mlc::DefaultObjectAllocator<TSelf>;
   MLC_INLINE FuncImpl(FuncType func, FuncObj::Call *f) : FuncObj(f), func_(std::forward<FuncType>(func)) {}
   mutable std::decay_t<FuncType> func_;
 };

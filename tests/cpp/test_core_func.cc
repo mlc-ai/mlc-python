@@ -110,7 +110,7 @@ TEST(Func, FunctionReturningRef) {
 }
 
 template <typename Callable> void CheckSignature(Callable callable, const char *expected) {
-  using Traits = core::FuncTraits<Callable>;
+  using Traits = FuncTraits<Callable>;
   EXPECT_STREQ(Traits::Sig().c_str(), expected);
   Func func(std::move(callable));
   EXPECT_NE(func.get(), nullptr);
@@ -131,9 +131,9 @@ TEST(Func, Signature) {
   CheckSignature([](double, const double, const double &, double &&) -> double { return 0.0; },
                  "(0: float, 1: float, 2: float, 3: float) -> float");
   CheckSignature([&](CStr, const CStr, const CStr &, CStr &&) -> CStr { return cstr; },
-                 "(0: const char *, 1: const char *, 2: const char *, 3: const char *) -> const char *");
+                 "(0: char *, 1: char *, 2: char *, 3: char *) -> char *");
   CheckSignature([](CxxStr, const CxxStr, const CxxStr &, CxxStr &&) -> CxxStr { return CxxStr(); },
-                 "(0: str, 1: str, 2: str, 3: str) -> str");
+                 "(0: char *, 1: char *, 2: char *, 3: char *) -> char *");
   CheckSignature([](VoidPtr, const VoidPtr, const VoidPtr &, VoidPtr &&) -> VoidPtr { return nullptr; },
                  "(0: Ptr, 1: Ptr, 2: Ptr, 3: Ptr) -> Ptr");
   CheckSignature([](DLDataType, const DLDataType, const DLDataType &, DLDataType &&) -> DLDataType { return {}; },
@@ -141,13 +141,17 @@ TEST(Func, Signature) {
   CheckSignature([](DLDevice, const DLDevice, const DLDevice &, DLDevice &&) -> DLDevice { return {}; },
                  "(0: Device, 1: Device, 2: Device, 3: Device) -> Device");
   CheckSignature([](StrObj *, const StrObj *) -> Str { return Str{Null}; },
-                 "(0: object.StrObj *, 1: object.StrObj *) -> object.Str");
+                 "(0: object.StrObj *, 1: object.StrObj *) -> str");
   CheckSignature([](Ref<StrObj>, const Ref<StrObj>, const Ref<StrObj> &,
                     Ref<StrObj> &&) -> Ref<StrObj> { return Ref<StrObj>::New("Test"); },
                  "(0: Ref<object.StrObj>, 1: Ref<object.StrObj>, 2: Ref<object.StrObj>, 3: Ref<object.StrObj>) -> "
                  "Ref<object.StrObj>");
   CheckSignature([](Str, const Str, const Str &, Str &&) -> Str { return Str{Null}; },
-                 "(0: object.Str, 1: object.Str, 2: object.Str, 3: object.Str) -> object.Str");
+                 "(0: str, 1: str, 2: str, 3: str) -> str");
+  CheckSignature(
+      [](Optional<int>, Optional<ObjectRef>, Optional<Str>, Optional<DLDevice>, Optional<DLDataType>) -> void {},
+      "(0: Optional<int>, 1: Optional<object.Object>, 2: Optional<object.StrObj>, 3: Optional<Device>, 4: "
+      "Optional<dtype>) -> void");
 }
 
 TEST(Func, ArgumentObjRawPtr) {
@@ -193,7 +197,7 @@ TEST(Func, TypeMismatch_0) {
     FAIL() << "No execption thrown";
   } catch (Exception &ex) {
     EXPECT_STREQ(ex.what(), "Mismatched type on argument #0 when calling: "
-                            "`(0: int, 1: float, 2: const char *, 3: float) -> float`. "
+                            "`(0: int, 1: float, 2: char *, 3: float) -> float`. "
                             "Expected `int` but got `float`");
   }
 }
@@ -205,8 +209,8 @@ TEST(Func, TypeMismatch_1) {
     FAIL() << "No execption thrown";
   } catch (Exception &ex) {
     EXPECT_STREQ(ex.what(), "Mismatched type on argument #2 when calling: "
-                            "`(0: dtype, 1: Device, 2: str) -> void`. "
-                            "Expected `str` but got `int`");
+                            "`(0: dtype, 1: Device, 2: char *) -> void`. "
+                            "Expected `char *` but got `int`");
   }
 }
 
@@ -218,7 +222,7 @@ TEST(Func, IncorrectArgumentCountError) {
     FAIL() << "No execption thrown";
   } catch (Exception &ex) {
     EXPECT_STREQ(ex.what(), "Mismatched number of arguments when calling: "
-                            "`(0: int, 1: float, 2: const char *, 3: float) -> float`. "
+                            "`(0: int, 1: float, 2: char *, 3: float) -> float`. "
                             "Expected 4 but got 3 arguments");
   }
 }

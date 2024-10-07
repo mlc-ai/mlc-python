@@ -356,8 +356,8 @@ inline TypeTable *TypeTable::New() {
   self->num_types = static_cast<int32_t>(MLCTypeIndex::kMLCDynObjectBegin);
 #define MLC_TYPE_TABLE_INIT_TYPE(UnderlyingType, Self)                                                                 \
   {                                                                                                                    \
-    MLCTypeInfo *info = Self->TypeRegister(-1, ::mlc::base::TypeTraits<UnderlyingType>::default_type_index,            \
-                                           ::mlc::base::TypeTraits<UnderlyingType>::type_str);                         \
+    using Traits = ::mlc::base::TypeTraits<UnderlyingType>;                                                            \
+    MLCTypeInfo *info = Self->TypeRegister(-1, Traits::type_index, Traits::type_str);                                  \
     info->setter = PODGetterSetter<UnderlyingType>::Setter;                                                            \
     info->getter = PODGetterSetter<UnderlyingType>::Getter;                                                            \
   }

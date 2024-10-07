@@ -12,7 +12,7 @@ DLDevice String2DLDevice(const std::string &source);
 inline bool DeviceEqual(DLDevice a, DLDevice b) { return a.device_type == b.device_type && a.device_id == b.device_id; }
 
 template <> struct TypeTraits<DLDevice> {
-  static constexpr int32_t default_type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDevice);
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDevice);
   static constexpr const char *type_str = "Device";
 
   MLC_INLINE static void TypeToAny(DLDevice src, MLCAny *ret) {
@@ -21,14 +21,14 @@ template <> struct TypeTraits<DLDevice> {
   }
 
   MLC_INLINE static DLDevice AnyToTypeOwned(const MLCAny *v) {
-    MLCTypeIndex type_index = static_cast<MLCTypeIndex>(v->type_index);
-    if (type_index == MLCTypeIndex::kMLCDevice) {
+    MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
+    if (ty == MLCTypeIndex::kMLCDevice) {
       return v->v_device;
     }
-    if (type_index == MLCTypeIndex::kMLCRawStr) {
+    if (ty == MLCTypeIndex::kMLCRawStr) {
       return String2DLDevice(v->v_str);
     }
-    if (type_index == MLCTypeIndex::kMLCStr) {
+    if (ty == MLCTypeIndex::kMLCStr) {
       return String2DLDevice(reinterpret_cast<const MLCStr *>(v->v_obj)->data);
     }
     throw TemporaryTypeError();

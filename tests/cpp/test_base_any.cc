@@ -104,8 +104,8 @@ template <typename AnyType> struct Checker_Constructor_Default {
     CheckConvert<void *>([&]() { return v.operator void *(); }, nullptr);
     CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
     CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvert<Ref<Object>>([&]() { return v.operator Ref<Object>(); }, Ref<Object>());
     CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); }, "object.ObjectRef");
   }
@@ -132,8 +132,8 @@ template <typename AnyType> struct Checker_Constructor_Integer {
     CheckConvertFail([&]() { return v.operator void *(); }, v.type_index, "Ptr");
     CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
     CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvertFail([&]() { return v.operator Ref<Object>(); }, v.type_index, "object.Object *");
     CheckConvertFail([&]() { return v.operator ObjectRef(); }, v.type_index, "object.Object *");
   }
@@ -161,8 +161,8 @@ template <typename AnyType> struct Checker_Constructor_Float {
     CheckConvertFail([&]() { return v.operator void *(); }, v.type_index, "Ptr");
     CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
     CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvertFail([&]() { return v.operator Ref<Object>(); }, v.type_index, "object.Object *");
     CheckConvertFail([&]() { return v.operator ObjectRef(); }, v.type_index, "object.Object *");
   }
@@ -193,8 +193,8 @@ template <typename AnyType> struct Checker_Constructor_Ptr_NotNull {
     CheckConvert<void *>([&]() { return v.operator void *(); }, reinterpret_cast<void *>(0x1234));
     CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
     CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvertFail([&]() { return v.operator Ref<Object>(); }, v.type_index, "object.Object *");
     CheckConvertFail([&]() { return v.operator ObjectRef(); }, v.type_index, "object.Object *");
   }
@@ -221,8 +221,8 @@ template <typename AnyType> struct Checker_Constructor_Ptr_Null {
     CheckConvert<void *>([&]() { return v.operator void *(); }, nullptr);
     CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
     CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvert<Ref<Object>>([&]() { return v.operator Ref<Object>(); }, Ref<Object>());
     CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); }, "object.ObjectRef");
   }
@@ -250,8 +250,8 @@ template <typename AnyType> struct Checker_Constructor_Device {
     CheckConvertFail([&]() { return v.operator void *(); }, v.type_index, "Ptr");
     CheckConvert<DLDevice>([&]() { return v.operator DLDevice(); }, dev);
     CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvertFail([&]() { return v.operator Ref<Object>(); }, v.type_index, "object.Object *");
     CheckConvertFail([&]() { return v.operator ObjectRef(); }, v.type_index, "object.Object *");
   }
@@ -279,8 +279,8 @@ template <typename AnyType> struct Checker_Constructor_DataType {
     CheckConvertFail([&]() { return v.operator void *(); }, v.type_index, "Ptr");
     CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
     CheckConvert<DLDataType>([&]() { return v.operator DLDataType(); }, dtype);
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvertFail([&]() { return v.operator Ref<Object>(); }, v.type_index, "object.Object *");
     CheckConvertFail([&]() { return v.operator ObjectRef(); }, v.type_index, "object.Object *");
   }
@@ -419,8 +419,8 @@ template <typename AnyType> struct Checker_Constructor_NullObj_Ref {
     CheckConvert<void *>([&]() { return v.operator void *(); }, nullptr);
     CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
     CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvert<Ref<Object>>([&]() { return v.operator Ref<Object>(); }, Ref<Object>());
     CheckConvertFailNullability<Object>([&]() { return v.operator ObjectRef(); }, "object.ObjectRef");
   }
@@ -460,8 +460,8 @@ TEST(Any, Constructor_Any_POD) {
     CheckConvertFail([&]() { return v.operator void *(); }, v.type_index, "Ptr");
     CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
     CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
-    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "const char *");
-    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "str");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
     CheckConvertFail([&]() { return v.operator Ref<Object>(); }, v.type_index, "object.Object *");
     CheckConvertFail([&]() { return v.operator ObjectRef(); }, v.type_index, "object.Object *");
   };

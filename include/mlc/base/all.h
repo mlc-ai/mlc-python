@@ -1,14 +1,17 @@
 #ifndef MLC_BASE_ALL_H_
 #define MLC_BASE_ALL_H_
 
-#include "./any.h"
-#include "./ref.h"
-#include "./traits_device.h"
-#include "./traits_dtype.h"
-#include "./traits_object.h"
-#include "./traits_scalar.h"
-#include "./traits_str.h"
-#include <cstring>
+#include "./alloc.h"         // IWYU pragma: export
+#include "./any.h"           // IWYU pragma: export
+#include "./base_traits.h"   // IWYU pragma: export
+#include "./optional.h"      // IWYU pragma: export
+#include "./ref.h"           // IWYU pragma: export
+#include "./traits_device.h" // IWYU pragma: export
+#include "./traits_dtype.h"  // IWYU pragma: export
+#include "./traits_object.h" // IWYU pragma: export
+#include "./traits_scalar.h" // IWYU pragma: export
+#include "./traits_str.h"    // IWYU pragma: export
+#include <mlc/c_api.h>       // IWYU pragma: export
 
 namespace mlc {
 
@@ -26,27 +29,11 @@ MLC_INLINE Any::Any(AnyView &&src) : MLCAny(static_cast<const MLCAny &>(src)) {
   this->SwitchFromRawStr();
   this->IncRef();
 }
-MLC_INLINE AnyView &AnyView::operator=(const Any &src) {
-  *static_cast<MLCAny *>(this) = static_cast<const MLCAny &>(src);
-  return *this;
-}
-MLC_INLINE AnyView &AnyView::operator=(Any &&src) {
-  *static_cast<MLCAny *>(this) = static_cast<const MLCAny &>(src);
-  return *this;
-}
 MLC_INLINE Any &Any::operator=(const Any &src) {
   Any(src).Swap(*this);
   return *this;
 }
 MLC_INLINE Any &Any::operator=(Any &&src) {
-  Any(std::move(src)).Swap(*this);
-  return *this;
-}
-MLC_INLINE Any &Any::operator=(const AnyView &src) {
-  Any(src).Swap(*this);
-  return *this;
-}
-MLC_INLINE Any &Any::operator=(AnyView &&src) {
   Any(std::move(src)).Swap(*this);
   return *this;
 }
@@ -101,41 +88,7 @@ template <typename T> MLC_INLINE_NO_MSVC T Any::CastWithStorage(Any *storage) co
   MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeWithStorage(this, storage), this->type_index, Type2Str<T>::Run());
 }
 
-/*********** Section 3. Conversion between Any/AnyView <=> Ref ***********/
-
-template <typename T> MLC_INLINE Ref<T>::Ref(const AnyView &src) : TBase() { TBase::_Init<T>(src); }
-template <typename T> MLC_INLINE Ref<T>::Ref(const Any &src) : TBase() { TBase::_Init<T>(src); }
-template <typename T> MLC_INLINE Ref<T>::operator AnyView() const {
-  if (this->ptr != nullptr) {
-    AnyView ret;
-    ret.type_index = this->ptr->type_index;
-    ret.v_obj = this->ptr;
-    return ret;
-  }
-  return AnyView();
-}
-template <typename T> MLC_INLINE Ref<T>::operator Any() const & {
-  if (this->ptr != nullptr) {
-    Any ret;
-    ret.type_index = this->ptr->type_index;
-    ret.v_obj = this->ptr;
-    ::mlc::base::IncRef(this->ptr);
-    return ret;
-  }
-  return Any();
-}
-template <typename T> MLC_INLINE Ref<T>::operator Any() && {
-  if (this->ptr != nullptr) {
-    Any ret;
-    ret.type_index = this->ptr->type_index;
-    ret.v_obj = this->ptr;
-    this->ptr = nullptr;
-    return ret;
-  }
-  return Any();
-}
-
-/*********** Section 4. AnyViewArray ***********/
+/*********** Section 3. AnyViewArray ***********/
 
 template <std::size_t N> template <typename... Args> MLC_INLINE void AnyViewArray<N>::Fill(Args &&...args) {
   static_assert(sizeof...(args) == N, "Invalid number of arguments");
