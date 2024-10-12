@@ -35,6 +35,7 @@ public:                                                                         
       return *ret;                                                                                                     \
     }                                                                                                                  \
     MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                  \
+    MLC_UNREACHABLE();                                                                                                 \
   }                                                                                                                    \
   MLC_INLINE SelfType &Reset() {                                                                                       \
     ParentType::Reset();                                                                                               \
@@ -102,7 +103,6 @@ protected:
     this->ptr = Alloc::New(v);
     this->IncRef();
   }
-  friend std::ostream &operator<<(std::ostream &os, const PtrBase &src);
 };
 
 struct ObjectRefDummyRoot : protected PtrBase {

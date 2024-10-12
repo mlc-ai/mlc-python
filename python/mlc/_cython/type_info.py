@@ -26,7 +26,6 @@ class TypeField:
     setter: _C_VoidPointer
     type_ann: TypeAnn
     is_read_only: bool
-    is_owned_obj_ptr: bool
 
 
 @dataclasses.dataclass(eq=False)
@@ -210,7 +209,6 @@ def py_class(
                 setter=0,  # NULL
                 type_ann=core.TypeAnn(ann),
                 is_read_only=False,  # Assuming all fields are writable by default
-                is_owned_obj_ptr=False,  # Assuming no owned object pointers by default
             )
             for name, ann in typing.get_type_hints(cls).items()
             if not name.startswith("_")

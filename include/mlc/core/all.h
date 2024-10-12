@@ -8,6 +8,7 @@
 #include "./list.h"         // IWYU pragma: export
 #include "./object.h"       // IWYU pragma: export
 #include "./str.h"          // IWYU pragma: export
+#include "./typing.h"       // IWYU pragma: export
 #include "./udict.h"        // IWYU pragma: export
 #include "./ulist.h"        // IWYU pragma: export
 

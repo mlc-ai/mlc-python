@@ -2,6 +2,7 @@
 #define MLC_CORE_FUNC_DETAILS_H_
 
 #include "./func.h"
+#include "./typing.h"
 #include <cstring>
 #include <iomanip>
 #include <memory>
@@ -132,12 +133,13 @@ template <typename RetType, typename... Args> struct UnpackCall<RetType, std::tu
 
 /********** Section 3. Func::Allocator *********/
 
-template <typename FuncType> void FuncCallPacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
+template <typename FuncType>
+inline void FuncCallPacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
   static_cast<const FuncImpl<FuncType> *>(obj)->func_(num_args, args, ret);
 }
 
 template <typename FuncType>
-void FuncCallUnpacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
+inline void FuncCallUnpacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
   using ArgType = typename FuncTraits<FuncType>::ArgType;
   constexpr int32_t N = std::tuple_size_v<ArgType>;
   if (num_args != N) {
@@ -205,6 +207,7 @@ template <> struct ReflectGetterSetter<char *> : public ReflectGetterSetter<cons
 template <typename Super, typename FieldType>
 inline MLCTypeField ReflectionHelper::PrepareField(const char *name, FieldType Super::*field) {
   int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
+  Any ty = ParseType<FieldType>();
   MLCTypeInfo **ann = [&]() {
     this->type_annotation_pool.emplace_back();
     std::vector<MLCTypeInfo *> &type_annotation = this->type_annotation_pool.back();
@@ -213,10 +216,7 @@ inline MLCTypeField ReflectionHelper::PrepareField(const char *name, FieldType S
     return type_annotation.data();
   }();
   int32_t is_read_only = false;
-  int32_t is_owned_obj_ptr = base::IsObjRef<FieldType> || base::IsRef<FieldType>;
-  return MLCTypeField{
-      name, field_offset, nullptr, nullptr, ann, is_read_only, is_owned_obj_ptr,
-  };
+  return MLCTypeField{name, field_offset, nullptr, nullptr, ann, is_read_only};
 }
 
 template <typename Super, typename FieldType>
@@ -302,7 +302,7 @@ template <typename R, typename... Args> MLC_INLINE std::string FuncTraitsImpl<R,
   return ::mlc::core::Func2Str<R, Args...>::Run(std::index_sequence_for<Args...>{});
 }
 template <typename FuncType, typename> MLC_INLINE FuncObj *FuncObj::Allocator::New(FuncType func) {
-  return ::mlc::core::FuncAllocatorImpl<FuncType>::Run(std::forward<FuncType>(func));
+  return ::mlc::core::FuncAllocatorImpl<::mlc::base::RemoveCR<FuncType>>::Run(std::forward<FuncType>(func));
 }
 inline Ref<FuncObj> FuncObj::FromForeign(void *self, MLCDeleterType deleter, MLCFuncSafeCallType safe_call) {
   if (deleter == nullptr) {

@@ -48,15 +48,24 @@ typedef enum {
   kMLCDevice = 5,
   kMLCRawStr = 6,
   // [Section] Static Boxed: [kMLCStaticObjectBegin, kMLCDynObjectBegin)
-  kMLCStaticObjectBegin = 64,
-  kMLCObject = 64,
-  kMLCList = 65,
-  kMLCDict = 66,
-  kMLCError = 67,
-  kMLCFunc = 68,
-  kMLCStr = 69,
+  kMLCStaticObjectBegin = 32768,
+  kMLCObject = 32768,
+  kMLCList = 32769,
+  kMLCDict = 32770,
+  kMLCError = 32771,
+  kMLCFunc = 32772,
+  kMLCStr = 32773,
+  kMLCTyping = 32774,
+  kMLCTypingAny = 32775,
+  kMLCTypingNone = 32776,
+  kMLCTypingAtomic = 32777,
+  kMLCTypingPtr = 32778,
+  kMLCTypingOptional = 32779,
+  kMLCTypingUnion = 32780,
+  kMLCTypingList = 32781,
+  kMLCTypingDict = 32782,
   // [Section] Dynamic Boxed: [kMLCDynObjectBegin, +oo)
-  kMLCDynObjectBegin = 128,
+  kMLCDynObjectBegin = 65536,
 #ifdef __cplusplus
 };
 #else
@@ -129,6 +138,45 @@ typedef struct {
   void *data;
 } MLCDict;
 
+typedef struct {
+  MLCAny _mlc_header;
+} MLCTypingAny;
+
+typedef struct {
+  MLCAny _mlc_header;
+} MLCTypingNone;
+
+typedef struct {
+  MLCAny _mlc_header;
+  int32_t type_index;
+} MLCTypingAtomic;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCObjPtr ty;
+} MLCTypingRawPtr;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCObjPtr ty;
+} MLCTypingOptional;
+
+typedef struct {
+  MLCAny _mlc_header;
+  int32_t num_types;
+} MLCTypingUnion;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCObjPtr ty;
+} MLCTypingList;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCObjPtr ty_k;
+  MLCObjPtr ty_v;
+} MLCTypingDict;
+
 typedef struct MLCTypeField MLCTypeField;
 typedef int32_t (*MLCAttrGetterSetter)(MLCTypeField *, void *addr, MLCAny *);
 
@@ -139,7 +187,6 @@ typedef struct MLCTypeField {
   MLCAttrGetterSetter setter;
   MLCTypeInfo **type_annotation;
   int32_t is_read_only;
-  int32_t is_owned_obj_ptr;
 } MLCTypeField;
 
 typedef struct {

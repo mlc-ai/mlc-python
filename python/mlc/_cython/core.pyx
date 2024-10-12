@@ -53,14 +53,23 @@ cdef extern from "mlc/c_api.h" nogil:
         kMLCDataType = 4
         kMLCDevice = 5
         kMLCRawStr = 6
-        kMLCStaticObjectBegin = 64
-        kMLCObject = 64
-        kMLCList = 65
-        kMLCDict = 66
-        kMLCError = 67
-        kMLCFunc = 68
-        kMLCStr = 69
-        kMLCDynObjectBegin = 128
+        kMLCStaticObjectBegin = 32768
+        kMLCObject = 32768
+        kMLCList = 32769
+        kMLCDict = 32770
+        kMLCError = 32771
+        kMLCFunc = 32772
+        kMLCStr = 32773
+        kMLCTyping = 32774
+        kMLCTypingAny = 32775
+        kMLCTypingNone = 32776
+        kMLCTypingAtomic = 32777
+        kMLCTypingPtr = 32778
+        kMLCTypingOptional = 32779
+        kMLCTypingUnion = 32780
+        kMLCTypingList = 32781
+        kMLCTypingDict = 32782
+        kMLCDynObjectBegin = 65536
 
     ctypedef struct MLCAny:
         int32_t type_index
@@ -113,7 +122,6 @@ cdef extern from "mlc/c_api.h" nogil:
         MLCAttrGetterSetter setter
         MLCTypeInfo **type_annotation
         int32_t is_read_only
-        int32_t is_owned_obj_ptr
 
     ctypedef struct MLCTypeMethod:
         const char* name
@@ -335,10 +343,20 @@ cdef class PyAny:
             ) from e
         _func_call_impl(<MLCFunc*>(func._mlc_any.v_obj), init_args, &self._mlc_any)
 
-    @staticmethod
-    def _C(str name, *args):
-        cdef PyAny self = args[0]
-        cdef PyAny func = TYPE_VTABLE[type(self)][name]
+    def _mlc_set(self, PyAny value) -> None:
+        self._mlc_any = value._mlc_any
+        _check_error(_C_AnyIncRef(&self._mlc_any))
+
+    @classmethod
+    def _C(cls, str name, *args):
+        cdef PyAny func
+        try:
+            func = TYPE_VTABLE[cls][name]
+        except Exception as e:  # no-cython-lint
+            if cls not in TYPE_VTABLE:
+                raise TypeError(f"Cannot find vtable for type: {cls}") from e
+            else:
+                raise TypeError(f"Cannot find method `{name}` for type: {cls}") from e
         return func_call(func, args)
 
     def __dealloc__(self):
@@ -722,7 +740,6 @@ cpdef object type_info_from_cxx(str type_key):
             setter=<uint64_t>fields_ptr[0].setter,
             type_ann=TypeAnn.from_c(fields_ptr[0].type_annotation),
             is_read_only=bool(fields_ptr[0].is_read_only),
-            is_owned_obj_ptr=bool(fields_ptr[0].is_owned_obj_ptr),
         ))
         fields_ptr += 1
     while methods_ptr != NULL and methods_ptr[0].name != NULL:
@@ -773,14 +790,10 @@ cpdef void register_fields(object type_info):
     type_info: TypeInfo
     cdef vector[MLCTypeField] fields
     cdef list temporary_storage = []
-    cdef TypeAnn type_ann
-    cdef int32_t type_index
 
     for field in type_info.fields:
         name = str_py2c(field.name)
         temporary_storage.append(name)
-        type_ann = <TypeAnn>(field.type_ann)
-        type_index = type_ann._vector[0][0].type_index
         fields.push_back(MLCTypeField(
             name=name,
             offset=field.offset,
@@ -788,7 +801,6 @@ cpdef void register_fields(object type_info):
             setter=<MLCAttrGetterSetter>field.setter,
             type_annotation=(<TypeAnn>(field.type_ann))._vector.data(),
             is_read_only=False,
-            is_owned_obj_ptr=type_index >= kMLCStaticObjectBegin,
         ))
     _check_error(_C_TypeDefReflection(NULL, type_info.type_index, fields.size(), fields.data(), 0, NULL))
 

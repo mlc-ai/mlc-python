@@ -167,10 +167,9 @@ MLC_API void MLCExtObjDelete(void *objptr) {
     if (field.name == nullptr) {
       break;
     }
-    if (field.is_owned_obj_ptr) {
-      MLCObject *ptr = reinterpret_cast<MLCObjPtr *>(static_cast<char *>(objptr) + field.offset)->ptr;
-      ::mlc::base::DecRef(ptr);
-    }
+    // TODO: fix this by checking if the field is a pointer
+    // MLCObject *ptr = reinterpret_cast<MLCObjPtr *>(static_cast<char *>(objptr) + field.offset)->ptr;
+    // ::mlc::base::DecRef(ptr);
   }
   delete[] reinterpret_cast<char *>(objptr);
 }

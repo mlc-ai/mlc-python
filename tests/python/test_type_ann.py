@@ -7,26 +7,28 @@ from mlc._cython import testing_cast as mlc_cast
 
 
 @pytest.mark.parametrize(
-    ("type_ann", "type_str"),
+    ("type_ann", "type_str", "args"),
     [
-        (list[str], "list[str]"),
-        (list, "list[Any]"),
-        (dict[str, int], "dict[str, int]"),
-        (dict, "dict[Any, Any]"),
-        (typing.List[str], "list[str]"),  # noqa: UP006
-        (typing.List, "list[Any]"),  # noqa: UP006
-        (typing.Dict[str, int], "dict[str, int]"),  # noqa: UP006
-        (typing.Dict, "dict[Any, Any]"),  # noqa: UP006
-        (list[typing.Any], "list[Any]"),
-        (list[list[int]], "list[list[int]]"),
-        (dict[str, typing.Any], "dict[str, Any]"),
-        (dict[typing.Any, str], "dict[Any, str]"),
-        (dict[str, list[int]], "dict[str, list[int]]"),
+        (list[str], "list[str]", ("str",)),
+        (list, "list[Any]", ("Any",)),
+        (dict[str, int], "dict[str, int]", ("str", "int")),
+        (dict, "dict[Any, Any]", ("Any", "Any")),
+        (typing.List[str], "list[str]", ("str",)),  # noqa: UP006
+        (typing.List, "list[Any]", ("Any",)),  # noqa: UP006
+        (typing.Dict[str, int], "dict[str, int]", ("str", "int")),  # noqa: UP006
+        (typing.Dict, "dict[Any, Any]", ("Any", "Any")),  # noqa: UP006
+        (list[typing.Any], "list[Any]", ("Any",)),
+        (list[list[int]], "list[list[int]]", ("list[int]",)),
+        (dict[str, typing.Any], "dict[str, Any]", ("str", "Any")),
+        (dict[typing.Any, str], "dict[Any, str]", ("Any", "str")),
+        (dict[str, list[int]], "dict[str, list[int]]", ("str", "list[int]")),
     ],
 )
-def test_creation(type_ann: str, type_str: str) -> None:
-    a = TypeAnn(type_ann)
+def test_creation(type_ann: type, type_str: str, args: tuple[str, ...]) -> None:
+    a = mlc.typing.from_py(type_ann)
     assert str(a) == type_str
+    a_args = tuple(str(arg) for arg in a.args())
+    assert a_args == args
 
 
 @pytest.mark.parametrize(

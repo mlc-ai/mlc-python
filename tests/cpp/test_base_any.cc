@@ -1,10 +1,15 @@
 #include <gtest/gtest.h>
 #include <mlc/all.h>
+#include <type_traits>
 
 namespace {
 using namespace mlc;
 using mlc::base::DataTypeEqual;
 using mlc::base::DeviceEqual;
+
+using MyFuncTraits = FuncTraits<void(int32_t num_args, const AnyView *args, Any *ret)>;
+static_assert(MyFuncTraits::packed);
+static_assert(!MyFuncTraits::unpacked);
 
 template <typename T> inline void CheckObjPtr(const MLCAny &any, MLCTypeIndex type_index, T *ptr, int32_t ref_cnt) {
   EXPECT_EQ(any.type_index, static_cast<int32_t>(type_index));

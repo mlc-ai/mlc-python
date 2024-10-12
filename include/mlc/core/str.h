@@ -2,6 +2,7 @@
 #define MLC_CORE_STR_H_
 #include "./object.h"
 #include <cstring>
+#include <ostream>
 #include <sstream>
 
 namespace mlc {
@@ -198,7 +199,7 @@ inline Str Object::str() const {
   return Str(os.str());
 }
 
-template <typename T> MLC_INLINE Str Ref<T>::str() const {
+template <typename T> inline Str Ref<T>::str() const {
   AnyView v(this->operator AnyView());
   std::ostringstream os;
   os << v;
@@ -215,7 +216,19 @@ inline std::ostream &operator<<(std::ostream &os, const Any &src) {
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const ::mlc::base::PtrBase &src) {
+template <typename T> inline std::ostream &operator<<(std::ostream &os, const Ref<T> &_src) {
+  const MLCObjPtr &src = reinterpret_cast<const MLCObjPtr &>(_src);
+  MLCAny v{};
+  if (src.ptr != nullptr) {
+    v.type_index = src.ptr->type_index;
+    v.v_obj = src.ptr;
+  }
+  ::mlc::core::PrintAnyToStream(os, &v);
+  return os;
+}
+
+inline std::ostream &operator<<(std::ostream &os, const ObjectRef &_src) {
+  const MLCObjPtr &src = reinterpret_cast<const MLCObjPtr &>(_src);
   MLCAny v{};
   if (src.ptr != nullptr) {
     v.type_index = src.ptr->type_index;
@@ -232,6 +245,7 @@ inline std::ostream &operator<<(std::ostream &os, const Object &src) {
   ::mlc::core::PrintAnyToStream(os, &v);
   return os;
 }
+
 } // namespace mlc
 
 namespace mlc {

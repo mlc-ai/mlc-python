@@ -1,3 +1,4 @@
+from . import typing
 from .device import Device
 from .dict import Dict
 from .dtype import DataType

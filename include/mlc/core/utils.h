@@ -46,6 +46,11 @@ struct Exception : public std::exception {
 
 namespace mlc {
 namespace core {
+namespace typing {
+struct Type;
+} // namespace typing
+
+template <typename T> typing::Type ParseType();
 
 struct ReflectionHelper {
   explicit ReflectionHelper(int32_t type_index);
@@ -72,13 +77,12 @@ private:
 };
 
 template <typename SelfType> MLC_INLINE int32_t ObjPtrGetter(MLCTypeField *, void *addr, MLCAny *ret) {
-  using RefT = Ref<SelfType>;
-  const SelfType *v = static_cast<RefT *>(addr)->get();
+  const MLCObject *v = static_cast<MLCObjPtr *>(addr)->ptr;
   if (v == nullptr) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
     ret->v_obj = nullptr;
   } else {
-    ret->type_index = v->_mlc_header.type_index;
+    ret->type_index = v->type_index;
     ret->v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(v));
   }
   return 0;

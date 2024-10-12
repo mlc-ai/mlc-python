@@ -5,8 +5,8 @@
 #include <utility>
 
 namespace mlc {
+
 struct AnyView : public MLCAny {
-public:
   friend struct ::mlc::Any;
   /***** Section 1. Default constructor/destructors *****/
   MLC_INLINE ~AnyView() = default;

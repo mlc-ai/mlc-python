@@ -12,6 +12,7 @@ namespace mlc {
 public:                                                                                                                \
   template <typename> friend struct ::mlc::DefaultObjectAllocator;                                                     \
   template <typename> friend struct ::mlc::Ref;                                                                        \
+  template <typename> friend struct ::mlc::base::ObjPtrTraitsDefault;                                                  \
   friend struct ::mlc::Any;                                                                                            \
   friend struct ::mlc::AnyView;                                                                                        \
   template <typename DerivedType> MLC_INLINE bool IsInstance() const {                                                 \
@@ -123,6 +124,7 @@ struct Object {
 struct ObjectRef : protected ::mlc::base::ObjectRefDummyRoot {
   MLC_DEF_OBJ_REF(ObjectRef, Object, ::mlc::base::ObjectRefDummyRoot) //
       .StaticFn("__init__", InitOf<Object>);
+  friend std::ostream &operator<<(std::ostream &os, const TSelf &src);
 };
 
 } // namespace mlc
