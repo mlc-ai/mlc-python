@@ -16,11 +16,9 @@
 #endif
 #include "./base_traits.h"
 #include <cstdlib>
-#include <functional>
 #include <memory>
 #include <sstream>
 #include <type_traits>
-#include <vector>
 #if MLC_DEBUG_MODE == 1
 #include <iostream>
 #endif
@@ -132,12 +130,9 @@ MLC_INLINE const char *TypeIndex2TypeKey(const MLCAny *self) {
   return "(undefined)";
 }
 
-MLC_INLINE MLCTypeInfo *TypeRegister(int32_t parent_type_index, int32_t type_index, const char *type_key,
-                                     MLCAttrGetterSetter getter, MLCAttrGetterSetter setter) {
+MLC_INLINE MLCTypeInfo *TypeRegister(int32_t parent_type_index, int32_t type_index, const char *type_key) {
   MLCTypeInfo *info = nullptr;
   MLCTypeRegister(nullptr, parent_type_index, type_key, type_index, &info);
-  info->setter = setter;
-  info->getter = getter;
   return info;
 }
 
@@ -195,56 +190,7 @@ template <typename _T> struct Type2Str {
       static_assert(std::is_void_v<T>, "Unsupported type");
     }
   }
-
-  static void GetTypeAnnotation(std::vector<MLCTypeInfo *> *info) {
-    if constexpr (std::is_same_v<T, Any> || std::is_same_v<T, AnyView>) {
-      info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCNone)));
-    } else if constexpr (std::is_same_v<T, void>) {
-      MLC_THROW(TypeError) << "`void` is not allowed in type annotation";
-    } else if constexpr (std::is_same_v<T, char *>) {
-      info->push_back(TypeIndex2TypeInfo(TypeTraits<_T>::type_index));
-    } else if constexpr (IsPOD<T>) {
-      info->push_back(TypeIndex2TypeInfo(TypeTraits<T>::type_index));
-    } else if constexpr (IsRawObjPtr<T>) {
-      using U = std::remove_pointer_t<T>;
-      Type2Str<Ref<U>>::GetTypeAnnotation(info);
-    } else if constexpr (std::is_base_of_v<UList, T>) {
-      info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCList)));
-      Type2Str<typename T::TElem>::GetTypeAnnotation(info);
-    } else if constexpr (std::is_base_of_v<UDict, T>) {
-      info->push_back(TypeIndex2TypeInfo(static_cast<int32_t>(MLCTypeIndex::kMLCDict)));
-      Type2Str<typename T::TKey>::GetTypeAnnotation(info);
-      Type2Str<typename T::TValue>::GetTypeAnnotation(info);
-    } else if constexpr (IsRef<T> || IsObjRef<T>) {
-      using U = typename T::TObj;
-      info->push_back(TypeIndex2TypeInfo(U::_type_index));
-    } else {
-      static_assert(std::is_void_v<T>, "Unsupported type");
-    }
-  }
 };
-
-inline std::string TypeAnnotation2Str(MLCTypeInfo **ann) {
-  std::function<std::string(int *)> f;
-  f = [ann, &f](int *i) -> std::string {
-    MLCTypeInfo *info = ann[*i];
-    ++(*i);
-    if (info->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCNone)) {
-      return "Any";
-    } else if (info->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCList)) {
-      std::string elem = f(i);
-      return "list[" + elem + "]";
-    } else if (info->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCDict)) {
-      std::string key = f(i);
-      std::string value = f(i);
-      return "dict[" + key + ", " + value + "]";
-    } else {
-      return info->type_key;
-    }
-  };
-  int i = 0;
-  return f(&i);
-}
 
 MLC_INLINE void IncRef(MLCObject *obj) {
   if (obj != nullptr) {

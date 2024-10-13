@@ -2,6 +2,7 @@
 #define MLC_CORE_UTILS_H_
 
 #include "./func_traits.h" // IWYU pragma: export
+#include <iomanip>
 #include <mlc/base/all.h>
 
 #define MLC_SAFE_CALL_BEGIN()                                                                                          \
@@ -22,7 +23,17 @@
   MLC_UNREACHABLE()
 
 namespace mlc {
+namespace core {
+namespace typing {
+struct Type;
+} // namespace typing
+template <typename T> typing::Type ParseType();
+} // namespace core
+} // namespace mlc
 
+/********** Section 1. Exception *********/
+
+namespace mlc {
 struct Exception : public std::exception {
   Exception(Ref<ErrorObj> data);
   Exception(const Exception &other) : data_(other.data_) {}
@@ -41,68 +52,14 @@ struct Exception : public std::exception {
 
   Ref<Object> data_;
 };
-
 } // namespace mlc
 
 namespace mlc {
 namespace core {
-namespace typing {
-struct Type;
-} // namespace typing
 
-template <typename T> typing::Type ParseType();
+template <typename Callable> Any CallableToAny(Callable &&callable); // TODO: move to mlc/base?
 
-struct ReflectionHelper {
-  explicit ReflectionHelper(int32_t type_index);
-  template <typename Super, typename FieldType>
-  ReflectionHelper &FieldReadOnly(const char *name, FieldType Super::*field);
-  template <typename Super, typename FieldType> ReflectionHelper &Field(const char *name, FieldType Super::*field);
-  template <typename Callable> ReflectionHelper &MemFn(const char *name, Callable &&method);
-  template <typename Callable> ReflectionHelper &StaticFn(const char *name, Callable &&method);
-  operator int32_t();
-  static std::string DefaultStrMethod(AnyView any);
-
-private:
-  template <typename Cls, typename FieldType> constexpr std::ptrdiff_t ReflectOffset(FieldType Cls::*member) {
-    return reinterpret_cast<std::ptrdiff_t>(&((Cls *)(nullptr)->*member));
-  }
-  template <typename Super, typename FieldType> MLCTypeField PrepareField(const char *name, FieldType Super::*field);
-  template <typename Callable> MLCTypeMethod PrepareMethod(const char *name, Callable &&method);
-
-  int32_t type_index;
-  std::vector<MLCTypeField> fields;
-  std::vector<MLCTypeMethod> methods;
-  std::vector<Any> method_pool;
-  std::vector<std::vector<MLCTypeInfo *>> type_annotation_pool;
-};
-
-template <typename SelfType> MLC_INLINE int32_t ObjPtrGetter(MLCTypeField *, void *addr, MLCAny *ret) {
-  const MLCObject *v = static_cast<MLCObjPtr *>(addr)->ptr;
-  if (v == nullptr) {
-    ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
-    ret->v_obj = nullptr;
-  } else {
-    ret->type_index = v->type_index;
-    ret->v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(v));
-  }
-  return 0;
-}
-
-template <typename SelfType> MLC_INLINE int32_t ObjPtrSetter(MLCTypeField *, void *addr, MLCAny *src) {
-  using namespace ::mlc::base;
-  using RefT = Ref<SelfType>;
-  static_assert(sizeof(RefT) == sizeof(MLCObjPtr), "Size mismatch");
-  try {
-    *static_cast<RefT *>(addr) = TypeTraits<SelfType *>::AnyToTypeOwned(src);
-  } catch (const TemporaryTypeError &) {
-    std::ostringstream oss;
-    oss << "Cannot convert from type `" << TypeIndex2TypeKey(src->type_index) << "` to `" << SelfType::_type_key
-        << " *`";
-    *static_cast<::mlc::Any *>(src) = MLC_MAKE_ERROR_HERE(TypeError, oss.str());
-    return -2;
-  }
-  return 0;
-}
+/********** Section 2. Nested type checking *********/
 
 struct NestedTypeError : public std::runtime_error {
   explicit NestedTypeError(const char *msg) : std::runtime_error(msg) {}
@@ -166,6 +123,95 @@ template <typename T> struct NestedTypeCheck<List<T>> {
 };
 template <typename K, typename V> struct NestedTypeCheck<Dict<K, V>> {
   MLC_INLINE_NO_MSVC static void Run(const MLCAny &any);
+};
+
+/********** Section 3. Reflection *********/
+
+struct ReflectionHelper {
+  explicit ReflectionHelper(int32_t type_index) : type_index(type_index) {}
+
+  template <typename Super, typename FieldType>
+  inline ReflectionHelper &FieldReadOnly(const char *name, FieldType Super::*field) {
+    MLCTypeField f = this->PrepareField<Super, FieldType>(name, field);
+    f.is_read_only = true;
+    this->fields.emplace_back(f);
+    return *this;
+  }
+
+  template <typename Super, typename FieldType>
+  inline ReflectionHelper &Field(const char *name, FieldType Super::*field) {
+    MLCTypeField f = this->PrepareField<Super, FieldType>(name, field);
+    this->fields.emplace_back(f);
+    return *this;
+  }
+
+  template <typename Callable> inline ReflectionHelper &MemFn(const char *name, Callable &&method) {
+    constexpr int32_t MemFn = 0;
+    MLCTypeMethod m = this->PrepareMethod(name, std::forward<Callable>(method));
+    m.kind = MemFn;
+    this->methods.emplace_back(m);
+    return *this;
+  }
+
+  template <typename Callable> inline ReflectionHelper &StaticFn(const char *name, Callable &&method) {
+    constexpr int32_t StaticFn = 1;
+    MLCTypeMethod m = this->PrepareMethod(name, std::forward<Callable>(method));
+    m.kind = StaticFn;
+    this->methods.emplace_back(m);
+    return *this;
+  }
+
+  inline operator int32_t() {
+    if (!this->fields.empty() || !this->methods.empty()) {
+      auto has_method = [&](const char *name) {
+        for (const auto &entry : this->methods) {
+          if (std::strcmp(entry.name, name) == 0) {
+            return true;
+          }
+        }
+        return false;
+      };
+      if (!has_method("__str__")) {
+        this->MemFn("__str__", &ReflectionHelper::DefaultStrMethod);
+      }
+      MLCTypeDefReflection(nullptr, this->type_index, this->fields.size(), this->fields.data(), this->methods.size(),
+                           this->methods.data());
+    }
+    return 0;
+  }
+
+  static inline std::string DefaultStrMethod(AnyView any) { // TODO: maybe move to private?
+    std::ostringstream os;
+    os << ::mlc::base::TypeIndex2TypeKey(any.type_index) << "@0x" << std::setfill('0') << std::setw(12) << std::hex
+       << (uintptr_t)(any.v_ptr);
+    return os.str();
+  }
+
+private:
+  template <typename Cls, typename FieldType> constexpr std::ptrdiff_t ReflectOffset(FieldType Cls::*member) {
+    return reinterpret_cast<std::ptrdiff_t>(&((Cls *)(nullptr)->*member));
+  }
+
+  template <typename Super, typename FieldType>
+  inline MLCTypeField PrepareField(const char *name, FieldType Super::*field) {
+    int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
+    int32_t num_bytes = static_cast<int32_t>(sizeof(FieldType));
+    int32_t is_read_only = false;
+    Any ty = ParseType<FieldType>();
+    this->any_pool.push_back(ty);
+    return MLCTypeField{name, field_offset, num_bytes, is_read_only, ty.v_obj};
+  }
+
+  template <typename Callable> inline MLCTypeMethod PrepareMethod(const char *name, Callable &&method) {
+    Any func = CallableToAny(std::forward<Callable>(method));
+    this->any_pool.push_back(func);
+    return MLCTypeMethod{name, reinterpret_cast<MLCFunc *>(func.v_obj), -1};
+  }
+
+  int32_t type_index;
+  std::vector<MLCTypeField> fields = {};
+  std::vector<MLCTypeMethod> methods = {};
+  std::vector<Any> any_pool = {};
 };
 
 } // namespace core

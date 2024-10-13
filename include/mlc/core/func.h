@@ -87,6 +87,10 @@ MLC_INLINE void HandleSafeCallError(int32_t err_code, MLCAny *ret) noexcept(fals
   }
   MLC_UNREACHABLE();
 }
+
+template <typename Callable> MLC_INLINE Any CallableToAny(Callable &&callable) {
+  return Ref<FuncObj>::New(std::forward<Callable>(callable));
+}
 } // namespace core
 } // namespace mlc
 

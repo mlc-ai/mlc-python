@@ -1,5 +1,6 @@
 #ifndef MLC_CORE_FUNC_TRAITS_H_
 #define MLC_CORE_FUNC_TRAITS_H_
+#include <functional>
 #include <mlc/base/all.h>
 #include <type_traits>
 

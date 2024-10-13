@@ -218,7 +218,6 @@ struct Dict : public Type {
 
 } // namespace typing
 
-namespace details {
 template <typename T> struct FakeObjectRef : public ObjectRef {
   using TObj = T;
 };
@@ -253,11 +252,7 @@ template <typename T> struct TypeAnnParser {
   }
 };
 
-} // namespace details
-
-template <typename T> typing::Type ParseType() {
-  return ::mlc::core::details::TypeAnnParser<::mlc::base::RemoveCR<T>>::Run();
-}
+template <typename T> typing::Type ParseType() { return ::mlc::core::TypeAnnParser<::mlc::base::RemoveCR<T>>::Run(); }
 
 } // namespace core
 } // namespace mlc

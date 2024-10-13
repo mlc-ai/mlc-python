@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 import types
 import typing
@@ -62,8 +64,8 @@ def translate_exception_to_c(exception: Exception) -> tuple[bytes, int, bytes]:
     return kind, len(bytes_info), bytes_info
 
 
-def translate_exception_from_c(err: "Error") -> Exception:
-    from .core import pycode_fake
+def translate_exception_from_c(err: Error) -> Exception:
+    from .core import error_pycode_fake
 
     kind, info = err.kind, err._info
     msg, info = info[0], info[1:]
@@ -73,11 +75,11 @@ def translate_exception_from_c(err: "Error") -> Exception:
         exception = RuntimeError(kind + ": " + msg)
     while info:
         filename, lineno, funcname, info = info[0], int(info[1]), info[2], info[3:]
-        fake_code = pycode_fake(filename, funcname, lineno)
+        fake_code = error_pycode_fake(filename, funcname, lineno)
         try:
             exec(fake_code)
-        except Exception as err:
-            tb_new = err.__traceback__.tb_next  # type: ignore[union-attr]
+        except Exception as fake_exception:
+            tb_new = fake_exception.__traceback__.tb_next  # type: ignore[union-attr]
         exception = exception.with_traceback(
             types.TracebackType(
                 tb_next=exception.__traceback__,

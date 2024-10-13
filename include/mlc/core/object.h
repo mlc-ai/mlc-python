@@ -24,9 +24,7 @@ public:                                                                         
   [[maybe_unused]] static constexpr const char *_type_key = TypeKey;                                                   \
   [[maybe_unused]] static inline MLCTypeInfo *_type_info =                                                             \
       ::mlc::base::TypeRegister(static_cast<int32_t>(ParentType::_type_index), /**/                                    \
-                                static_cast<int32_t>(TypeIndex), TypeKey,      /**/                                    \
-                                &::mlc::core::ObjPtrGetter<SelfType>,          /**/                                    \
-                                &::mlc::core::ObjPtrSetter<SelfType>);                                                 \
+                                static_cast<int32_t>(TypeIndex), TypeKey);                                             \
   [[maybe_unused]] static inline int32_t *_type_ancestors = _type_info->type_ancestors;                                \
   [[maybe_unused]] static constexpr int32_t _type_depth = ParentType::_type_depth + 1;                                 \
   using _type_parent [[maybe_unused]] = ParentType;                                                                    \

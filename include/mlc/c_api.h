@@ -55,6 +55,8 @@ typedef enum {
   kMLCError = 32771,
   kMLCFunc = 32772,
   kMLCStr = 32773,
+  // kMLCTyping {
+  kMLCTypingBegin = 32774,
   kMLCTyping = 32774,
   kMLCTypingAny = 32775,
   kMLCTypingNone = 32776,
@@ -64,6 +66,8 @@ typedef enum {
   kMLCTypingUnion = 32780,
   kMLCTypingList = 32781,
   kMLCTypingDict = 32782,
+  kMLCTypingEnd = 32783,
+  // }
   // [Section] Dynamic Boxed: [kMLCDynObjectBegin, +oo)
   kMLCDynObjectBegin = 65536,
 #ifdef __cplusplus
@@ -178,15 +182,13 @@ typedef struct {
 } MLCTypingDict;
 
 typedef struct MLCTypeField MLCTypeField;
-typedef int32_t (*MLCAttrGetterSetter)(MLCTypeField *, void *addr, MLCAny *);
 
 typedef struct MLCTypeField {
   const char *name;
   int64_t offset;
-  MLCAttrGetterSetter getter;
-  MLCAttrGetterSetter setter;
-  MLCTypeInfo **type_annotation;
+  int32_t num_bytes;
   int32_t is_read_only;
+  MLCAny *ty;
 } MLCTypeField;
 
 typedef struct {
@@ -200,10 +202,8 @@ typedef struct MLCTypeInfo {
   const char *type_key;
   int32_t type_depth;
   int32_t *type_ancestors; // Range: [0, type_depth)
-  MLCAttrGetterSetter getter;
-  MLCAttrGetterSetter setter;
-  MLCTypeField *fields;   // Ends with a field with name == nullptr
-  MLCTypeMethod *methods; // Ends with a method with name == nullptr
+  MLCTypeField *fields;    // Ends with a field with name == nullptr
+  MLCTypeMethod *methods;  // Ends with a method with name == nullptr
 } MLCTypeInfo;
 
 typedef void *MLCTypeTableHandle;
