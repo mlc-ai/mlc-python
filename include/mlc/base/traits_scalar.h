@@ -13,12 +13,12 @@ template <typename Int> struct TypeTraits<Int, std::enable_if_t<std::is_integral
 
   MLC_INLINE static void TypeToAny(Int src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCInt);
-    ret->v_int64 = static_cast<int64_t>(src);
+    ret->v.v_int64 = static_cast<int64_t>(src);
   }
   MLC_INLINE static Int AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
     if (ty == MLCTypeIndex::kMLCInt) {
-      return static_cast<Int>(v->v_int64);
+      return static_cast<Int>(v->v.v_int64);
     }
     throw TemporaryTypeError();
   }
@@ -32,14 +32,14 @@ template <typename Float> struct TypeTraits<Float, std::enable_if_t<std::is_floa
 
   MLC_INLINE static void TypeToAny(Float src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCFloat);
-    ret->v_float64 = src;
+    ret->v.v_float64 = src;
   }
   MLC_INLINE static Float AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
     if (ty == MLCTypeIndex::kMLCFloat) {
-      return static_cast<Float>(v->v_float64);
+      return static_cast<Float>(v->v.v_float64);
     } else if (ty == MLCTypeIndex::kMLCInt) {
-      return static_cast<Float>(v->v_int64);
+      return static_cast<Float>(v->v.v_int64);
     }
     throw TemporaryTypeError();
   }
@@ -54,12 +54,12 @@ template <> struct TypeTraits<void *> {
   MLC_INLINE static void TypeToAny(void *src, MLCAny *ret) {
     ret->type_index =
         (src == nullptr) ? static_cast<int32_t>(MLCTypeIndex::kMLCNone) : static_cast<int32_t>(MLCTypeIndex::kMLCPtr);
-    ret->v_ptr = src;
+    ret->v.v_ptr = src;
   }
   MLC_INLINE static void *AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
     if (ty == MLCTypeIndex::kMLCPtr || ty == MLCTypeIndex::kMLCRawStr || ty == MLCTypeIndex::kMLCNone) {
-      return v->v_ptr;
+      return v->v.v_ptr;
     }
     throw TemporaryTypeError();
   }

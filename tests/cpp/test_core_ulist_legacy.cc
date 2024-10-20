@@ -23,7 +23,7 @@ TEST(Legacy_UList_Constructor, Default) {
   ASSERT_NE(list_ptr, nullptr);
   EXPECT_EQ(list_ptr->_mlc_header.type_index, static_cast<int32_t>(MLCTypeIndex::kMLCList));
   EXPECT_EQ(list_ptr->_mlc_header.ref_cnt, 1);
-  EXPECT_NE(list_ptr->_mlc_header.deleter, nullptr);
+  EXPECT_NE(list_ptr->_mlc_header.v.deleter, nullptr);
   EXPECT_EQ(list_ptr->capacity, 0);
   EXPECT_EQ(list_ptr->size, 0);
   TestSizeCapacityClear(list.get(), 0, 0);
@@ -37,7 +37,7 @@ TEST(Legacy_UList_Constructor, InitializerList) {
     ASSERT_NE(list_ptr, nullptr);
     EXPECT_EQ(list_ptr->_mlc_header.type_index, static_cast<int32_t>(MLCTypeIndex::kMLCList));
     EXPECT_EQ(list_ptr->_mlc_header.ref_cnt, 1);
-    EXPECT_NE(list_ptr->_mlc_header.deleter, nullptr);
+    EXPECT_NE(list_ptr->_mlc_header.v.deleter, nullptr);
     EXPECT_EQ(list_ptr->capacity, 7);
     EXPECT_EQ(list_ptr->size, 7);
     EXPECT_EQ(src->size(), 7);
@@ -58,7 +58,7 @@ TEST(Legacy_UList_PushBack, POD) {
   ASSERT_NE(list_ptr, nullptr);
   EXPECT_EQ(list_ptr->_mlc_header.type_index, static_cast<int32_t>(MLCTypeIndex::kMLCList));
   EXPECT_EQ(list_ptr->_mlc_header.ref_cnt, 1);
-  EXPECT_NE(list_ptr->_mlc_header.deleter, nullptr);
+  EXPECT_NE(list_ptr->_mlc_header.v.deleter, nullptr);
   EXPECT_EQ(list_ptr->capacity, 2);
   EXPECT_EQ(list_ptr->size, 2);
   EXPECT_EQ(int32_t(list[0]), 100);
@@ -76,7 +76,7 @@ TEST(Legacy_UList_PushBack, Obj) {
   ASSERT_NE(list_ptr, nullptr);
   EXPECT_EQ(list_ptr->_mlc_header.type_index, static_cast<int32_t>(MLCTypeIndex::kMLCList));
   EXPECT_EQ(list_ptr->_mlc_header.ref_cnt, 1);
-  EXPECT_NE(list_ptr->_mlc_header.deleter, nullptr);
+  EXPECT_NE(list_ptr->_mlc_header.v.deleter, nullptr);
   EXPECT_EQ(list_ptr->capacity, 2);
   EXPECT_EQ(list_ptr->size, 2);
   EXPECT_EQ((Object *)(list)[0], obj1.get());
@@ -152,7 +152,7 @@ TEST(Legacy_UList_Insert, Once) {
       list->insert(pos, data);
       auto test = [](AnyView expected, AnyView actual) {
         EXPECT_EQ(expected.type_index, actual.type_index);
-        EXPECT_EQ(expected.v_int64, actual.v_int64);
+        EXPECT_EQ(expected.v.v_int64, actual.v.v_int64);
       };
       for (int i = 0; i < pos; ++i) {
         test(values[i], list[i]);

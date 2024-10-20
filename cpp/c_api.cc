@@ -81,7 +81,7 @@ MLC_API int32_t MLCDynTypeTypeTableDestroy(MLCTypeTableHandle handle) {
 MLC_API int32_t MLCAnyIncRef(MLCAny *any) {
   MLC_SAFE_CALL_BEGIN();
   if (!::mlc::base::IsTypeIndexPOD(any->type_index)) {
-    ::mlc::base::IncRef(any->v_obj);
+    ::mlc::base::IncRef(any->v.v_obj);
   }
   MLC_SAFE_CALL_END(&last_error);
 }
@@ -89,7 +89,7 @@ MLC_API int32_t MLCAnyIncRef(MLCAny *any) {
 MLC_API int32_t MLCAnyDecRef(MLCAny *any) {
   MLC_SAFE_CALL_BEGIN();
   if (!::mlc::base::IsTypeIndexPOD(any->type_index)) {
-    ::mlc::base::DecRef(any->v_obj);
+    ::mlc::base::DecRef(any->v.v_obj);
   }
   MLC_SAFE_CALL_END(&last_error);
 }
@@ -150,7 +150,7 @@ MLC_API void *MLCExtObjCreate(int32_t bytes, int32_t type_index) {
   MLCAny *header = reinterpret_cast<MLCAny *>(data);
   header->type_index = type_index;
   header->ref_cnt = 0;
-  header->deleter = MLCExtObjDelete;
+  header->v.deleter = MLCExtObjDelete;
   return data;
 }
 
@@ -168,7 +168,7 @@ MLC_API void MLCExtObjDelete(void *objptr) {
       break;
     }
     // TODO: fix this by checking if the field is a pointer
-    // MLCObject *ptr = reinterpret_cast<MLCObjPtr *>(static_cast<char *>(objptr) + field.offset)->ptr;
+    // MLCAny *ptr = reinterpret_cast<MLCObjPtr *>(static_cast<char *>(objptr) + field.offset)->ptr;
     // ::mlc::base::DecRef(ptr);
   }
   delete[] reinterpret_cast<char *>(objptr);

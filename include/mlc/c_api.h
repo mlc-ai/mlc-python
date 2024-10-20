@@ -78,38 +78,44 @@ typedef enum {
 
 struct MLCAny;
 struct MLCTypeInfo;
-typedef struct MLCAny MLCObject;
 typedef void (*MLCDeleterType)(void *);
 typedef void (*MLCFuncCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret);
 typedef int32_t (*MLCFuncSafeCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret);
 
-typedef struct MLCAny {
-  int32_t type_index;
-  union {              // 4 bytes
-    int32_t ref_cnt;   // reference counter for heap object
-    int32_t small_len; // length for on-stack object
-  };
-  union {                   // 8 bytes
-    int64_t v_int64;        // integers
-    double v_float64;       // floating-point numbers
-    DLDataType v_dtype;     // data type
-    DLDevice v_device;      // device
-    void *v_ptr;            // typeless pointers
-    const char *v_str;      // raw string
-    MLCObject *v_obj;       // ref counted objects
-    MLCDeleterType deleter; // Deleter of the object
-    char v_bytes[8];        // small string
-  };
-} MLCAny;
-
 typedef struct {
-  MLCObject *ptr;
+  MLCAny *ptr;
 } MLCObjPtr;
 
 typedef struct {
   int64_t num_bytes;
   const char *bytes;
 } MLCByteArray;
+
+typedef union {
+  int64_t v_int64;        // integers
+  double v_float64;       // floating-point numbers
+  DLDataType v_dtype;     // data type
+  DLDevice v_device;      // device
+  void *v_ptr;            // typeless pointers
+  const char *v_str;      // raw string
+  MLCAny *v_obj;          // ref counted objects
+  MLCDeleterType deleter; // Deleter of the object
+  char v_bytes[8];        // small string
+} MLCPODValueUnion;
+
+typedef struct MLCAny {
+  int32_t type_index;  // 4 bytes
+  union {              // 4 bytes
+    int32_t ref_cnt;   // reference counter for heap object
+    int32_t small_len; // length for on-stack object
+  };
+  MLCPODValueUnion v; // 8 bytes
+} MLCAny;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCPODValueUnion data;
+} MLCBoxedPOD;
 
 typedef struct {
   MLCAny _mlc_header;

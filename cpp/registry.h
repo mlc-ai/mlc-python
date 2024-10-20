@@ -79,7 +79,7 @@ struct TypeInfoWrapper {
 };
 
 struct TypeTable {
-  using ObjPtr = std::unique_ptr<MLCObject, void (*)(MLCObject *)>;
+  using ObjPtr = std::unique_ptr<MLCAny, void (*)(MLCAny *)>;
 
   int32_t num_types;
   std::vector<std::unique_ptr<TypeInfoWrapper>> type_table;
@@ -126,7 +126,7 @@ struct TypeTable {
         std::cerr << "Object already exists in the memory pool: " << source;
         std::abort();
       }
-      MLCObject *source_casted = reinterpret_cast<MLCObject *>(source);
+      MLCAny *source_casted = reinterpret_cast<MLCAny *>(source);
       ::mlc::base::IncRef(source_casted);
       it->second = ObjPtr(source_casted, ::mlc::base::DecRef);
     }

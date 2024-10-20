@@ -1,94 +1,10 @@
 from __future__ import annotations
 
-import ctypes
-import dataclasses
 import functools
-import sys
 import typing
 from collections.abc import Callable
 
-if typing.TYPE_CHECKING:
-    from .core import PyAny  # type: ignore[import-not-found]
-
-Ptr = ctypes.c_void_p
-
-if sys.version_info >= (3, 10):
-    DATACLASS_SLOTS = {"slots": True}
-else:
-    DATACLASS_SLOTS = {}
-
-
-class DLDataType(ctypes.Structure):
-    _fields_ = [  # noqa: RUF012
-        ("code", ctypes.c_uint8),
-        ("bits", ctypes.c_uint8),
-        ("lanes", ctypes.c_uint16),
-    ]
-
-
-class DLDevice(ctypes.Structure):
-    _fields_ = [  # noqa: RUF012
-        ("device_type", ctypes.c_int),
-        ("device_id", ctypes.c_int),
-    ]
-
-
-class MLCHeader(ctypes.Structure):
-    _fields_ = [  # noqa: RUF012
-        ("type_index", ctypes.c_int32),
-        ("ref_cnt", ctypes.c_int32),
-        ("deleter", Ptr),
-    ]
-
-
-class MLCObjPtr(ctypes.Structure):
-    _fields_ = [  # noqa: RUF012
-        ("ptr", Ptr),
-    ]
-
-
-@dataclasses.dataclass(eq=False, **DATACLASS_SLOTS)
-class TypeField:
-    name: str
-    offset: int
-    num_bytes: int
-    is_read_only: bool
-    ty: PyAny  # actual type: mlc.typing.Type
-    getter: Callable[[typing.Any], typing.Any] | None = None
-    setter: Callable[[typing.Any, typing.Any], None] | None = None
-
-
-@dataclasses.dataclass(eq=False, **DATACLASS_SLOTS)
-class TypeMethod:
-    name: str
-    func: PyAny
-    kind: int
-
-
-@dataclasses.dataclass(eq=False, **DATACLASS_SLOTS)
-class TypeInfo:
-    type_index: int
-    type_key: str
-    type_depth: int
-    type_ancestors: tuple[int, ...]
-    fields: tuple[TypeField, ...]
-    methods: tuple[TypeMethod, ...]
-
-    def prototype(self) -> str:
-        # io = StringIO()
-        # print(f"class {self.type_key}:", file=io)
-        # print(f"  # type_index: {self.type_index}; type_ancestors: {self.type_ancestors}", file=io)
-        # for field in self.fields:
-        #     print(f"  {field.name}: {field.type_ann}", file=io)
-        # for fn in self.methods:
-        #     if fn.kind == 0:
-        #         print(f"  def {fn.name}(self, *args): ...", file=io)
-        #     else:
-        #         print("  @staticmethod", file=io)
-        #         print(f"  def {fn.name}(*args): ...", file=io)
-        # return io.getvalue().rstrip()
-        raise NotImplementedError
-
+from .base import TypeInfo
 
 ClsType = typing.TypeVar("ClsType")
 

@@ -20,19 +20,19 @@ template <> struct TypeTraits<DLDataType> {
 
   MLC_INLINE static void TypeToAny(DLDataType src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
-    ret->v_dtype = src;
+    ret->v.v_dtype = src;
   }
 
   MLC_INLINE static DLDataType AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
     if (ty == MLCTypeIndex::kMLCDataType) {
-      return v->v_dtype;
+      return v->v.v_dtype;
     }
     if (ty == MLCTypeIndex::kMLCRawStr) {
-      return String2DLDataType(v->v_str);
+      return String2DLDataType(v->v.v_str);
     }
     if (ty == MLCTypeIndex::kMLCStr) {
-      return String2DLDataType(reinterpret_cast<const MLCStr *>(v->v_obj)->data);
+      return String2DLDataType(reinterpret_cast<const MLCStr *>(v->v.v_obj)->data);
     }
     throw TemporaryTypeError();
   }

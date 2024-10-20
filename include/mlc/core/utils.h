@@ -183,7 +183,7 @@ struct ReflectionHelper {
   static inline std::string DefaultStrMethod(AnyView any) { // TODO: maybe move to private?
     std::ostringstream os;
     os << ::mlc::base::TypeIndex2TypeKey(any.type_index) << "@0x" << std::setfill('0') << std::setw(12) << std::hex
-       << (uintptr_t)(any.v_ptr);
+       << (uintptr_t)(any.v.v_ptr);
     return os.str();
   }
 
@@ -199,13 +199,13 @@ private:
     int32_t is_read_only = false;
     Any ty = ParseType<FieldType>();
     this->any_pool.push_back(ty);
-    return MLCTypeField{name, field_offset, num_bytes, is_read_only, ty.v_obj};
+    return MLCTypeField{name, field_offset, num_bytes, is_read_only, ty.v.v_obj};
   }
 
   template <typename Callable> inline MLCTypeMethod PrepareMethod(const char *name, Callable &&method) {
     Any func = CallableToAny(std::forward<Callable>(method));
     this->any_pool.push_back(func);
-    return MLCTypeMethod{name, reinterpret_cast<MLCFunc *>(func.v_obj), -1};
+    return MLCTypeMethod{name, reinterpret_cast<MLCFunc *>(func.v.v_obj), -1};
   }
 
   int32_t type_index;

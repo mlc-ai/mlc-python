@@ -29,7 +29,7 @@ template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<List<T>>::Run(cons
     throw NestedTypeError(e.what()).NewFrame(::mlc::base::Type2Str<UList>::Run());
   }
   if constexpr (!std::is_same_v<T, Any>) {
-    UListObj *list = reinterpret_cast<UListObj *>(any.v_obj);
+    UListObj *list = reinterpret_cast<UListObj *>(any.v.v_obj);
     int64_t size = list->size();
     for (int32_t i = 0; i < size; ++i) {
       try {
@@ -48,7 +48,7 @@ template <typename K, typename V> MLC_INLINE_NO_MSVC void NestedTypeCheck<Dict<K
     throw NestedTypeError(e.what()).NewFrame(::mlc::base::Type2Str<UDict>::Run());
   }
   if constexpr (!std::is_same_v<K, Any> || !std::is_same_v<V, Any>) {
-    DictBase *dict = reinterpret_cast<DictBase *>(any.v_obj);
+    DictBase *dict = reinterpret_cast<DictBase *>(any.v.v_obj);
     dict->IterateAll([](uint8_t *, MLCAny *key, MLCAny *value) {
       if constexpr (!std::is_same_v<K, Any>) {
         try {

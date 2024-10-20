@@ -12,15 +12,15 @@ template <> struct TypeTraits<const char *> {
 
   static void TypeToAny(const char *src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCRawStr);
-    ret->v_str = src;
+    ret->v.v_str = src;
   }
   static const char *AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
     if (ty == MLCTypeIndex::kMLCRawStr) {
-      return v->v_str;
+      return v->v.v_str;
     }
     if (ty == MLCTypeIndex::kMLCStr) {
-      return reinterpret_cast<MLCStr *>(v->v_obj)->data;
+      return reinterpret_cast<MLCStr *>(v->v.v_obj)->data;
     }
     throw TemporaryTypeError();
   }

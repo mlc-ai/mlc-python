@@ -5,7 +5,7 @@ from mlc import Device
 
 @pytest.mark.parametrize("x", ["cpu", "cpu:1", "cuda:0", "mps:1"])
 def test_device_init_str(x: str) -> None:
-    func = mlc.get_global_func("mlc.testing.cxx_device")
+    func = mlc.Func.get("mlc.testing.cxx_device")
     y = func(Device(x))
     z = func(x)
     if ":" not in x:
@@ -16,7 +16,7 @@ def test_device_init_str(x: str) -> None:
 
 @pytest.mark.parametrize("x", ["unk"])
 def test_device_init_fail(x: str) -> None:
-    func = mlc.get_global_func("mlc.testing.cxx_device")
+    func = mlc.Func.get("mlc.testing.cxx_device")
     try:
         func(x)
     except ValueError as e:

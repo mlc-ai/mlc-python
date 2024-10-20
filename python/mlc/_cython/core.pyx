@@ -1,15 +1,15 @@
 # cython: language_level=3
 import ctypes
-import platform
 import itertools
 from libc.stdint cimport int32_t, int64_t, uint64_t, uint8_t, uint16_t, int8_t, int16_t
 from libc.stdlib cimport malloc, free
 from numbers import Integral, Number
 from cpython cimport Py_DECREF, Py_INCREF
-from pathlib import Path
-from . import error, type_info
+from . import base
 
-Ptr = ctypes.c_void_p
+
+Ptr = base.Ptr
+LIB_PATH, LIB = base.lib_path(__file__)
 
 # Section 1. Definition from `mlc/c_api.h`
 
@@ -74,13 +74,7 @@ cdef extern from "mlc/c_api.h" nogil:
         # }
         kMLCDynObjectBegin = 65536
 
-    ctypedef struct MLCAny:
-        int32_t type_index
-        # union {
-        int32_t ref_cnt
-        int32_t small_len
-        # }
-        # union {
+    ctypedef union MLCPODValueUnion:
         int64_t v_int64
         double v_float64
         DLDataType v_dtype
@@ -90,7 +84,18 @@ cdef extern from "mlc/c_api.h" nogil:
         MLCAny* v_obj
         MLCDeleterType deleter
         char[8] v_bytes
+
+    ctypedef struct MLCBoxedPOD:
+        MLCAny _mlc_header
+        MLCPODValueUnion data
+
+    ctypedef struct MLCAny:
+        int32_t type_index
+        # union {
+        int32_t ref_cnt
+        int32_t small_len
         # }
+        MLCPODValueUnion v
 
     ctypedef struct MLCObjPtr:
         MLCAny *ptr
@@ -202,13 +207,6 @@ cdef uint64_t _sym(object symbol):
     symbol: ctypes.CDLL._FuncPtr
     return <uint64_t>(ctypes.cast(symbol, Ptr).value)
 
-SYSTEM = platform.system()
-DSO_SUFFIX = ".so" if SYSTEM == "Linux" else ".dylib" if SYSTEM == "Darwin" else ".dll"
-LIB_PATH = Path(__file__).parent.parent / "lib" / f"libmlc_registry{DSO_SUFFIX}"
-if not LIB_PATH.exists():
-    raise FileNotFoundError(f"Cannot find the MLC registry library at {LIB_PATH}")
-LIB = ctypes.CDLL(str(LIB_PATH), ctypes.RTLD_GLOBAL)
-
 cdef _T_GetLastError _C_GetLastError = <_T_GetLastError>_sym(LIB.MLCGetLastError)
 cdef _T_AnyIncRef _C_AnyIncRef = <_T_AnyIncRef>_sym(LIB.MLCAnyIncRef)
 cdef _T_AnyDecRef _C_AnyDecRef = <_T_AnyDecRef>_sym(LIB.MLCAnyDecRef)
@@ -261,7 +259,7 @@ cdef inline void _check_error(int32_t err_code):
         exception = RuntimeError(obj)
     elif err_code == -2:
         obj: PyAny = _any_c2py_no_inc_ref(_C_GetLastError())
-        exception = error.translate_exception_from_c(obj)
+        exception = base.translate_exception_from_c(obj)
     else:
         raise RuntimeError("MLC function call failed with error code: %d" % err_code)
     raise exception
@@ -275,7 +273,7 @@ cdef inline void _check_error_from(int32_t err_code, MLCAny* c_ret):
         exception = RuntimeError(obj)
     elif err_code == -2:
         obj: PyAny = _any_c2py_no_inc_ref(c_ret[0])
-        exception = error.translate_exception_from_c(obj)
+        exception = base.translate_exception_from_c(obj)
     else:
         raise RuntimeError("MLC function call failed with error code: %d" % err_code)
     c_ret[0] = _MLCAnyNone()
@@ -307,7 +305,7 @@ cdef class PyAny:
                 "Unsupported type of `init_func`. "
                 f"Expected `str` or `mlc.Func`, but got: {type(init_func)}"
             ) from e
-        _func_call_impl(<MLCFunc*>(func._mlc_any.v_obj), init_args, &self._mlc_any)
+        _func_call_impl(<MLCFunc*>(func._mlc_any.v.v_obj), init_args, &self._mlc_any)
 
     def __repr__(self) -> str:
         cdef int32_t type_index = self._mlc_any.type_index
@@ -351,14 +349,14 @@ cdef inline MLCAny _MLCAnyNone():
     cdef MLCAny x
     x.type_index = kMLCNone
     x.ref_cnt = 0
-    x.v_int64 = 0
+    x.v.v_int64 = 0
     return x
 
 cdef inline MLCAny _MLCAnyObj(int32_t type_index, MLCAny* obj):
     cdef MLCAny x
     x.type_index = type_index
     x.ref_cnt = 0
-    x.v_obj = obj
+    x.v.v_obj = obj
     return x
 
 # Section 5. Conversion MLCAny => Python objects
@@ -371,15 +369,15 @@ cdef inline object _any_c2py_no_inc_ref(const MLCAny x):
     if type_index == kMLCNone:
         return None
     elif type_index == kMLCInt:
-        return <int>(x.v_int64)
+        return <int>(x.v.v_int64)
     elif type_index == kMLCFloat:
-        return <float>(x.v_float64)
+        return <float>(x.v.v_float64)
     elif type_index == kMLCPtr:
-        return ctypes.cast(<unsigned long long>x.v_ptr, Ptr)
+        return ctypes.cast(<unsigned long long>x.v.v_ptr, Ptr)
     elif type_index == kMLCRawStr:
-        return str_c2py(x.v_str)
+        return str_c2py(x.v.v_str)
     elif type_index == kMLCStr:
-        mlc_str = <MLCStr*>(x.v_obj)
+        mlc_str = <MLCStr*>(x.v.v_obj)
         str_ret = Str.__new__(Str, str_c2py(mlc_str.data[:mlc_str.length]))
         str_ret._mlc_any = x
         return str_ret
@@ -397,15 +395,15 @@ cdef inline object _any_c2py_inc_ref(MLCAny x):
     if type_index == kMLCNone:
         return None
     elif type_index == kMLCInt:
-        return <int>(x.v_int64)
+        return <int>(x.v.v_int64)
     elif type_index == kMLCFloat:
-        return <float>(x.v_float64)
+        return <float>(x.v.v_float64)
     elif type_index == kMLCPtr:
-        return ctypes.cast(<unsigned long long>x.v_ptr, Ptr)
+        return ctypes.cast(<unsigned long long>x.v.v_ptr, Ptr)
     elif type_index == kMLCRawStr:
-        return str_c2py(x.v_str)
+        return str_c2py(x.v.v_str)
     elif type_index == kMLCStr:
-        mlc_str = <MLCStr*>(x.v_obj)
+        mlc_str = <MLCStr*>(x.v.v_obj)
         str_ret = Str.__new__(Str, str_c2py(mlc_str.data[:mlc_str.length]))
         str_ret._mlc_any = x
         _check_error(_C_AnyIncRef(&x))
@@ -426,30 +424,30 @@ cdef inline MLCAny _any_py2c(object x, list temporary_storage):
     elif isinstance(x, PyAny):
         y = _MLCAnyObj(
             type_index=(<PyAny>x)._mlc_any.type_index,
-            obj=(<PyAny>x)._mlc_any.v_obj,
+            obj=(<PyAny>x)._mlc_any.v.v_obj,
         )
     elif isinstance(x, Str):
         y = _MLCAnyObj(
             type_index=(<Str>x)._mlc_any.type_index,
-            obj=(<Str>x)._mlc_any.v_obj,
+            obj=(<Str>x)._mlc_any.v.v_obj,
         )
     elif isinstance(x, Integral):
         y.type_index = <int64_t>kMLCInt
-        y.v_int64 = x
+        y.v.v_int64 = x
     elif isinstance(x, Number):
         y.type_index = <int64_t>kMLCFloat
-        y.v_float64 = x
+        y.v.v_float64 = x
     elif isinstance(x, Ptr):
         if x.value is None or x.value == 0:
             ...
         else:
             y.type_index = <int64_t>kMLCPtr
-            y.v_int64 = x.value
+            y.v.v_int64 = x.value
     elif isinstance(x, str):
         x = str_py2c(x)
         temporary_storage.append(x)
         y.type_index = <int64_t>kMLCRawStr
-        y.v_str = x
+        y.v.v_str = x
     elif callable(x):
         x = _pyany_from_func(x)
         temporary_storage.append(x)
@@ -467,7 +465,7 @@ cdef inline MLCAny _any_py2c(object x, list temporary_storage):
 cdef inline MLCAny _any_py2c_list(tuple x, list temporary_storage):
     from mlc.core.list import List  # no-cython-lint
     cdef PyAny func = <PyAny>_list_get(BUILTIN_INIT, kMLCList)
-    cdef MLCFunc* func_ptr = <MLCFunc*>(func._mlc_any.v_obj)
+    cdef MLCFunc* func_ptr = <MLCFunc*>(func._mlc_any.v.v_obj)
     cdef MLCAny ret = _MLCAnyNone()
     _func_call_impl(func_ptr, x, &ret)
     temporary_storage.append(_pyany_no_inc_ref(ret))
@@ -476,7 +474,7 @@ cdef inline MLCAny _any_py2c_list(tuple x, list temporary_storage):
 cdef inline MLCAny _any_py2c_dict(tuple x, list temporary_storage):
     from mlc.core.dict import Dict  # no-cython-lint
     cdef PyAny func = <PyAny>_list_get(BUILTIN_INIT, kMLCDict)
-    cdef MLCFunc* func_ptr = <MLCFunc*>(func._mlc_any.v_obj)
+    cdef MLCFunc* func_ptr = <MLCFunc*>(func._mlc_any.v.v_obj)
     cdef MLCAny ret = _MLCAnyNone()
     _func_call_impl(func_ptr, x, &ret)
     temporary_storage.append(_pyany_no_inc_ref(ret))
@@ -529,7 +527,7 @@ cdef inline int32_t _func_safe_call_impl(
         c_ret[0] = _any_py2c(py_ret, temporary_storage)
         _check_error(_C_AnyInplaceViewToOwned(c_ret))
     except Exception as exception:
-        kind, num_bytes_info, bytes_info = error.translate_exception_to_c(exception)
+        kind, num_bytes_info, bytes_info = base.translate_exception_to_c(exception)
         _check_error(_C_ErrorCreate(kind, num_bytes_info, bytes_info, c_ret))
         return -2
     return 0
@@ -589,7 +587,7 @@ cpdef str str_c2py(bytes x):
     return x.decode("utf-8")
 
 cpdef object func_call(PyAny func, tuple py_args):
-    cdef MLCFunc* c_func = <MLCFunc*>(func._mlc_any.v_obj)
+    cdef MLCFunc* c_func = <MLCFunc*>(func._mlc_any.v.v_obj)
     cdef MLCAny c_ret = _MLCAnyNone()
     _func_call_impl(c_func, py_args, &c_ret)
     return _any_c2py_no_inc_ref(c_ret)
@@ -620,14 +618,14 @@ cpdef object error_pycode_fake(str filename, str funcname, int lineno):
     return PyCode_NewEmpty(str_py2c(filename), str_py2c(funcname), lineno)
 
 cpdef tuple dtype_as_triple(PyAny obj):
-    cdef DLDataType dtype = obj._mlc_any.v_dtype
+    cdef DLDataType dtype = obj._mlc_any.v.v_dtype
     cdef int code = <int>dtype.code
     cdef int bits = <int>dtype.code
     cdef int lanes = <int>dtype.lanes
     return code, bits, lanes
 
 cpdef tuple device_as_pair(PyAny obj):
-    cdef DLDevice device = obj._mlc_any.v_device
+    cdef DLDevice device = obj._mlc_any.v.v_device
     return <int>device.device_type, <int>device.device_id
 
 cpdef object type_key2type_info(str type_key, object type_cls):
@@ -642,7 +640,7 @@ cpdef object type_key2type_info(str type_key, object type_cls):
     while fields_ptr != NULL and fields_ptr[0].name != NULL:
         assert fields_ptr[0].ty != NULL
         assert kMLCTypingBegin <= fields_ptr[0].ty[0].type_index <= kMLCTypingEnd
-        type_field = type_info.TypeField(
+        type_field = base.TypeField(
             name=str_c2py(fields_ptr[0].name),
             offset=fields_ptr[0].offset,
             num_bytes=fields_ptr[0].num_bytes,
@@ -658,7 +656,7 @@ cpdef object type_key2type_info(str type_key, object type_cls):
     while methods_ptr != NULL and methods_ptr[0].name != NULL:
         assert methods_ptr[0].func != NULL
         assert methods_ptr[0].func[0]._mlc_header.type_index == kMLCFunc
-        type_method = type_info.TypeMethod(
+        type_method = base.TypeMethod(
             name=str_c2py(methods_ptr[0].name),
             func=_pyany_inc_ref(_MLCAnyObj(
                 type_index=kMLCFunc,
@@ -679,7 +677,7 @@ cpdef object type_key2type_info(str type_key, object type_cls):
             _list_set(BUILTIN_INIT, type_index, func)
         TYPE_VTABLE.setdefault(type_cls, {})[name] = func
 
-    return type_info.TypeInfo(
+    return base.TypeInfo(
         type_index=type_index,
         type_key=type_key,
         type_depth=type_depth,
@@ -688,7 +686,7 @@ cpdef object type_key2type_info(str type_key, object type_cls):
         methods=tuple(methods),
     )
 
-cdef _type_field_accessor(object type_field: type_info.TypeField):
+cdef _type_field_accessor(object type_field: base.TypeField):
     cdef int64_t offset = type_field.offset
     cdef int32_t num_bytes = type_field.num_bytes
     cdef PyAny ty = type_field.ty
@@ -697,88 +695,95 @@ cdef _type_field_accessor(object type_field: type_info.TypeField):
     if ty_type_index == kMLCTypingAny:
         if num_bytes == sizeof(MLCAny):
             def f(PyAny self):
-                cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
-                cdef MLCAny ret = (<MLCAny*>addr)[0]
-                return _any_c2py_inc_ref(ret)
+                cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
+                return _any_c2py_inc_ref((<MLCAny*>addr)[0])
             return f
     elif ty_type_index == kMLCTypingAtomic or ty_type_index == kMLCTypingList or ty_type_index == kMLCTypingDict:
         if ty_type_index == kMLCTypingAtomic:
-            type_index = (<MLCTypingAtomic*>ty._mlc_any.v_obj).type_index
+            type_index = (<MLCTypingAtomic*>ty._mlc_any.v.v_obj).type_index
         if type_index == -1 or type_index >= kMLCStaticObjectBegin:
-            def f(PyAny self):
-                cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
-                cdef MLCAny* ptr = (<MLCAny**>addr)[0]
-                if ptr == NULL:
-                    return None
-                return _any_c2py_inc_ref(_MLCAnyObj(
-                    type_index=ptr[0].type_index,
-                    obj=ptr,
-                ))
-            return f
+            if num_bytes == sizeof(MLCAny*):
+                def f(PyAny self):
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
+                    cdef MLCAny* ptr = (<MLCAny**>addr)[0]
+                    if ptr == NULL:
+                        return None
+                    return _any_c2py_inc_ref(_MLCAnyObj(
+                        type_index=ptr[0].type_index,
+                        obj=ptr,
+                    ))
+                return f
         elif type_index == kMLCInt:
             if num_bytes == 1:
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     return (<int8_t*>addr)[0]
                 return f
             elif num_bytes == 2:
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     return (<int16_t*>addr)[0]
                 return f
             elif num_bytes == 4:
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     return (<int32_t*>addr)[0]
                 return f
             elif num_bytes == 8:
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     return (<int64_t*>addr)[0]
                 return f
         elif type_index == kMLCFloat:
             if num_bytes == 4:
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     return (<float*>addr)[0]
                 return f
             elif num_bytes == 8:
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     return (<double*>addr)[0]
                 return f
         elif type_index == kMLCPtr:
             if num_bytes == sizeof(void*):
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     cdef void* ret = (<void***>addr)[0]
                     return ctypes.cast(<unsigned long long>ret, Ptr)
                 return f
         elif type_index == kMLCDataType:
             if num_bytes == sizeof(DLDataType):
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     cdef MLCAny ret = _MLCAnyNone()
                     ret.type_index = kMLCDataType
-                    ret.v_dtype = (<DLDataType*>addr)[0]
+                    ret.v.v_dtype = (<DLDataType*>addr)[0]
                     return _any_c2py_no_inc_ref(ret)
                 return f
         elif type_index == kMLCDevice:
             if num_bytes == sizeof(DLDevice):
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     cdef MLCAny ret = _MLCAnyNone()
                     ret.type_index = kMLCDevice
-                    ret.v_device = (<DLDevice*>addr)[0]
+                    ret.v.v_device = (<DLDevice*>addr)[0]
                     return _any_c2py_no_inc_ref(ret)
                 return f
         elif type_index == kMLCRawStr:
             if num_bytes == sizeof(char*):
                 def f(PyAny self):
-                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v_obj) + offset
+                    cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
                     cdef char* addr_str = (<char**>addr)[0]
                     return str_c2py(addr_str)
                 return f
     elif ty_type_index == kMLCTypingPtr or ty_type_index == kMLCTypingOptional or ty_type_index == kMLCTypingUnion:
-        raise NotImplementedError("Not implemented yet")
+        if num_bytes == sizeof(MLCAny*):
+            def f(PyAny self):
+                cdef uint64_t addr = <uint64_t>(self._mlc_any.v.v_obj) + offset
+                cdef MLCAny* ptr = (<MLCAny**>addr)[0]
+                if ptr == NULL:
+                    return None
+                return _any_c2py_inc_ref(ptr[0])
+            return f
     raise ValueError(f"Unsupported {num_bytes}-byte type field: {ty.__str__()}")

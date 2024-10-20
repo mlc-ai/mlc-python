@@ -145,7 +145,7 @@ TEST(UDict, ComplexValues) {
   dict["dtype"] = dtype;
   dict["object"] = obj;
 
-  if (Optional<int> v = dict["Null"]) {
+  if (Optional<int64_t> v = dict["Null"]) {
     FAIL() << "Expected to return nullptr, but got: " << *v.get();
   } else {
     EXPECT_EQ(v.get(), nullptr);

@@ -314,7 +314,7 @@ struct DictBase : public MLCDict {
     iter.Meta() = new_meta;
     auto &kv = iter.Data() = {*key, MLCAny()};
     key->type_index = 0;
-    key->v_int64 = 0;
+    key->v.v_int64 = 0;
     return &kv;
   }
 };

@@ -14,7 +14,7 @@ TEST(Legacy_UDict_Construtor, Default) {
   MLCDict *dict_ptr = reinterpret_cast<MLCDict *>(dict.get());
   EXPECT_EQ(dict_ptr->_mlc_header.type_index, static_cast<int32_t>(MLCTypeIndex::kMLCDict));
   EXPECT_EQ(dict_ptr->_mlc_header.ref_cnt, 1);
-  EXPECT_NE(dict_ptr->_mlc_header.deleter, nullptr);
+  EXPECT_NE(dict_ptr->_mlc_header.v.deleter, nullptr);
   EXPECT_EQ(dict_ptr->size, 0);
   EXPECT_EQ(dict_ptr->capacity, 0);
 }

@@ -85,19 +85,19 @@ protected:
   }
   MLC_INLINE void IncRef() {
     if (!::mlc::base::IsTypeIndexPOD(this->type_index)) {
-      ::mlc::base::IncRef(this->v_obj);
+      ::mlc::base::IncRef(this->v.v_obj);
     }
   }
   MLC_INLINE void DecRef() {
     if (!::mlc::base::IsTypeIndexPOD(this->type_index)) {
-      ::mlc::base::DecRef(this->v_obj);
+      ::mlc::base::DecRef(this->v.v_obj);
     }
   }
   MLC_INLINE void SwitchFromRawStr() {
     if (this->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCRawStr)) {
       this->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCStr);
-      this->v_obj =
-          reinterpret_cast<MLCObject *>(::mlc::base::StrCopyFromCharArray(this->v_str, std::strlen(this->v_str)));
+      this->v.v_obj =
+          reinterpret_cast<MLCAny *>(::mlc::base::StrCopyFromCharArray(this->v.v_str, std::strlen(this->v.v_str)));
     }
   }
 };

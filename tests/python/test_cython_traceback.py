@@ -5,7 +5,7 @@ import mlc
 
 
 def test_throw_exception_from_c() -> None:
-    func = mlc.get_global_func("mlc.testing.throw_exception_from_c")
+    func = mlc.Func.get("mlc.testing.throw_exception_from_c")
     try:
         func()
     except ValueError:
@@ -20,7 +20,7 @@ def test_throw_exception_from_ffi() -> None:
     def throw_ValueError() -> None:
         raise ValueError("This is a ValueError")
 
-    err: mlc.Error = mlc.get_global_func("mlc.testing.throw_exception_from_ffi")(throw_ValueError)
+    err: mlc.Error = mlc.Func.get("mlc.testing.throw_exception_from_ffi")(throw_ValueError)
     assert err.kind == "ValueError"
     assert str(err) == "This is a ValueError"
     io = StringIO()
@@ -39,7 +39,7 @@ def test_throw_exception_from_ffi_in_c() -> None:
         _inner()
 
     try:
-        mlc.get_global_func("mlc.testing.throw_exception_from_ffi_in_c")(throw_ValueError)
+        mlc.Func.get("mlc.testing.throw_exception_from_ffi_in_c")(throw_ValueError)
     except ValueError:
         msg = traceback.format_exc().strip().splitlines()
         assert "Traceback (most recent call last)" in msg[0]

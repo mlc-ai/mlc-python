@@ -84,7 +84,7 @@ public:                                                                         
   }                                                                                                                    \
   template <typename U, typename = Derived<U>> /**/                                                                    \
   MLC_INLINE explicit SelfType(U *src) : ParentType(::mlc::Null) {                                                     \
-    this->_SetObjPtr(reinterpret_cast<MLCObject *>(src));                                                              \
+    this->_SetObjPtr(reinterpret_cast<MLCAny *>(src));                                                                 \
     this->CheckNull();                                                                                                 \
     this->IncRef();                                                                                                    \
   }                                                                                                                    \

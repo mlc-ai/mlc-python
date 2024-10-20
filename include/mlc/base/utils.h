@@ -192,7 +192,7 @@ template <typename _T> struct Type2Str {
   }
 };
 
-MLC_INLINE void IncRef(MLCObject *obj) {
+MLC_INLINE void IncRef(MLCAny *obj) {
   if (obj != nullptr) {
 #ifdef _MSC_VER
     _InterlockedIncrement(reinterpret_cast<volatile long *>(&obj->ref_cnt));
@@ -214,7 +214,7 @@ MLC_INLINE void IncRef(MLCObject *obj) {
   }
 }
 
-MLC_INLINE void DecRef(MLCObject *obj) {
+MLC_INLINE void DecRef(MLCAny *obj) {
   if (obj != nullptr) {
 #if MLC_DEBUG_MODE == 1
     {
@@ -234,8 +234,8 @@ MLC_INLINE void DecRef(MLCObject *obj) {
 #else
     int32_t ref_cnt = __atomic_fetch_sub(&obj->ref_cnt, 1, __ATOMIC_ACQ_REL);
 #endif
-    if (ref_cnt == 1 && obj->deleter) {
-      obj->deleter(obj);
+    if (ref_cnt == 1 && obj->v.deleter) {
+      obj->v.deleter(obj);
     }
   }
 }

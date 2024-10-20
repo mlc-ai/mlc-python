@@ -19,7 +19,7 @@ public:
 
 // Default Constructor Tests
 TEST(OptionalDefaultConstructor, IntType) {
-  Optional<int> opt_int;
+  Optional<int64_t> opt_int;
   EXPECT_FALSE(opt_int.defined());
   EXPECT_EQ(opt_int.get(), nullptr);
 }
@@ -32,7 +32,7 @@ TEST(OptionalDefaultConstructor, ObjectRefType) {
 
 // Null Constructor Tests
 TEST(OptionalNullConstructor, IntType) {
-  Optional<int> opt_int(Null);
+  Optional<int64_t> opt_int(Null);
   EXPECT_FALSE(opt_int.defined());
   EXPECT_EQ(opt_int.get(), nullptr);
 }
@@ -45,7 +45,7 @@ TEST(OptionalNullConstructor, ObjectRefType) {
 
 // Value Constructor Tests
 TEST(OptionalValueConstructor, IntType) {
-  Optional<int> opt_int(42);
+  Optional<int64_t> opt_int(42);
   EXPECT_TRUE(opt_int.defined());
   EXPECT_EQ(*opt_int, 42);
 }
@@ -59,8 +59,8 @@ TEST(OptionalValueConstructor, ObjectRefType) {
 
 // Copy Constructor Tests
 TEST(OptionalCopyConstructor, IntType) {
-  Optional<int> opt_int1(42);
-  Optional<int> opt_int2(opt_int1);
+  Optional<int64_t> opt_int1(42);
+  Optional<int64_t> opt_int2(opt_int1);
   EXPECT_TRUE(opt_int2.defined());
   EXPECT_EQ(*opt_int2, 42);
 }
@@ -75,8 +75,8 @@ TEST(OptionalCopyConstructor, ObjectRefType) {
 
 // Move Constructor Tests
 TEST(OptionalMoveConstructor, IntType) {
-  Optional<int> opt_int1(42);
-  Optional<int> opt_int2(std::move(opt_int1));
+  Optional<int64_t> opt_int1(42);
+  Optional<int64_t> opt_int2(std::move(opt_int1));
   EXPECT_TRUE(opt_int2.defined());
   EXPECT_EQ(*opt_int2, 42);
   EXPECT_FALSE(opt_int1.defined());
@@ -93,8 +93,8 @@ TEST(OptionalMoveConstructor, ObjectRefType) {
 
 // Assignment Operator Tests
 TEST(OptionalAssignmentOperator, IntType) {
-  Optional<int> opt_int1(42);
-  Optional<int> opt_int2;
+  Optional<int64_t> opt_int1(42);
+  Optional<int64_t> opt_int2;
   opt_int2 = opt_int1;
   EXPECT_TRUE(opt_int2.defined());
   EXPECT_EQ(*opt_int2, 42);
@@ -111,8 +111,8 @@ TEST(OptionalAssignmentOperator, ObjectRefType) {
 
 // Move Assignment Operator Tests
 TEST(OptionalMoveAssignmentOperator, IntType) {
-  Optional<int> opt_int1(42);
-  Optional<int> opt_int2;
+  Optional<int64_t> opt_int1(42);
+  Optional<int64_t> opt_int2;
   opt_int2 = std::move(opt_int1);
   EXPECT_TRUE(opt_int2.defined());
   EXPECT_EQ(*opt_int2, 42);
@@ -131,7 +131,7 @@ TEST(OptionalMoveAssignmentOperator, ObjectRefType) {
 
 // Accessor Tests
 TEST(OptionalAccessors, IntType) {
-  Optional<int> opt_int(42);
+  Optional<int64_t> opt_int(42);
   EXPECT_EQ(opt_int.get(), &(*opt_int));
   EXPECT_EQ(*opt_int, 42);
 }
@@ -145,10 +145,10 @@ TEST(OptionalAccessors, ObjectRefType) {
 
 // Boolean Conversion Tests
 TEST(OptionalBoolConversion, IntType) {
-  Optional<int> opt_int1;
+  Optional<int64_t> opt_int1;
   EXPECT_FALSE(opt_int1);
 
-  Optional<int> opt_int2(42);
+  Optional<int64_t> opt_int2(42);
   EXPECT_TRUE(opt_int2);
 }
 
@@ -163,14 +163,14 @@ TEST(OptionalBoolConversion, ObjectRefType) {
 
 // Boolean Conversion in If Statement Tests
 TEST(OptionalBoolConversionInIf, IntType) {
-  Optional<int> opt_int1;
+  Optional<int64_t> opt_int1;
   if (opt_int1) {
-    FAIL() << "Expected false for undefined Optional<int>";
+    FAIL() << "Expected false for undefined Optional<int64_t>";
   }
 
-  Optional<int> opt_int2(42);
+  Optional<int64_t> opt_int2(42);
   if (!opt_int2) {
-    FAIL() << "Expected true for defined Optional<int>";
+    FAIL() << "Expected true for defined Optional<int64_t>";
   }
 }
 
@@ -189,8 +189,8 @@ TEST(OptionalBoolConversionInIf, ObjectRefType) {
 
 // Comparison Tests
 TEST(OptionalComparison, IntType) {
-  Optional<int> opt_int1;
-  Optional<int> opt_int2(42);
+  Optional<int64_t> opt_int1;
+  Optional<int64_t> opt_int2(42);
 
   EXPECT_TRUE(opt_int1 == nullptr);
   EXPECT_FALSE(opt_int2 == nullptr);
@@ -211,7 +211,7 @@ TEST(OptionalComparison, ObjectRefType) {
 
 // Reset Tests
 TEST(OptionalReset, IntType) {
-  Optional<int> opt_int(42);
+  Optional<int64_t> opt_int(42);
   EXPECT_TRUE(opt_int.defined());
   opt_int.Reset();
   EXPECT_FALSE(opt_int.defined());
@@ -227,7 +227,7 @@ TEST(OptionalReset, ObjectRefType) {
 
 // AnyView Conversion Tests
 TEST(OptionalAnyViewConversion, IntType) {
-  Optional<int> opt_int(42);
+  Optional<int64_t> opt_int(42);
   AnyView view = opt_int;
   EXPECT_EQ(view.operator int(), 42);
 }
@@ -241,7 +241,7 @@ TEST(OptionalAnyViewConversion, ObjectRefType) {
 
 // Any Conversion Tests
 TEST(OptionalAnyConversion, IntType) {
-  Optional<int> opt_int(42);
+  Optional<int64_t> opt_int(42);
   Any any = opt_int;
   EXPECT_EQ(any.operator int(), 42);
 }
@@ -256,7 +256,7 @@ TEST(OptionalAnyConversion, ObjectRefType) {
 // Construct from AnyView Tests
 TEST(OptionalConstructFromAnyView, IntType) {
   AnyView view(42);
-  Optional<int> opt_int(view);
+  Optional<int64_t> opt_int(view);
   EXPECT_TRUE(opt_int.defined());
   EXPECT_EQ(*opt_int, 42);
 }
@@ -272,7 +272,7 @@ TEST(OptionalConstructFromAnyView, ObjectRefType) {
 // Construct from Any Tests
 TEST(OptionalConstructFromAny, IntType) {
   Any any(42);
-  Optional<int> opt_int(any);
+  Optional<int64_t> opt_int(any);
   EXPECT_TRUE(opt_int.defined());
   EXPECT_EQ(*opt_int, 42);
 }
@@ -287,7 +287,7 @@ TEST(OptionalConstructFromAny, ObjectRefType) {
 
 // Assign from AnyView Tests
 TEST(OptionalAssignFromAnyView, IntType) {
-  Optional<int> opt_int;
+  Optional<int64_t> opt_int;
   AnyView view(42);
   opt_int = view;
   EXPECT_TRUE(opt_int.defined());
@@ -305,7 +305,7 @@ TEST(OptionalAssignFromAnyView, ObjectRefType) {
 
 // Assign from Any Tests
 TEST(OptionalAssignFromAny, IntType) {
-  Optional<int> opt_int;
+  Optional<int64_t> opt_int;
   Any any(42);
   opt_int = any;
   EXPECT_TRUE(opt_int.defined());
@@ -323,7 +323,7 @@ TEST(OptionalAssignFromAny, ObjectRefType) {
 
 // Exception Tests
 TEST(OptionalExceptions, IntType) {
-  Optional<int> opt_int;
+  Optional<int64_t> opt_int;
   EXPECT_THROW(*opt_int, Exception);
 }
 

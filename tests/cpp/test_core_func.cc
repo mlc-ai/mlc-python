@@ -149,7 +149,7 @@ TEST(Func, Signature) {
   CheckSignature([](Str, const Str, const Str &, Str &&) -> Str { return Str{Null}; },
                  "(0: str, 1: str, 2: str, 3: str) -> str");
   CheckSignature(
-      [](Optional<int>, Optional<ObjectRef>, Optional<Str>, Optional<DLDevice>, Optional<DLDataType>) -> void {},
+      [](Optional<int64_t>, Optional<ObjectRef>, Optional<Str>, Optional<DLDevice>, Optional<DLDataType>) -> void {},
       "(0: Optional<int>, 1: Optional<object.Object>, 2: Optional<object.StrObj>, 3: Optional<Device>, 4: "
       "Optional<dtype>) -> void");
 }
