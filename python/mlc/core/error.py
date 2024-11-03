@@ -3,7 +3,8 @@ from __future__ import annotations
 import sys
 from typing import TextIO
 
-from mlc._cython import c_class, error_get_info
+from mlc._cython import error_get_info
+from mlc.dataclasses import c_class
 
 from .object import Object
 

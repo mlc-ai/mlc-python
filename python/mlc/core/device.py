@@ -1,32 +1,13 @@
 from __future__ import annotations
 
-from enum import Enum
-
-from mlc._cython import PyAny, c_class, device_as_pair
-
-
-class DeviceType(Enum):
-    cpu = 1
-    cuda = 2
-    cuda_host = 3
-    opencl = 4
-    vulkan = 7
-    mps = 8
-    vpi = 9
-    rocm = 10
-    rocm_host = 11
-    ext_dev = 21
-    cuda_managed = 13
-    one_api = 14
-    webgpu = 15
-    hexagon = 16
-    maia = 17
+from mlc._cython import DeviceType, PyAny, device_as_pair, device_normalize
+from mlc.dataclasses import c_class
 
 
 @c_class("Device")
 class Device(PyAny):
     def __init__(self, device: str | Device) -> None:
-        self._mlc_init("__init__", device)
+        self._mlc_init("__init__", device_normalize(device))
 
     @property
     def _device_pair(self) -> tuple[int, int]:
@@ -41,11 +22,7 @@ class Device(PyAny):
         return self._device_pair[1]
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Device):
-            return self._device_pair == other._device_pair
-        return False
+        return isinstance(other, Device) and self._device_pair == other._device_pair
 
     def __ne__(self, other: object) -> bool:
-        if isinstance(other, Device):
-            return self._dtype_triple != other._dtype_triple
-        return True
+        return isinstance(other, Device) and self._dtype_triple != other._dtype_triple

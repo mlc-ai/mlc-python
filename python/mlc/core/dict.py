@@ -4,7 +4,8 @@ import itertools
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, ValuesView
 from typing import TypeVar, overload
 
-from mlc._cython import Ptr, c_class
+from mlc._cython import Ptr
+from mlc.dataclasses import c_class
 
 from .object import Object
 

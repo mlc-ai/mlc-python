@@ -35,6 +35,7 @@ public:                                                                         
       return *ret;                                                                                                     \
     }                                                                                                                  \
     MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                  \
+    MLC_UNREACHABLE();                                                                                                 \
   }                                                                                                                    \
   MLC_INLINE SelfType &Reset() {                                                                                       \
     ParentType::Reset();                                                                                               \
@@ -65,9 +66,9 @@ namespace base {
 
 template <typename TRef> struct ObjPtrHelper {
   using TObj = typename TRef::TObj;
-  template <typename ObjPtrType> MLC_INLINE static MLCObject *GetPtr(const ObjPtrType *self) { return self->ptr; }
-  template <typename ObjPtrType> MLC_INLINE static MLCObject *MovePtr(ObjPtrType *self) {
-    MLCObject *ptr = self->ptr;
+  template <typename ObjPtrType> MLC_INLINE static MLCAny *GetPtr(const ObjPtrType *self) { return self->ptr; }
+  template <typename ObjPtrType> MLC_INLINE static MLCAny *MovePtr(ObjPtrType *self) {
+    MLCAny *ptr = self->ptr;
     self->ptr = nullptr;
     return ptr;
   }
@@ -78,8 +79,8 @@ protected:
   MLC_INLINE ~PtrBase() { this->Reset(); }
   MLC_INLINE PtrBase() : MLCObjPtr{nullptr} {}
   MLC_INLINE PtrBase(::mlc::NullType) : MLCObjPtr{nullptr} {}
-  MLC_INLINE PtrBase(MLCObject *v) : MLCObjPtr{v} {}
-  MLC_INLINE void _SetObjPtr(MLCObject *v) { this->ptr = v; }
+  MLC_INLINE PtrBase(MLCAny *v) : MLCObjPtr{v} {}
+  MLC_INLINE void _SetObjPtr(MLCAny *v) { this->ptr = v; }
   MLC_INLINE void Reset() {
     this->DecRef();
     this->ptr = nullptr;
@@ -94,7 +95,7 @@ protected:
     T *ret = [&v]() -> T * {
       MLC_TRY_CONVERT(TypeTraits<T *>::AnyToTypeOwned(&v), v.type_index, Type2Str<T *>::Run());
     }();
-    this->ptr = reinterpret_cast<MLCObject *>(ret);
+    this->ptr = reinterpret_cast<MLCAny *>(ret);
     this->IncRef();
   }
   template <typename T> MLC_INLINE void _InitPOD(T v) {
@@ -102,7 +103,6 @@ protected:
     this->ptr = Alloc::New(v);
     this->IncRef();
   }
-  friend std::ostream &operator<<(std::ostream &os, const PtrBase &src);
 };
 
 struct ObjectRefDummyRoot : protected PtrBase {
@@ -121,7 +121,7 @@ template <typename T> struct Ref : protected ::mlc::base::PtrBase {
   MLC_INLINE Ref &operator=(std::nullptr_t) { return (*this = ::mlc::Null); }
   /***** Section 2. From `U * / Ref<U> / ObjRef::U` where `U` is derived from `T` *****/
   template <typename U, typename = Derived<U>> /**/
-  MLC_INLINE Ref(U *src) : TBase(reinterpret_cast<MLCObject *>(src)) {
+  MLC_INLINE Ref(U *src) : TBase(reinterpret_cast<MLCAny *>(src)) {
     this->IncRef();
   }
   template <typename U, typename = Derived<U>> /**/
@@ -181,10 +181,9 @@ template <typename T> struct Ref : protected ::mlc::base::PtrBase {
   MLC_INLINE T *get() { return reinterpret_cast<T *>(ptr); }
 };
 
-#define MLC_DEFINE_POD_REF(PODType)                                                                                    \
-  template <> struct Ref<PODType> : protected ::mlc::base::PtrBase {                                                   \
-    MLC_DEF_OBJ_PTR_METHODS_(Ref<PODType>, PODType, ::mlc::base::PtrBase);                                             \
-    using TStorage = typename ::mlc::PODAllocator<TObj>::Storage;                                                      \
+#define MLC_DEFINE_POD_REF(Type, Field)                                                                                \
+  template <> struct Ref<Type> : protected ::mlc::base::PtrBase {                                                      \
+    MLC_DEF_OBJ_PTR_METHODS_(Ref<Type>, Type, ::mlc::base::PtrBase);                                                   \
                                                                                                                        \
   public:                                                                                                              \
     /***** Section 1. Default constructor/destructors *****/                                                           \
@@ -213,20 +212,16 @@ template <typename T> struct Ref : protected ::mlc::base::PtrBase {
     MLC_INLINE bool operator==(const TSelf &rhs) const { return this->ptr == rhs.ptr; }                                \
     MLC_INLINE bool operator!=(const TSelf &rhs) const { return this->ptr != rhs.ptr; }                                \
     MLC_INLINE const TObj *get() const {                                                                               \
-      return this->ptr ? &reinterpret_cast<const TStorage *>(this->ptr)->data : nullptr;                               \
+      return this->ptr ? &reinterpret_cast<const MLCBoxedPOD *>(this->ptr)->data.Field : nullptr;                      \
     }                                                                                                                  \
-    MLC_INLINE TObj *get() { return this->ptr ? &reinterpret_cast<TStorage *>(this->ptr)->data : nullptr; }            \
+    MLC_INLINE TObj *get() { return this->ptr ? &reinterpret_cast<MLCBoxedPOD *>(this->ptr)->data.Field : nullptr; }   \
   }
 
-MLC_DEFINE_POD_REF(int8_t);
-MLC_DEFINE_POD_REF(int16_t);
-MLC_DEFINE_POD_REF(int32_t);
-MLC_DEFINE_POD_REF(int64_t);
-MLC_DEFINE_POD_REF(float);
-MLC_DEFINE_POD_REF(double);
-MLC_DEFINE_POD_REF(DLDevice);
-MLC_DEFINE_POD_REF(DLDataType);
-MLC_DEFINE_POD_REF(::mlc::base::VoidPtr);
+MLC_DEFINE_POD_REF(int64_t, v_int64);
+MLC_DEFINE_POD_REF(double, v_float64);
+MLC_DEFINE_POD_REF(DLDevice, v_device);
+MLC_DEFINE_POD_REF(DLDataType, v_dtype);
+MLC_DEFINE_POD_REF(::mlc::base::VoidPtr, v_ptr);
 #undef MLC_DEFINE_POD_REF
 
 template <typename T, typename... Args> inline Ref<Object> InitOf(Args &&...args) {

@@ -1,19 +1,35 @@
 MLC-Python
 ==========
 
-## Installation
+🛠️ MLC is a Python-first toolkit for building ML compilers, runtimes, and compound AI systems. It enables you to define nested data structures (like compiler IRs) as roundtrippable text formats in Python syntax, with structural comparison for unit-testing and zero-copy C++ interop when needed.
+
+## 🔑 Key features
+
+### 🐍 `mlc.ast`: Text formats in Python Syntax
+
+TBD
+
+### 🏗️ `mlc.dataclasses`: Cross-Language Dataclasses
+
+TBD
+
+### ⚡ `mlc.Func`: Zero-Copy Cross-Language Function Calling
+
+TBD
+
+### 🎯 Structural Testing for Nested Dataclasses
+
+TBD
+
+## 📥 Installation
+
+### 📦 Install From PyPI
 
 ```bash
 pip install -U mlc-python
 ```
 
-## Features
-
-TBA
-
-## Development
-
-### Build from Source
+### ⚙️ Build from Source
 
 ```bash
 python -m venv .venv
@@ -22,9 +38,9 @@ python -m pip install --verbose --editable ".[dev]"
 pre-commit install
 ```
 
-### Create Wheels
+### 🎡 Create MLC-Python Wheels
 
-See `.github/workflows/wheels.yml` for more details. This project uses `cibuildwheel` to build cross-platform wheels.
+This project uses `cibuildwheel` to build cross-platform wheels. See `.github/workflows/wheels.ym` for more details.
 
 ```bash
 export CIBW_BUILD_VERBOSITY=3

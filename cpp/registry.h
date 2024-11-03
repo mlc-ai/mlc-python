@@ -78,74 +78,8 @@ struct TypeInfoWrapper {
   ~TypeInfoWrapper() { this->Reset(); }
 };
 
-template <typename T> struct PODGetterSetter {
-  static int32_t Getter(MLCTypeField *, void *addr, MLCAny *ret) {
-    using namespace ::mlc::base;
-    TypeTraits<T>::TypeToAny(*static_cast<T *>(addr), ret);
-    return 0;
-  }
-  static int32_t Setter(MLCTypeField *, void *addr, MLCAny *src) {
-    using namespace mlc::base;
-    try {
-      *static_cast<T *>(addr) = TypeTraits<T>::AnyToTypeUnowned(src);
-    } catch (const TemporaryTypeError &) {
-      std::ostringstream oss;
-      oss << "Cannot convert from type `" << TypeIndex2TypeKey(src->type_index) << "` to `" << TypeTraits<T>::type_str
-          << "`";
-      *static_cast<::mlc::Any *>(src) = MLC_MAKE_ERROR_HERE(TypeError, oss.str());
-      return -2;
-    }
-    return 0;
-  }
-};
-
-template <> struct PODGetterSetter<std::nullptr_t> {
-  static int32_t Getter(MLCTypeField *, void *, MLCAny *ret) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<Any *>(ret) = nullptr;
-    MLC_SAFE_CALL_END(static_cast<Any *>(ret));
-  }
-  static int32_t Setter(MLCTypeField *, void *addr, MLCAny *src) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<void **>(addr) = nullptr;
-    MLC_SAFE_CALL_END(static_cast<Any *>(src));
-  }
-};
-
-MLC_INLINE int32_t ObjPtrGetterDefault(MLCTypeField *, void *addr, MLCAny *ret) {
-  if (addr == nullptr) {
-    ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
-    ret->v_obj = nullptr;
-  } else {
-    Object *v = static_cast<Object *>(addr);
-    ret->type_index = v->_mlc_header.type_index;
-    ret->v_obj = reinterpret_cast<MLCAny *>(v);
-  }
-  return 0;
-}
-
-MLC_INLINE int32_t ObjPtrSetterDefault(MLCTypeField *field, void *addr, MLCAny *src) {
-  if (field->type_annotation == nullptr) {
-    std::ostringstream oss;
-    oss << "Type annotation is required for field `" << field->name << "`";
-    *static_cast<Any *>(src) = MLC_MAKE_ERROR_HERE(InternalError, oss.str());
-    return -2;
-  }
-  int32_t target_type_index = field->type_annotation[0]->type_index;
-  if (src == nullptr || src->type_index != target_type_index) {
-    std::ostringstream oss;
-    oss << "Cannot convert from type `" << ::mlc::base::TypeIndex2TypeKey(src) << "` to `"
-        << ::mlc::base::TypeIndex2TypeKey(target_type_index) << "`";
-    *static_cast<Any *>(src) = MLC_MAKE_ERROR_HERE(TypeError, oss.str());
-    return -2;
-  }
-  Ref<Object> *dst = static_cast<Ref<Object> *>(addr);
-  *dst = reinterpret_cast<Object *>(src->v_obj);
-  return 0;
-}
-
 struct TypeTable {
-  using ObjPtr = std::unique_ptr<MLCObject, void (*)(MLCObject *)>;
+  using ObjPtr = std::unique_ptr<MLCAny, void (*)(MLCAny *)>;
 
   int32_t num_types;
   std::vector<std::unique_ptr<TypeInfoWrapper>> type_table;
@@ -192,7 +126,7 @@ struct TypeTable {
         std::cerr << "Object already exists in the memory pool: " << source;
         std::abort();
       }
-      MLCObject *source_casted = reinterpret_cast<MLCObject *>(source);
+      MLCAny *source_casted = reinterpret_cast<MLCAny *>(source);
       ::mlc::base::IncRef(source_casted);
       it->second = ObjPtr(source_casted, ::mlc::base::DecRef);
     }
@@ -274,8 +208,6 @@ struct TypeTable {
       std::copy(parent->type_ancestors, parent->type_ancestors + parent->type_depth, info->type_ancestors);
       info->type_ancestors[parent->type_depth] = parent_type_index;
     }
-    info->getter = ObjPtrSetterDefault;
-    info->setter = ObjPtrGetterDefault;
     info->fields = nullptr;
     info->methods = nullptr;
     wrapper->table = this;
@@ -329,20 +261,65 @@ struct _POD_REG {
           .MemFn("__str__", &::mlc::base::TypeTraits<std::nullptr_t>::__str__);
   inline static const int32_t _int = //
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCInt))
+          .StaticFn("__new_ref__",
+                    [](void *_dst, int64_t value) {
+                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
+                      MLCAny *ret = ::mlc::PODAllocator<int64_t>::New(value);
+                      if (*dst != nullptr) {
+                        ::mlc::base::DecRef(*dst);
+                      }
+                      *dst = ret;
+                    })
           .MemFn("__str__", &::mlc::base::TypeTraits<int64_t>::__str__);
   inline static const int32_t _float = //
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCFloat))
+          .StaticFn("__new_ref__",
+                    [](void *_dst, double value) {
+                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
+                      MLCAny *ret = ::mlc::PODAllocator<double>::New(value);
+                      if (*dst != nullptr) {
+                        ::mlc::base::DecRef(*dst);
+                      }
+                      *dst = ret;
+                    })
           .MemFn("__str__", &::mlc::base::TypeTraits<double>::__str__);
   inline static const int32_t _ptr = //
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCPtr))
+          .StaticFn("__new_ref__",
+                    [](void *_dst, void *value) {
+                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
+                      MLCAny *ret = ::mlc::PODAllocator<void *>::New(value);
+                      if (*dst != nullptr) {
+                        ::mlc::base::DecRef(*dst);
+                      }
+                      *dst = ret;
+                    })
           .MemFn("__str__", &::mlc::base::TypeTraits<void *>::__str__);
   inline static const int32_t _device = //
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDevice))
           .StaticFn("__init__", [](AnyView device) { return device.operator DLDevice(); })
+          .StaticFn("__new_ref__",
+                    [](void *_dst, DLDevice value) {
+                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
+                      MLCAny *ret = ::mlc::PODAllocator<DLDevice>::New(value);
+                      if (*dst != nullptr) {
+                        ::mlc::base::DecRef(*dst);
+                      }
+                      *dst = ret;
+                    })
           .MemFn("__str__", &::mlc::base::TypeTraits<DLDevice>::__str__);
   inline static const int32_t _dtype = //
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDataType))
           .StaticFn("__init__", [](AnyView dtype) { return dtype.operator DLDataType(); })
+          .StaticFn("__new_ref__",
+                    [](void *_dst, DLDataType value) {
+                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
+                      MLCAny *ret = ::mlc::PODAllocator<DLDataType>::New(value);
+                      if (*dst != nullptr) {
+                        ::mlc::base::DecRef(*dst);
+                      }
+                      *dst = ret;
+                    })
           .MemFn("__str__", &::mlc::base::TypeTraits<DLDataType>::__str__);
   inline static const int32_t _str = //
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCRawStr))
@@ -358,8 +335,7 @@ inline TypeTable *TypeTable::New() {
   {                                                                                                                    \
     using Traits = ::mlc::base::TypeTraits<UnderlyingType>;                                                            \
     MLCTypeInfo *info = Self->TypeRegister(-1, Traits::type_index, Traits::type_str);                                  \
-    info->setter = PODGetterSetter<UnderlyingType>::Setter;                                                            \
-    info->getter = PODGetterSetter<UnderlyingType>::Getter;                                                            \
+    (void)info;                                                                                                        \
   }
   MLC_TYPE_TABLE_INIT_TYPE(std::nullptr_t, self);
   MLC_TYPE_TABLE_INIT_TYPE(int64_t, self);
@@ -416,12 +392,7 @@ inline void TypeInfoWrapper::SetFields(int64_t new_num_fields, MLCTypeField *fie
   for (int64_t i = 0; i < num_fields; i++) {
     dst[i] = fields[i];
     dst[i].name = this->table->NewArray(fields[i].name);
-    int32_t len_type_ann = 0;
-    while (fields[i].type_annotation[len_type_ann] != nullptr) {
-      ++len_type_ann;
-    }
-    dst[i].type_annotation = reinterpret_cast<MLCTypeInfo **>(this->table->NewArray<void *>(len_type_ann + 1));
-    std::copy(fields[i].type_annotation, fields[i].type_annotation + len_type_ann + 1, dst[i].type_annotation);
+    this->table->NewObjPtr(&dst[i].ty, dst[i].ty);
   }
   dst[num_fields] = MLCTypeField{};
   std::sort(dst, dst + num_fields, [](const MLCTypeField &a, const MLCTypeField &b) { return a.offset < b.offset; });

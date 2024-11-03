@@ -1,9 +1,12 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypeVar
 
-from mlc._cython import c_class, func_call, func_init, get_global_func
+from mlc._cython import func_call, func_get, func_init, func_register
+from mlc.dataclasses import c_class
 
 from .object import Object
+
+_CallableType = TypeVar("_CallableType", bound=Callable)
 
 
 @c_class("object.Func")
@@ -17,4 +20,18 @@ class Func(Object):
 
     @staticmethod
     def get(name: str, allow_missing: bool = False) -> "Func":
-        return get_global_func(name, allow_missing)
+        ret = func_get(name)
+        if (not allow_missing) and (ret is None):
+            raise ValueError(f"Can't find global function: {name}")
+        return ret
+
+    @staticmethod
+    def register(
+        name: str,
+        allow_override: bool = False,
+    ) -> Callable[[_CallableType], _CallableType]:
+        def decorator(func: _CallableType) -> _CallableType:
+            func_register(name, allow_override, func)
+            return func
+
+        return decorator

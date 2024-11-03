@@ -5,13 +5,11 @@
 
 namespace mlc {
 
-#define MLC_DEF_REFLECTION(ObjType)                                                                                    \
-  static inline const int32_t _type_reflect = ::mlc::core::ReflectionHelper(static_cast<int32_t>(ObjType::_type_index))
-
 #define MLC_DEF_TYPE_COMMON_(SelfType, ParentType, TypeIndex, TypeKey)                                                 \
 public:                                                                                                                \
   template <typename> friend struct ::mlc::DefaultObjectAllocator;                                                     \
   template <typename> friend struct ::mlc::Ref;                                                                        \
+  template <typename> friend struct ::mlc::base::ObjPtrTraitsDefault;                                                  \
   friend struct ::mlc::Any;                                                                                            \
   friend struct ::mlc::AnyView;                                                                                        \
   template <typename DerivedType> MLC_INLINE bool IsInstance() const {                                                 \
@@ -22,10 +20,8 @@ public:                                                                         
   }                                                                                                                    \
   [[maybe_unused]] static constexpr const char *_type_key = TypeKey;                                                   \
   [[maybe_unused]] static inline MLCTypeInfo *_type_info =                                                             \
-      ::mlc::base::TypeRegister(static_cast<int32_t>(ParentType::_type_index), /**/                                    \
-                                static_cast<int32_t>(TypeIndex), TypeKey,      /**/                                    \
-                                &::mlc::core::ObjPtrGetter<SelfType>,          /**/                                    \
-                                &::mlc::core::ObjPtrSetter<SelfType>);                                                 \
+      ::mlc::core::TypeRegister<SelfType>(static_cast<int32_t>(ParentType::_type_index), /**/                          \
+                                          static_cast<int32_t>(TypeIndex), TypeKey);                                   \
   [[maybe_unused]] static inline int32_t *_type_ancestors = _type_info->type_ancestors;                                \
   [[maybe_unused]] static constexpr int32_t _type_depth = ParentType::_type_depth + 1;                                 \
   using _type_parent [[maybe_unused]] = ParentType;                                                                    \
@@ -35,13 +31,15 @@ public:                                                                         
 public:                                                                                                                \
   MLC_DEF_TYPE_COMMON_(SelfType, ParentType, TypeIndex, TypeKey);                                                      \
   [[maybe_unused]] static constexpr int32_t _type_index = static_cast<int32_t>(TypeIndex);                             \
-  MLC_DEF_REFLECTION(SelfType)
+  static inline const int32_t _type_reflect =                                                                          \
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(SelfType::_type_index)).Init<SelfType>()
 
 #define MLC_DEF_DYN_TYPE(SelfType, ParentType, TypeKey)                                                                \
 public:                                                                                                                \
   MLC_DEF_TYPE_COMMON_(SelfType, ParentType, -1, TypeKey);                                                             \
   [[maybe_unused]] static inline int32_t _type_index = _type_info->type_index;                                         \
-  MLC_DEF_REFLECTION(SelfType)
+  static inline const int32_t _type_reflect =                                                                          \
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(SelfType::_type_index)).Init<SelfType>()
 
 #define MLC_DEF_OBJ_REF(SelfType, ObjType, ParentType)                                                                 \
 public:                                                                                                                \
@@ -85,7 +83,7 @@ public:                                                                         
   }                                                                                                                    \
   template <typename U, typename = Derived<U>> /**/                                                                    \
   MLC_INLINE explicit SelfType(U *src) : ParentType(::mlc::Null) {                                                     \
-    this->_SetObjPtr(reinterpret_cast<MLCObject *>(src));                                                              \
+    this->_SetObjPtr(reinterpret_cast<MLCAny *>(src));                                                                 \
     this->CheckNull();                                                                                                 \
     this->IncRef();                                                                                                    \
   }                                                                                                                    \
@@ -104,7 +102,8 @@ public:                                                                         
   }                                                                                                                    \
   MLC_INLINE operator ::mlc::AnyView() const { return ::mlc::AnyView(this->get()); };                                  \
   MLC_INLINE operator ::mlc::Any() const { return ::mlc::Any(this->get()); }                                           \
-  MLC_DEF_REFLECTION(ObjType)
+  static inline const int32_t _type_reflect =                                                                          \
+      ::mlc::core::ReflectionHelper(static_cast<int32_t>(ObjType::_type_index)).Init<ObjType>()
 
 struct Object {
   MLCAny _mlc_header;
@@ -123,6 +122,7 @@ struct Object {
 struct ObjectRef : protected ::mlc::base::ObjectRefDummyRoot {
   MLC_DEF_OBJ_REF(ObjectRef, Object, ::mlc::base::ObjectRefDummyRoot) //
       .StaticFn("__init__", InitOf<Object>);
+  friend std::ostream &operator<<(std::ostream &os, const TSelf &src);
 };
 
 } // namespace mlc

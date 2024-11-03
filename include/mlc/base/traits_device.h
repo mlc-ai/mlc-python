@@ -17,19 +17,19 @@ template <> struct TypeTraits<DLDevice> {
 
   MLC_INLINE static void TypeToAny(DLDevice src, MLCAny *ret) {
     ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDevice);
-    ret->v_device = src;
+    ret->v.v_device = src;
   }
 
   MLC_INLINE static DLDevice AnyToTypeOwned(const MLCAny *v) {
     MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
     if (ty == MLCTypeIndex::kMLCDevice) {
-      return v->v_device;
+      return v->v.v_device;
     }
     if (ty == MLCTypeIndex::kMLCRawStr) {
-      return String2DLDevice(v->v_str);
+      return String2DLDevice(v->v.v_str);
     }
     if (ty == MLCTypeIndex::kMLCStr) {
-      return String2DLDevice(reinterpret_cast<const MLCStr *>(v->v_obj)->data);
+      return String2DLDevice(reinterpret_cast<const MLCStr *>(v->v.v_obj)->data);
     }
     throw TemporaryTypeError();
   }

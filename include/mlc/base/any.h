@@ -5,8 +5,8 @@
 #include <utility>
 
 namespace mlc {
+
 struct AnyView : public MLCAny {
-public:
   friend struct ::mlc::Any;
   /***** Section 1. Default constructor/destructors *****/
   MLC_INLINE ~AnyView() = default;
@@ -29,11 +29,12 @@ public:
   template <typename T> MLC_INLINE_NO_MSVC T CastWithStorage(Any *storage) const;
   template <typename T> MLC_INLINE operator T() const { return this->Cast<T>(); }
   template <typename T> MLC_INLINE AnyView(const T &src);
-  /***** Misc *****/
   template <typename T> MLC_INLINE AnyView &operator=(T &&src) { // Forward everything
     AnyView(std::forward<T>(src)).Swap(*this);
     return *this;
   }
+  /***** Misc *****/
+  bool defined() const { return this->type_index != static_cast<int32_t>(MLCTypeIndex::kMLCNone); }
   Str str() const;
   friend std::ostream &operator<<(std::ostream &os, const AnyView &src);
 
@@ -74,6 +75,7 @@ struct Any : public MLCAny {
     return *this;
   }
   /***** Misc *****/
+  bool defined() const { return this->type_index != static_cast<int32_t>(MLCTypeIndex::kMLCNone); }
   Str str() const;
   friend std::ostream &operator<<(std::ostream &os, const Any &src);
 
@@ -85,19 +87,19 @@ protected:
   }
   MLC_INLINE void IncRef() {
     if (!::mlc::base::IsTypeIndexPOD(this->type_index)) {
-      ::mlc::base::IncRef(this->v_obj);
+      ::mlc::base::IncRef(this->v.v_obj);
     }
   }
   MLC_INLINE void DecRef() {
     if (!::mlc::base::IsTypeIndexPOD(this->type_index)) {
-      ::mlc::base::DecRef(this->v_obj);
+      ::mlc::base::DecRef(this->v.v_obj);
     }
   }
   MLC_INLINE void SwitchFromRawStr() {
     if (this->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCRawStr)) {
       this->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCStr);
-      this->v_obj =
-          reinterpret_cast<MLCObject *>(::mlc::base::StrCopyFromCharArray(this->v_str, std::strlen(this->v_str)));
+      this->v.v_obj =
+          reinterpret_cast<MLCAny *>(::mlc::base::StrCopyFromCharArray(this->v.v_str, std::strlen(this->v.v_str)));
     }
   }
 };

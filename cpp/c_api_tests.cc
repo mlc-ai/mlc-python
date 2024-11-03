@@ -17,7 +17,7 @@ MLC_REGISTER_FUNC("mlc.testing.cxx_raw_str").set_body([](const char *x) { return
 /**************** Reflection ****************/
 
 struct ReflectionTestObj : public Object {
-  std::string x_mutable;
+  Str x_mutable;
   int32_t y_immutable;
 
   ReflectionTestObj(std::string x, int32_t y) : x_mutable(x), y_immutable(y) {}
@@ -32,6 +32,50 @@ struct ReflectionTest : public ObjectRef {
       .FieldReadOnly("y_immutable", &ReflectionTestObj::y_immutable)
       .StaticFn("__init__", InitOf<ReflectionTestObj, std::string, int32_t>)
       .MemFn("YPlusOne", &ReflectionTestObj::YPlusOne);
+};
+
+struct TestingCClassObj : public Object {
+  int8_t i8;
+  int16_t i16;
+  int32_t i32;
+  int64_t i64;
+  float f32;
+  double f64;
+  void *raw_ptr;
+  DLDataType dtype;
+  DLDevice device;
+  Any any;
+  Func func;
+  UList ulist;
+  UDict udict;
+  Str str_;
+
+  explicit TestingCClassObj(int8_t i8, int16_t i16, int32_t i32, int64_t i64, float f32, double f64, void *raw_ptr,
+                            DLDataType dtype, DLDevice device, Any any, Func func, UList ulist, UDict udict, Str str_)
+      : i8(i8), i16(i16), i32(i32), i64(i64), f32(f32), f64(f64), raw_ptr(raw_ptr), dtype(dtype), device(device),
+        any(any), func(func), ulist(ulist), udict(udict), str_(str_) {}
+
+  MLC_DEF_DYN_TYPE(ReflectionTestObj, Object, "mlc.testing.c_class");
+};
+
+struct TestingCClass : public ObjectRef {
+  MLC_DEF_OBJ_REF(TestingCClass, TestingCClassObj, ObjectRef)
+      .Field("i8", &TestingCClassObj::i8)
+      .Field("i16", &TestingCClassObj::i16)
+      .Field("i32", &TestingCClassObj::i32)
+      .Field("i64", &TestingCClassObj::i64)
+      .Field("f32", &TestingCClassObj::f32)
+      .Field("f64", &TestingCClassObj::f64)
+      .Field("raw_ptr", &TestingCClassObj::raw_ptr)
+      .Field("dtype", &TestingCClassObj::dtype)
+      .Field("device", &TestingCClassObj::device)
+      .Field("any", &TestingCClassObj::any)
+      .Field("func", &TestingCClassObj::func)
+      .Field("ulist", &TestingCClassObj::ulist)
+      .Field("udict", &TestingCClassObj::udict)
+      .Field("str_", &TestingCClassObj::str_)
+      .StaticFn("__init__", InitOf<TestingCClassObj, int8_t, int16_t, int32_t, int64_t, float, double, void *,
+                                   DLDataType, DLDevice, Any, Func, UList, UDict, Str>);
 };
 
 /**************** Traceback ****************/

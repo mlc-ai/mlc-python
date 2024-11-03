@@ -2,8 +2,8 @@
 #define MLC_CORE_FUNC_DETAILS_H_
 
 #include "./func.h"
+#include "./typing.h"
 #include <cstring>
-#include <iomanip>
 #include <memory>
 
 namespace mlc {
@@ -132,12 +132,13 @@ template <typename RetType, typename... Args> struct UnpackCall<RetType, std::tu
 
 /********** Section 3. Func::Allocator *********/
 
-template <typename FuncType> void FuncCallPacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
+template <typename FuncType>
+inline void FuncCallPacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
   static_cast<const FuncImpl<FuncType> *>(obj)->func_(num_args, args, ret);
 }
 
 template <typename FuncType>
-void FuncCallUnpacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
+inline void FuncCallUnpacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
   using ArgType = typename FuncTraits<FuncType>::ArgType;
   constexpr int32_t N = std::tuple_size_v<ArgType>;
   if (num_args != N) {
@@ -185,115 +186,6 @@ struct FuncAllocatorImpl<R (Obj::*)(Args...), std::enable_if_t<FuncTraits<R(Obj 
   }
 };
 
-/********** Section 4. ReflectionHelper *********/
-
-template <typename FieldType> struct ReflectGetterSetter {
-  static int32_t Getter(MLCTypeField *, void *addr, MLCAny *ret) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<Any *>(ret) = *static_cast<FieldType *>(addr);
-    MLC_SAFE_CALL_END(static_cast<Any *>(ret));
-  }
-  static int32_t Setter(MLCTypeField *, void *addr, MLCAny *src) {
-    MLC_SAFE_CALL_BEGIN();
-    *static_cast<FieldType *>(addr) = (static_cast<Any *>(src))->operator FieldType();
-    MLC_SAFE_CALL_END(static_cast<Any *>(src));
-  }
-};
-
-template <> struct ReflectGetterSetter<char *> : public ReflectGetterSetter<const char *> {};
-
-template <typename Super, typename FieldType>
-inline MLCTypeField ReflectionHelper::PrepareField(const char *name, FieldType Super::*field) {
-  int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
-  MLCTypeInfo **ann = [&]() {
-    this->type_annotation_pool.emplace_back();
-    std::vector<MLCTypeInfo *> &type_annotation = this->type_annotation_pool.back();
-    base::Type2Str<FieldType>::GetTypeAnnotation(&type_annotation);
-    type_annotation.push_back(nullptr);
-    return type_annotation.data();
-  }();
-  int32_t is_read_only = false;
-  int32_t is_owned_obj_ptr = base::IsObjRef<FieldType> || base::IsRef<FieldType>;
-  return MLCTypeField{
-      name, field_offset, nullptr, nullptr, ann, is_read_only, is_owned_obj_ptr,
-  };
-}
-
-template <typename Super, typename FieldType>
-inline ReflectionHelper &ReflectionHelper::FieldReadOnly(const char *name, FieldType Super::*field) {
-  MLCTypeField f = this->PrepareField<Super, FieldType>(name, field);
-  using P = ::mlc::core::ReflectGetterSetter<FieldType>;
-  f.getter = &P::Getter;
-  f.setter = nullptr;
-  f.is_read_only = true;
-  this->fields.emplace_back(f);
-  return *this;
-}
-
-template <typename Super, typename FieldType>
-inline ReflectionHelper &ReflectionHelper::Field(const char *name, FieldType Super::*field) {
-  MLCTypeField f = this->PrepareField<Super, FieldType>(name, field);
-  using P = ::mlc::core::ReflectGetterSetter<FieldType>;
-  f.getter = &P::Getter;
-  f.setter = &P::Setter;
-  this->fields.emplace_back(f);
-  return *this;
-}
-
-inline ReflectionHelper::ReflectionHelper(int32_t type_index)
-    : type_index(type_index), fields(), methods(), method_pool() {}
-
-inline std::string ReflectionHelper::DefaultStrMethod(AnyView any) {
-  std::ostringstream os;
-  os << ::mlc::base::TypeIndex2TypeKey(any.type_index) //
-     << "@0x" << std::setfill('0') << std::setw(12)    //
-     << std::hex << (uintptr_t)(any.v_ptr);
-  return os.str();
-}
-
-template <typename Callable>
-inline MLCTypeMethod ReflectionHelper::PrepareMethod(const char *name, Callable &&callable) {
-  Ref<FuncObj> func_ref = Ref<FuncObj>::New(std::forward<Callable>(callable));
-  MLCTypeMethod ret{name, func_ref.get(), -1};
-  this->method_pool.push_back(std::move(func_ref));
-  return ret;
-}
-
-template <typename Callable> inline ReflectionHelper &ReflectionHelper::MemFn(const char *name, Callable &&callable) {
-  constexpr int32_t MemFn = 0;
-  MLCTypeMethod m = this->PrepareMethod(name, std::forward<Callable>(callable));
-  m.kind = MemFn;
-  this->methods.emplace_back(m);
-  return *this;
-}
-
-template <typename Callable> ReflectionHelper &ReflectionHelper::StaticFn(const char *name, Callable &&callable) {
-  constexpr int32_t StaticFn = 1;
-  MLCTypeMethod m = this->PrepareMethod(name, std::forward<Callable>(callable));
-  m.kind = StaticFn;
-  this->methods.emplace_back(m);
-  return *this;
-}
-
-inline ReflectionHelper::operator int32_t() {
-  if (!this->fields.empty() || !this->methods.empty()) {
-    auto has_method = [&](const char *name) {
-      for (const auto &entry : this->methods) {
-        if (std::strcmp(entry.name, name) == 0) {
-          return true;
-        }
-      }
-      return false;
-    };
-    if (!has_method("__str__")) {
-      this->MemFn("__str__", &ReflectionHelper::DefaultStrMethod);
-    }
-    MLCTypeDefReflection(nullptr, this->type_index,                //
-                         this->fields.size(), this->fields.data(), //
-                         this->methods.size(), this->methods.data());
-  }
-  return 0;
-}
 } // namespace core
 } // namespace mlc
 
@@ -302,7 +194,7 @@ template <typename R, typename... Args> MLC_INLINE std::string FuncTraitsImpl<R,
   return ::mlc::core::Func2Str<R, Args...>::Run(std::index_sequence_for<Args...>{});
 }
 template <typename FuncType, typename> MLC_INLINE FuncObj *FuncObj::Allocator::New(FuncType func) {
-  return ::mlc::core::FuncAllocatorImpl<FuncType>::Run(std::forward<FuncType>(func));
+  return ::mlc::core::FuncAllocatorImpl<::mlc::base::RemoveCR<FuncType>>::Run(std::forward<FuncType>(func));
 }
 inline Ref<FuncObj> FuncObj::FromForeign(void *self, MLCDeleterType deleter, MLCFuncSafeCallType safe_call) {
   if (deleter == nullptr) {

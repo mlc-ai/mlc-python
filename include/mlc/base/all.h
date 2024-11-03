@@ -40,18 +40,22 @@ MLC_INLINE Any &Any::operator=(Any &&src) {
 
 /*********** Section 2. Conversion between Any/AnyView <=> POD ***********/
 
-template <typename T> MLC_INLINE AnyView::AnyView(const T &src) : MLCAny() {
+template <typename _T> MLC_INLINE AnyView::AnyView(const _T &src) : MLCAny() {
   using namespace ::mlc::base;
-  if constexpr (HasTypeTraits<T>) {
+  using T = RemoveCR<_T>;
+  static_assert(Anyable<T>);
+  if constexpr (IsPOD<T> || IsRawObjPtr<T>) {
     TypeTraits<T>::TypeToAny(src, this);
   } else {
     (src.operator AnyView()).Swap(*this);
   }
 }
 
-template <typename T> MLC_INLINE Any::Any(const T &src) : MLCAny() {
+template <typename _T> MLC_INLINE Any::Any(const _T &src) : MLCAny() {
   using namespace ::mlc::base;
-  if constexpr (HasTypeTraits<RemoveCR<T>>) {
+  using T = RemoveCR<_T>;
+  static_assert(Anyable<T>);
+  if constexpr (IsPOD<T> || IsRawObjPtr<T>) {
     TypeTraits<RemoveCR<T>>::TypeToAny(src, this);
     this->SwitchFromRawStr();
     this->IncRef();
@@ -60,31 +64,39 @@ template <typename T> MLC_INLINE Any::Any(const T &src) : MLCAny() {
   }
 }
 
-template <typename T> MLC_INLINE_NO_MSVC T AnyView::Cast() const {
+template <typename _T> MLC_INLINE_NO_MSVC _T AnyView::Cast() const {
   using namespace ::mlc::base;
-  if constexpr (HasTypeTraits<T>) {
+  using T = RemoveCR<_T>;
+  static_assert(Anyable<T>);
+  if constexpr (IsPOD<T> || IsRawObjPtr<T>) {
     MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeUnowned(this), this->type_index, Type2Str<T>::Run());
   } else {
     return T(*this);
   }
 }
 
-template <typename T> MLC_INLINE_NO_MSVC T Any::Cast() const {
+template <typename _T> MLC_INLINE_NO_MSVC _T Any::Cast() const {
   using namespace ::mlc::base;
-  if constexpr (HasTypeTraits<T>) {
+  using T = RemoveCR<_T>;
+  static_assert(Anyable<T>);
+  if constexpr (IsPOD<T> || IsRawObjPtr<T>) {
     MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeUnowned(this), this->type_index, Type2Str<T>::Run());
   } else {
     return T(*this);
   }
 }
 
-template <typename T> MLC_INLINE_NO_MSVC T AnyView::CastWithStorage(Any *storage) const {
+template <typename _T> MLC_INLINE_NO_MSVC _T AnyView::CastWithStorage(Any *storage) const {
   using namespace ::mlc::base;
+  using T = RemoveCR<_T>;
+  static_assert(Anyable<T>);
   MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeWithStorage(this, storage), this->type_index, Type2Str<T>::Run());
 }
 
-template <typename T> MLC_INLINE_NO_MSVC T Any::CastWithStorage(Any *storage) const {
+template <typename _T> MLC_INLINE_NO_MSVC _T Any::CastWithStorage(Any *storage) const {
   using namespace ::mlc::base;
+  using T = RemoveCR<_T>;
+  static_assert(Anyable<T>);
   MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeWithStorage(this, storage), this->type_index, Type2Str<T>::Run());
 }
 

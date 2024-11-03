@@ -1,4 +1,6 @@
 #include "./registry.h"
+#include <cstdint>
+#include <cstdlib>
 #include <iostream>
 
 namespace mlc {
@@ -81,7 +83,7 @@ MLC_API int32_t MLCDynTypeTypeTableDestroy(MLCTypeTableHandle handle) {
 MLC_API int32_t MLCAnyIncRef(MLCAny *any) {
   MLC_SAFE_CALL_BEGIN();
   if (!::mlc::base::IsTypeIndexPOD(any->type_index)) {
-    ::mlc::base::IncRef(any->v_obj);
+    ::mlc::base::IncRef(any->v.v_obj);
   }
   MLC_SAFE_CALL_END(&last_error);
 }
@@ -89,7 +91,7 @@ MLC_API int32_t MLCAnyIncRef(MLCAny *any) {
 MLC_API int32_t MLCAnyDecRef(MLCAny *any) {
   MLC_SAFE_CALL_BEGIN();
   if (!::mlc::base::IsTypeIndexPOD(any->type_index)) {
-    ::mlc::base::DecRef(any->v_obj);
+    ::mlc::base::DecRef(any->v.v_obj);
   }
   MLC_SAFE_CALL_END(&last_error);
 }
@@ -144,33 +146,28 @@ MLC_API int32_t MLCErrorGetInfo(MLCAny error, int32_t *num_strs, const char ***s
   MLC_SAFE_CALL_END(&last_error);
 }
 
-MLC_API void *MLCExtObjCreate(int32_t bytes, int32_t type_index) {
-  char *data = new char[bytes]();
-  std::memset(data, 0, bytes);
-  MLCAny *header = reinterpret_cast<MLCAny *>(data);
-  header->type_index = type_index;
-  header->ref_cnt = 0;
-  header->deleter = MLCExtObjDelete;
-  return data;
+MLC_API int32_t MLCExtObjCreate(int32_t num_bytes, int32_t type_index, MLCAny *ret) {
+  MLC_SAFE_CALL_BEGIN();
+  *static_cast<Any *>(ret) = mlc::AllocExternObject(type_index, num_bytes);
+  MLC_SAFE_CALL_END(&last_error);
 }
 
-MLC_API void MLCExtObjDelete(void *objptr) {
+MLC_API int32_t _MLCExtObjDeleteImpl(void *objptr) {
+  MLC_SAFE_CALL_BEGIN();
   MLCAny *header = reinterpret_cast<MLCAny *>(objptr);
-  MLCTypeInfo *info = TypeTable::Global()->GetTypeInfo(header->type_index);
-  if (info == nullptr) { // TODO: error handling
+  if (MLCTypeInfo *info = TypeTable::Global()->GetTypeInfo(header->type_index)) {
+    ::mlc::core::VisitTypeField(objptr, info, ::mlc::core::ExternObjDeleter{});
+    std::free(objptr);
+  } else {
     std::cerr << "Cannot find type info for type index: " << header->type_index << std::endl;
     std::abort();
   }
-  MLCTypeField *fields = info->fields;
-  for (int32_t i = 0;; i++) {
-    MLCTypeField &field = fields[i];
-    if (field.name == nullptr) {
-      break;
-    }
-    if (field.is_owned_obj_ptr) {
-      MLCObject *ptr = reinterpret_cast<MLCObjPtr *>(static_cast<char *>(objptr) + field.offset)->ptr;
-      ::mlc::base::DecRef(ptr);
-    }
+  MLC_SAFE_CALL_END(&last_error);
+}
+
+MLC_API void MLCExtObjDelete(void *objptr) {
+  if (int32_t error_code = _MLCExtObjDeleteImpl(objptr)) {
+    std::cerr << "Error code (" << error_code << ") when deleting external object: " << last_error << std::endl;
+    std::abort();
   }
-  delete[] reinterpret_cast<char *>(objptr);
 }

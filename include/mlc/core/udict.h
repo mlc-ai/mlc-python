@@ -9,13 +9,13 @@ namespace core {
 struct AnyHash {
   uint64_t operator()(const MLCAny &a) const {
     if (a.type_index == static_cast<int32_t>(MLCTypeIndex::kMLCStr)) {
-      return ::mlc::core::StrHash(reinterpret_cast<MLCStr *>(a.v_obj));
+      return ::mlc::core::StrHash(reinterpret_cast<MLCStr *>(a.v.v_obj));
     }
     union {
       int64_t i64;
       uint64_t u64;
     } cvt;
-    cvt.i64 = a.v_int64;
+    cvt.i64 = a.v.v_int64;
     return cvt.u64;
   }
 };
@@ -26,9 +26,9 @@ struct AnyEqual {
       return false;
     }
     if (a.type_index == static_cast<int32_t>(MLCTypeIndex::kMLCStr)) {
-      return ::mlc::core::StrCompare(reinterpret_cast<MLCStr *>(a.v_obj), reinterpret_cast<MLCStr *>(b.v_obj)) == 0;
+      return ::mlc::core::StrCompare(reinterpret_cast<MLCStr *>(a.v.v_obj), reinterpret_cast<MLCStr *>(b.v.v_obj)) == 0;
     }
-    return a.v_int64 == b.v_int64;
+    return a.v.v_int64 == b.v.v_int64;
   }
 };
 } // namespace core

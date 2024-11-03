@@ -47,16 +47,30 @@ typedef enum {
   kMLCDataType = 4,
   kMLCDevice = 5,
   kMLCRawStr = 6,
-  // [Section] Static Boxed: [kMLCStaticObjectBegin, kMLCDynObjectBegin)
-  kMLCStaticObjectBegin = 64,
-  kMLCObject = 64,
-  kMLCList = 65,
-  kMLCDict = 66,
-  kMLCError = 67,
-  kMLCFunc = 68,
-  kMLCStr = 69,
+  kMLCStaticObjectBegin = 1000,
+  // kMLCCore [1000: 1100) {
+  kMLCCoreBegin = 1000,
+  kMLCObject = 1000,
+  kMLCList = 1001,
+  kMLCDict = 1002,
+  kMLCError = 1003,
+  kMLCFunc = 1004,
+  kMLCStr = 1005,
+  kMLCCoreEnd = 1100,
+  // }
+  // kMLCTyping [1100: 1200) {
+  kMLCTypingBegin = 1100,
+  kMLCTyping = 1100,
+  kMLCTypingAny = 1101,
+  kMLCTypingAtomic = 1102,
+  kMLCTypingPtr = 1103,
+  kMLCTypingOptional = 1104,
+  kMLCTypingList = 1105,
+  kMLCTypingDict = 1106,
+  kMLCTypingEnd = 1200,
+  // }
   // [Section] Dynamic Boxed: [kMLCDynObjectBegin, +oo)
-  kMLCDynObjectBegin = 128,
+  kMLCDynObjectBegin = 100000,
 #ifdef __cplusplus
 };
 #else
@@ -65,38 +79,44 @@ typedef enum {
 
 struct MLCAny;
 struct MLCTypeInfo;
-typedef struct MLCAny MLCObject;
 typedef void (*MLCDeleterType)(void *);
 typedef void (*MLCFuncCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret);
 typedef int32_t (*MLCFuncSafeCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret);
 
-typedef struct MLCAny {
-  int32_t type_index;
-  union {              // 4 bytes
-    int32_t ref_cnt;   // reference counter for heap object
-    int32_t small_len; // length for on-stack object
-  };
-  union {                   // 8 bytes
-    int64_t v_int64;        // integers
-    double v_float64;       // floating-point numbers
-    DLDataType v_dtype;     // data type
-    DLDevice v_device;      // device
-    void *v_ptr;            // typeless pointers
-    const char *v_str;      // raw string
-    MLCObject *v_obj;       // ref counted objects
-    MLCDeleterType deleter; // Deleter of the object
-    char v_bytes[8];        // small string
-  };
-} MLCAny;
-
 typedef struct {
-  MLCObject *ptr;
+  MLCAny *ptr;
 } MLCObjPtr;
 
 typedef struct {
   int64_t num_bytes;
   const char *bytes;
 } MLCByteArray;
+
+typedef union {
+  int64_t v_int64;        // integers
+  double v_float64;       // floating-point numbers
+  DLDataType v_dtype;     // data type
+  DLDevice v_device;      // device
+  void *v_ptr;            // typeless pointers
+  const char *v_str;      // raw string
+  MLCAny *v_obj;          // ref counted objects
+  MLCDeleterType deleter; // Deleter of the object
+  char v_bytes[8];        // small string
+} MLCPODValueUnion;
+
+typedef struct MLCAny {
+  int32_t type_index;  // 4 bytes
+  union {              // 4 bytes
+    int32_t ref_cnt;   // reference counter for heap object
+    int32_t small_len; // length for on-stack object
+  };
+  MLCPODValueUnion v; // 8 bytes
+} MLCAny;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCPODValueUnion data;
+} MLCBoxedPOD;
 
 typedef struct {
   MLCAny _mlc_header;
@@ -129,23 +149,54 @@ typedef struct {
   void *data;
 } MLCDict;
 
+typedef struct {
+  MLCAny _mlc_header;
+} MLCTypingAny;
+
+typedef struct {
+  MLCAny _mlc_header;
+} MLCTypingNone;
+
+typedef struct {
+  MLCAny _mlc_header;
+  int32_t type_index;
+} MLCTypingAtomic;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCObjPtr ty;
+} MLCTypingPtr;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCObjPtr ty;
+} MLCTypingOptional;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCObjPtr ty;
+} MLCTypingList;
+
+typedef struct {
+  MLCAny _mlc_header;
+  MLCObjPtr ty_k;
+  MLCObjPtr ty_v;
+} MLCTypingDict;
+
 typedef struct MLCTypeField MLCTypeField;
-typedef int32_t (*MLCAttrGetterSetter)(MLCTypeField *, void *addr, MLCAny *);
 
 typedef struct MLCTypeField {
   const char *name;
   int64_t offset;
-  MLCAttrGetterSetter getter;
-  MLCAttrGetterSetter setter;
-  MLCTypeInfo **type_annotation;
-  int32_t is_read_only;
-  int32_t is_owned_obj_ptr;
+  int32_t num_bytes;
+  int32_t frozen;
+  MLCAny *ty;
 } MLCTypeField;
 
 typedef struct {
   const char *name;
   MLCFunc *func;
-  int32_t kind; // 0 for member method; 1 for static method
+  int32_t kind; // 0: member method; 1: static method
 } MLCTypeMethod;
 
 typedef struct MLCTypeInfo {
@@ -153,10 +204,8 @@ typedef struct MLCTypeInfo {
   const char *type_key;
   int32_t type_depth;
   int32_t *type_ancestors; // Range: [0, type_depth)
-  MLCAttrGetterSetter getter;
-  MLCAttrGetterSetter setter;
-  MLCTypeField *fields;   // Ends with a field with name == nullptr
-  MLCTypeMethod *methods; // Ends with a method with name == nullptr
+  MLCTypeField *fields;    // Ends with a field with name == nullptr
+  MLCTypeMethod *methods;  // Ends with a method with name == nullptr
 } MLCTypeInfo;
 
 typedef void *MLCTypeTableHandle;
@@ -179,7 +228,7 @@ MLC_API int32_t MLCVTableGet(MLCTypeTableHandle self, int32_t type_index, const 
 MLC_API int32_t MLCErrorCreate(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret);
 MLC_API int32_t MLCErrorGetInfo(MLCAny error, int32_t *num_strs, const char ***strs);
 MLC_API MLCByteArray MLCTraceback(const char *filename, const char *lineno, const char *func_name);
-MLC_API void *MLCExtObjCreate(int32_t bytes, int32_t type_index);
+MLC_API int32_t MLCExtObjCreate(int32_t num_bytes, int32_t type_index, MLCAny *ret);
 MLC_API void MLCExtObjDelete(void *objptr);
 #ifdef __cplusplus
 } // MLC_EXTERN_C

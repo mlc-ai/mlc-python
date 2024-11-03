@@ -10,10 +10,10 @@ template <typename T> struct ObjPtrTraitsDefault {
   MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) {
     if (src == nullptr) {
       ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCNone);
-      ret->v_obj = nullptr;
+      ret->v.v_obj = nullptr;
     } else {
       ret->type_index = src->_mlc_header.type_index;
-      ret->v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(src));
+      ret->v.v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(src));
     }
   }
   MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) {
@@ -21,7 +21,7 @@ template <typename T> struct ObjPtrTraitsDefault {
       return nullptr;
     }
     if (!::mlc::base::IsTypeIndexPOD(v->type_index) && ::mlc::base::IsInstanceOf<T>(v)) {
-      return reinterpret_cast<T *>(v->v_obj);
+      return reinterpret_cast<T *>(v->v.v_obj);
     }
     throw TemporaryTypeError();
   }

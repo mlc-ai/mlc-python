@@ -81,6 +81,7 @@ template <> struct IsPODImpl<std::nullptr_t> : std::true_type {};
 template <size_t N> struct IsPODImpl<CharArray<N>> : std::true_type {};
 template <size_t N> struct IsPODImpl<const CharArray<N>> : std::true_type {};
 template <> struct IsPODImpl<const char *> : std::true_type {};
+template <> struct IsPODImpl<char *> : std::true_type {};
 template <> struct IsPODImpl<std::string> : std::true_type {};
 template <typename T> constexpr bool IsPOD = IsPODImpl<T>::value;
 
@@ -126,8 +127,10 @@ struct NewableImpl {
 template <typename T, typename... Args>
 constexpr bool Newable = decltype(NewableImpl::test<AllocatorOf<T>, T *, Args...>(0))::value;
 
-// HasTypeTraits<T>
-template <typename T> constexpr bool HasTypeTraits = IsPOD<T> || IsRawObjPtr<T>;
+// Anyable<T>
+template <typename T>
+constexpr bool Anyable = IsPOD<T> || IsRawObjPtr<T> || IsRef<T> || IsOptional<T> || IsObjRef<T> ||
+                         std::is_same_v<T, Any> || std::is_same_v<T, AnyView>;
 
 // IsContainerElement<T, Args...>
 template <typename T>

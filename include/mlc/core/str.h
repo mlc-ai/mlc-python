@@ -2,6 +2,7 @@
 #define MLC_CORE_STR_H_
 #include "./object.h"
 #include <cstring>
+#include <ostream>
 #include <sstream>
 
 namespace mlc {
@@ -12,13 +13,13 @@ template <> struct TypeTraits<StrObj *> {
   MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToTypeUnowned(v); }
   MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) {
     if (v->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCRawStr)) {
-      return StrCopyFromCharArray(v->v_str, std::strlen(v->v_str));
+      return StrCopyFromCharArray(v->v.v_str, std::strlen(v->v.v_str));
     }
     return AnyToTypeUnowned(v);
   }
   MLC_INLINE static T *AnyToTypeWithStorage(const MLCAny *v, Any *storage) {
     if (v->type_index == static_cast<int32_t>(MLCTypeIndex::kMLCRawStr)) {
-      StrObj *ret = StrCopyFromCharArray(v->v_str, std::strlen(v->v_str));
+      StrObj *ret = StrCopyFromCharArray(v->v.v_str, std::strlen(v->v.v_str));
       *storage = reinterpret_cast<Object *>(ret);
       return ret;
     }
@@ -95,7 +96,7 @@ inline void PrintAnyToStream(std::ostream &os, const MLCAny *v) {
                              << ::mlc::base::TypeIndex2TypeKey(v->type_index);
   }
   Any ret;
-  ::mlc::base::FuncCall(attr.v_obj, 1, v, &ret);
+  ::mlc::base::FuncCall(attr.v.v_obj, 1, v, &ret);
   os << ret.operator const char *();
 }
 
@@ -198,7 +199,7 @@ inline Str Object::str() const {
   return Str(os.str());
 }
 
-template <typename T> MLC_INLINE Str Ref<T>::str() const {
+template <typename T> inline Str Ref<T>::str() const {
   AnyView v(this->operator AnyView());
   std::ostringstream os;
   os << v;
@@ -215,11 +216,23 @@ inline std::ostream &operator<<(std::ostream &os, const Any &src) {
   return os;
 }
 
-inline std::ostream &operator<<(std::ostream &os, const ::mlc::base::PtrBase &src) {
+template <typename T> inline std::ostream &operator<<(std::ostream &os, const Ref<T> &_src) {
+  const MLCObjPtr &src = reinterpret_cast<const MLCObjPtr &>(_src);
   MLCAny v{};
   if (src.ptr != nullptr) {
     v.type_index = src.ptr->type_index;
-    v.v_obj = src.ptr;
+    v.v.v_obj = src.ptr;
+  }
+  ::mlc::core::PrintAnyToStream(os, &v);
+  return os;
+}
+
+inline std::ostream &operator<<(std::ostream &os, const ObjectRef &_src) {
+  const MLCObjPtr &src = reinterpret_cast<const MLCObjPtr &>(_src);
+  MLCAny v{};
+  if (src.ptr != nullptr) {
+    v.type_index = src.ptr->type_index;
+    v.v.v_obj = src.ptr;
   }
   ::mlc::core::PrintAnyToStream(os, &v);
   return os;
@@ -228,10 +241,11 @@ inline std::ostream &operator<<(std::ostream &os, const ::mlc::base::PtrBase &sr
 inline std::ostream &operator<<(std::ostream &os, const Object &src) {
   MLCAny v{};
   v.type_index = src._mlc_header.type_index;
-  v.v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(&src));
+  v.v.v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(&src));
   ::mlc::core::PrintAnyToStream(os, &v);
   return os;
 }
+
 } // namespace mlc
 
 namespace mlc {

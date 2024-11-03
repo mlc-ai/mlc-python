@@ -226,20 +226,20 @@ TEST(ObjectRef, MoveAssignment) {
 }
 
 TEST(RefPOD, DefaultConstructor) {
-  Ref<int32_t> ref;
+  Ref<int64_t> ref;
   EXPECT_EQ(ref.get(), nullptr);
 }
 
 TEST(RefPOD, ConstructorFromValue) {
-  Ref<int32_t> ref = Ref<int32_t>::New(42);
+  Ref<int64_t> ref = Ref<int64_t>::New(42);
   EXPECT_NE(ref.get(), nullptr);
   EXPECT_EQ(*ref, 42);
   EXPECT_EQ(GetRefCount(ref), 1);
 }
 
 TEST(RefPOD, CopyConstructor) {
-  Ref<int32_t> ref1 = Ref<int32_t>::New(42);
-  Ref<int32_t> ref2(ref1);
+  Ref<int64_t> ref1 = Ref<int64_t>::New(42);
+  Ref<int64_t> ref2(ref1);
   EXPECT_EQ(*ref1, 42);
   EXPECT_EQ(*ref2, 42);
   EXPECT_EQ(GetRefCount(ref1), 2);
@@ -247,16 +247,16 @@ TEST(RefPOD, CopyConstructor) {
 }
 
 TEST(RefPOD, MoveConstructor) {
-  Ref<int32_t> ref1 = Ref<int32_t>::New(42);
-  Ref<int32_t> ref2(std::move(ref1));
+  Ref<int64_t> ref1 = Ref<int64_t>::New(42);
+  Ref<int64_t> ref2(std::move(ref1));
   EXPECT_EQ(ref1.get(), nullptr);
   EXPECT_EQ(*ref2, 42);
   EXPECT_EQ(GetRefCount(ref2), 1);
 }
 
 TEST(RefPOD, CopyAssignment) {
-  Ref<int32_t> ref1 = Ref<int32_t>::New(42);
-  Ref<int32_t> ref2;
+  Ref<int64_t> ref1 = Ref<int64_t>::New(42);
+  Ref<int64_t> ref2;
   ref2 = ref1;
   EXPECT_EQ(*ref1, 42);
   EXPECT_EQ(*ref2, 42);
@@ -265,8 +265,8 @@ TEST(RefPOD, CopyAssignment) {
 }
 
 TEST(RefPOD, MoveAssignment) {
-  Ref<int32_t> ref1 = Ref<int32_t>::New(42);
-  Ref<int32_t> ref2;
+  Ref<int64_t> ref1 = Ref<int64_t>::New(42);
+  Ref<int64_t> ref2;
   ref2 = std::move(ref1);
   EXPECT_EQ(ref1.get(), nullptr);
   EXPECT_EQ(*ref2, 42);
@@ -274,7 +274,7 @@ TEST(RefPOD, MoveAssignment) {
 }
 
 TEST(RefPOD, Dereference) {
-  Ref<int32_t> ref = Ref<int32_t>::New(42);
+  Ref<int64_t> ref = Ref<int64_t>::New(42);
   EXPECT_EQ(*ref, 42);
   *ref = 24;
   EXPECT_EQ(*ref, 24);
@@ -287,52 +287,52 @@ TEST(RefPOD, ArrowOperator) {
 }
 
 TEST(RefPOD, Null) {
-  Ref<int32_t> ref(Null);
+  Ref<int64_t> ref(Null);
   EXPECT_EQ(ref.get(), nullptr);
 }
 
 TEST(RefPOD, Reset) {
-  Ref<int32_t> ref = Ref<int32_t>::New(42);
+  Ref<int64_t> ref = Ref<int64_t>::New(42);
   EXPECT_NE(ref.get(), nullptr);
   ref.Reset();
   EXPECT_EQ(ref.get(), nullptr);
 }
 
 TEST(RefPOD, ConversionToAny) {
-  Ref<int32_t> ref = Ref<int32_t>::New(42);
+  Ref<int64_t> ref = Ref<int64_t>::New(42);
   Any any = ref;
   ref.Reset();
   EXPECT_EQ(any.operator int64_t(), 42);
-  ref = Ref<int32_t>(any);
+  ref = Ref<int64_t>(any);
   EXPECT_EQ(*ref, 42);
   EXPECT_EQ(GetRefCount(ref), 1);
 }
 
 TEST(RefPOD, ConversionFromAny) {
-  Any any = Ref<int32_t>::New(42);
-  Ref<int32_t> ref = any;
+  Any any = Ref<int64_t>::New(42);
+  Ref<int64_t> ref = any;
   EXPECT_EQ(*ref, 42);
 }
 
 TEST(RefPOD, ConversionToAnyView) {
-  Ref<int32_t> ref = Ref<int32_t>::New(42);
+  Ref<int64_t> ref = Ref<int64_t>::New(42);
   AnyView any_view = ref;
   ref.Reset();
   EXPECT_EQ(any_view.operator int64_t(), 42);
-  ref = Ref<int32_t>(any_view);
+  ref = Ref<int64_t>(any_view);
   EXPECT_EQ(*ref, 42);
   EXPECT_EQ(GetRefCount(ref), 1);
 }
 
 TEST(RefPOD, ConversionFromAnyView) {
-  Any any = Ref<int32_t>::New(42);
+  Any any = Ref<int64_t>::New(42);
   AnyView any_view = any;
-  Ref<int32_t> ref = any_view;
+  Ref<int64_t> ref = any_view;
   EXPECT_EQ(*ref, 42);
 }
 
 TEST(RefPOD, NewMethodWithDifferentTypes) {
-  Ref<int32_t> ref_int = Ref<int32_t>::New(42);
+  Ref<int64_t> ref_int = Ref<int64_t>::New(42);
   EXPECT_EQ(*ref_int, 42);
 
   Ref<double> ref_double = Ref<double>::New(3.14);
@@ -349,9 +349,9 @@ TEST(RefPOD, NewMethodWithDifferentTypes) {
 }
 
 TEST(RefPOD, ComparisonOperators) {
-  Ref<int32_t> ref1 = Ref<int32_t>::New(42);
-  Ref<int32_t> ref2 = Ref<int32_t>::New(42);
-  Ref<int32_t> ref3 = Ref<int32_t>::New(24);
+  Ref<int64_t> ref1 = Ref<int64_t>::New(42);
+  Ref<int64_t> ref2 = Ref<int64_t>::New(42);
+  Ref<int64_t> ref3 = Ref<int64_t>::New(24);
 
   EXPECT_TRUE(ref1 == ref1);
   EXPECT_FALSE(ref1 == ref2);
@@ -363,8 +363,8 @@ TEST(RefPOD, ComparisonOperators) {
 }
 
 TEST(RefPOD, NullComparison) {
-  Ref<int32_t> ref1;
-  Ref<int32_t> ref2 = Ref<int32_t>::New(42);
+  Ref<int64_t> ref1;
+  Ref<int64_t> ref2 = Ref<int64_t>::New(42);
 
   EXPECT_TRUE(ref1 == nullptr);
   EXPECT_FALSE(ref2 == nullptr);
@@ -374,17 +374,17 @@ TEST(RefPOD, NullComparison) {
 }
 
 TEST(RefPOD, Defined) {
-  Ref<int32_t> ref1;
-  Ref<int32_t> ref2 = Ref<int32_t>::New(42);
+  Ref<int64_t> ref1;
+  Ref<int64_t> ref2 = Ref<int64_t>::New(42);
 
   EXPECT_FALSE(ref1.defined());
   EXPECT_TRUE(ref2.defined());
 }
 
 TEST(RefPOD, MultipleReferences) {
-  Ref<int32_t> ref1 = Ref<int32_t>::New(42);
-  Ref<int32_t> ref2 = ref1;
-  Ref<int32_t> ref3 = ref1;
+  Ref<int64_t> ref1 = Ref<int64_t>::New(42);
+  Ref<int64_t> ref2 = ref1;
+  Ref<int64_t> ref3 = ref1;
 
   EXPECT_EQ(GetRefCount(ref1), 3);
   EXPECT_EQ(GetRefCount(ref2), 3);
@@ -399,8 +399,8 @@ TEST(RefPOD, MultipleReferences) {
 }
 
 TEST(RefPOD, MoveSemantics) {
-  Ref<int32_t> ref1 = Ref<int32_t>::New(42);
-  Ref<int32_t> ref2 = std::move(ref1);
+  Ref<int64_t> ref1 = Ref<int64_t>::New(42);
+  Ref<int64_t> ref2 = std::move(ref1);
 
   EXPECT_EQ(ref1.get(), nullptr);
   EXPECT_EQ(*ref2, 42);
@@ -408,7 +408,7 @@ TEST(RefPOD, MoveSemantics) {
 }
 
 TEST(RefPOD, DereferenceNull) {
-  Ref<int32_t> ref;
+  Ref<int64_t> ref;
   try {
     *ref;
     FAIL() << "Expected exception not thrown";
@@ -418,7 +418,7 @@ TEST(RefPOD, DereferenceNull) {
 }
 
 TEST(RefPOD, ResetAndAccess) {
-  Ref<int32_t> ref = Ref<int32_t>::New(42);
+  Ref<int64_t> ref = Ref<int64_t>::New(42);
   ref.Reset();
   try {
     *ref;
@@ -429,14 +429,14 @@ TEST(RefPOD, ResetAndAccess) {
 }
 
 TEST(RefPOD, ConversionToAnyFromNull) {
-  Ref<int32_t> ref;
+  Ref<int64_t> ref;
   Any any = ref;
   EXPECT_EQ(any.operator void *(), nullptr);
 }
 
 TEST(RefPOD, ConversionFromAnyContainingInt32) {
   Any any_int = 42;
-  Ref<int32_t> ref_int = any_int;
+  Ref<int64_t> ref_int = any_int;
   EXPECT_NE(ref_int.get(), nullptr);
   EXPECT_EQ(*ref_int, 42);
   EXPECT_EQ(GetRefCount(ref_int), 1);
@@ -473,7 +473,7 @@ TEST(RefPOD, ConversionFromAnyContainingDLDataType) {
 
 TEST(RefPOD, ConversionFromAnyViewContainingInt32) {
   AnyView any_view_int = 42;
-  Ref<int32_t> ref_int = any_view_int;
+  Ref<int64_t> ref_int = any_view_int;
   EXPECT_NE(ref_int.get(), nullptr);
   EXPECT_EQ(*ref_int, 42);
   EXPECT_EQ(GetRefCount(ref_int), 1);
@@ -509,7 +509,7 @@ TEST(RefPOD, ConversionFromAnyViewContainingDLDataType) {
 }
 
 TEST(RefPOD, ConversionFromInt32) {
-  Ref<int32_t> ref_int = 42;
+  Ref<int64_t> ref_int = 42;
   EXPECT_NE(ref_int.get(), nullptr);
   EXPECT_EQ(*ref_int, 42);
   EXPECT_EQ(GetRefCount(ref_int), 1);
@@ -542,7 +542,7 @@ TEST(RefPOD, ConversionFromDLDataType) {
 TEST(RefPOD, ConversionFromAnyContainingPODToIncompatibleRef) {
   Any any_int = 42.5;
   try {
-    any_int.operator Ref<int32_t>();
+    any_int.operator Ref<int64_t>();
     FAIL() << "Expected exception not thrown";
   } catch (Exception &e) {
     EXPECT_STREQ(e.what(), "Cannot convert from type `float` to `int`");
@@ -552,21 +552,21 @@ TEST(RefPOD, ConversionFromAnyContainingPODToIncompatibleRef) {
 TEST(RefPOD, ConversionFromAnyViewContainingPODToIncompatibleRef) {
   AnyView any_view_int = 42.5;
   try {
-    any_view_int.operator Ref<int32_t>();
+    any_view_int.operator Ref<int64_t>();
     FAIL() << "Expected exception not thrown";
   } catch (Exception &e) {
     EXPECT_STREQ(e.what(), "Cannot convert from type `float` to `int`");
   }
 }
 
-static_assert(!std::is_assignable<Ref<int32_t> &, Ref<double>>::value,
-              "Ref<int32_t> should not be assignable from Ref<double>");
-static_assert(!std::is_constructible<Ref<int32_t>, Ref<double>>::value,
-              "Ref<int32_t> should not be constructible from Ref<double>");
-static_assert(!std::is_constructible<Ref<int32_t>, Ref<double> &&>::value,
-              "Ref<int32_t> should not be move constructible from Ref<double>");
-static_assert(!std::is_convertible<Ref<int32_t>, Ref<double>>::value,
-              "Ref<int32_t> should not be convertible to Ref<double>");
-static_assert(!std::is_convertible<Ref<double>, Ref<int32_t>>::value,
-              "Ref<double> should not be convertible to Ref<int32_t>");
+static_assert(!std::is_assignable<Ref<int64_t> &, Ref<double>>::value,
+              "Ref<int64_t> should not be assignable from Ref<double>");
+static_assert(!std::is_constructible<Ref<int64_t>, Ref<double>>::value,
+              "Ref<int64_t> should not be constructible from Ref<double>");
+static_assert(!std::is_constructible<Ref<int64_t>, Ref<double> &&>::value,
+              "Ref<int64_t> should not be move constructible from Ref<double>");
+static_assert(!std::is_convertible<Ref<int64_t>, Ref<double>>::value,
+              "Ref<int64_t> should not be convertible to Ref<double>");
+static_assert(!std::is_convertible<Ref<double>, Ref<int64_t>>::value,
+              "Ref<double> should not be convertible to Ref<int64_t>");
 } // namespace

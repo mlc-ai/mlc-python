@@ -1,15 +1,20 @@
 #include <gtest/gtest.h>
 #include <mlc/all.h>
+#include <type_traits>
 
 namespace {
 using namespace mlc;
 using mlc::base::DataTypeEqual;
 using mlc::base::DeviceEqual;
 
+using MyFuncTraits = FuncTraits<void(int32_t num_args, const AnyView *args, Any *ret)>;
+static_assert(MyFuncTraits::packed);
+static_assert(!MyFuncTraits::unpacked);
+
 template <typename T> inline void CheckObjPtr(const MLCAny &any, MLCTypeIndex type_index, T *ptr, int32_t ref_cnt) {
   EXPECT_EQ(any.type_index, static_cast<int32_t>(type_index));
   EXPECT_EQ(any.small_len, 0);
-  MLCAny *v_obj = any.v_obj;
+  MLCAny *v_obj = any.v.v_obj;
   EXPECT_EQ(static_cast<void *>(v_obj), static_cast<void *>(ptr));
   EXPECT_EQ(v_obj->type_index, static_cast<int32_t>(type_index));
   EXPECT_EQ(v_obj->ref_cnt, ref_cnt);
@@ -19,17 +24,17 @@ template <typename T> inline void CheckAnyPOD(const MLCAny &any, MLCTypeIndex ty
   EXPECT_EQ(any.type_index, static_cast<int32_t>(type_index));
   EXPECT_EQ(any.small_len, 0);
   if constexpr (std::is_integral_v<T>) {
-    EXPECT_EQ(any.v_int64, v);
+    EXPECT_EQ(any.v.v_int64, v);
   } else if constexpr (std::is_floating_point_v<T>) {
-    EXPECT_EQ(any.v_float64, v);
+    EXPECT_EQ(any.v.v_float64, v);
   } else if constexpr (std::is_same_v<T, void *>) {
-    EXPECT_EQ(any.v_ptr, v);
+    EXPECT_EQ(any.v.v_ptr, v);
   } else if constexpr (std::is_same_v<T, DLDevice>) {
-    EXPECT_PRED2(DeviceEqual, any.v_device, v);
+    EXPECT_PRED2(DeviceEqual, any.v.v_device, v);
   } else if constexpr (std::is_same_v<T, DLDataType>) {
-    EXPECT_PRED2(DataTypeEqual, any.v_dtype, v);
+    EXPECT_PRED2(DataTypeEqual, any.v.v_dtype, v);
   } else if constexpr (std::is_same_v<T, const char *> || std::is_same_v<T, char *>) {
-    EXPECT_STREQ(any.v_str, v);
+    EXPECT_STREQ(any.v.v_str, v);
   } else {
     static_assert(std::is_same_v<T, void>, "Unsupported type");
   }
@@ -301,7 +306,7 @@ TEST(Any, Constructor_DataType) {
 template <typename AnyType> struct Checker_Constructor_RawStr {
   static void Check(const AnyType &v, char *str, StrObj *str_ptr, int ref_cnt) {
     bool owned = std::is_same_v<AnyType, Any> || (str_ptr != nullptr);
-    MLCAny *v_obj = owned ? reinterpret_cast<MLCAny *>(v.v_obj) : nullptr;
+    MLCAny *v_obj = owned ? reinterpret_cast<MLCAny *>(v.v.v_obj) : nullptr;
     if (owned) {
       EXPECT_EQ(v_obj->ref_cnt, ref_cnt);
       EXPECT_EQ(v_obj->type_index, static_cast<int32_t>(MLCTypeIndex::kMLCStr));
@@ -363,7 +368,7 @@ struct Checker_Constructor_StrObj_Ref {
       str.Reset();
       EXPECT_EQ(v.type_index, static_cast<int32_t>(MLCTypeIndex::kMLCStr));
       EXPECT_EQ(v.small_len, 0);
-      MLCAny *v_obj = v.v_obj;
+      MLCAny *v_obj = v.v.v_obj;
       EXPECT_EQ(v_obj->type_index, static_cast<int32_t>(MLCTypeIndex::kMLCStr));
       EXPECT_EQ(v_obj->ref_cnt, 1);
       EXPECT_STREQ(reinterpret_cast<StrObj *>(v_obj)->data(), c_str);
@@ -476,8 +481,8 @@ TEST(Any, Constructor_Any_POD) {
 
 TEST(Any, Constructor_Any_ObjPtr) {
   auto check = [&](const AnyView &v, Any &src, int ref_cnt) {
-    MLCAny *v_obj = reinterpret_cast<MLCAny *>(src.v_obj);
-    const char *c_str = reinterpret_cast<StrObj *>(src.v_obj)->c_str();
+    MLCAny *v_obj = reinterpret_cast<MLCAny *>(src.v.v_obj);
+    const char *c_str = reinterpret_cast<StrObj *>(src.v.v_obj)->c_str();
     CheckObjPtr(v, MLCTypeIndex::kMLCStr, v_obj, ref_cnt);
     EXPECT_STREQ(v.str()->c_str(), "\"hello\"");
     EXPECT_STREQ(v.operator const char *(), c_str);
@@ -497,11 +502,11 @@ TEST(Any, Constructor_Any_ObjPtr) {
   Any src(Ref<StrObj>::New("hello"));
   check(AnyView(src), src, 1);            // Copy
   check(AnyView(std::move(src)), src, 1); // Move
-  EXPECT_EQ(reinterpret_cast<MLCAny *>(src.v_obj)->ref_cnt, 1);
+  EXPECT_EQ(reinterpret_cast<MLCAny *>(src.v.v_obj)->ref_cnt, 1);
   check(Any(src), src, 2); // Copy
   {
     // Move
-    MLCAny *v_obj = reinterpret_cast<MLCAny *>(src.v_obj);
+    MLCAny *v_obj = reinterpret_cast<MLCAny *>(src.v.v_obj);
     Any v(std::move(src));
     CheckObjPtr(v, MLCTypeIndex::kMLCStr, v_obj, 1);
     CheckAnyPOD(src, MLCTypeIndex::kMLCNone, 0);

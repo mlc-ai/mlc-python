@@ -6,9 +6,9 @@ CPP_SOURCE = """
 #include <string>
 
 struct MyObj : public mlc::Object {
-  std::string x;
+  mlc::Str x;
   int32_t y;
-  MyObj(std::string x, int y) : x(x), y(y) {}
+  MyObj(mlc::Str x, int y) : x(x), y(y) {}
   int32_t YPlusOne() const { return y + 1; }
   MLC_DEF_DYN_TYPE(MyObj, Object, "mlc.MyObj");
 };
@@ -17,7 +17,7 @@ struct MyObjRef : public mlc::ObjectRef {
   MLC_DEF_OBJ_REF(MyObjRef, MyObj, mlc::ObjectRef)
       .Field("x", &MyObj::x)
       .FieldReadOnly("y", &MyObj::y)
-      .StaticFn("__init__", mlc::InitOf<MyObj, std::string, int32_t>)
+      .StaticFn("__init__", mlc::InitOf<MyObj, mlc::Str, int32_t>)
       .MemFn("YPlusOne", &MyObj::YPlusOne);
 };
 """
@@ -26,13 +26,16 @@ struct MyObjRef : public mlc::ObjectRef {
 def test_jit_load() -> None:
     mlc.cc.jit_load(CPP_SOURCE)
 
-    @mlc.c_class("mlc.MyObj")
+    @mlc.dataclasses.c_class("mlc.MyObj")
     class MyObj(mlc.Object):
         x: str
         y: int
 
         def __init__(self, x: str, y: int) -> None:
             self._mlc_init("__init__", x, y)
+
+        def YPlusOne(self) -> int:
+            raise NotImplementedError
 
     obj = MyObj("hello", 42)
     assert obj.x == "hello"

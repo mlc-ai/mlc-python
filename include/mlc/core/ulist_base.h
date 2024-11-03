@@ -82,7 +82,7 @@ struct ListBase : public MLCList {
     for (int64_t i = begin; i < end; ++i) {
       MLCAny &data = base[i];
       if (!::mlc::base::IsTypeIndexPOD(data.type_index)) { // TODO(@junrushao): handle throw-in-deleter
-        ::mlc::base::DecRef(data.v_obj);
+        ::mlc::base::DecRef(data.v.v_obj);
       }
     }
   }
