@@ -1,35 +1,38 @@
-MLC-Python
-==========
+<h1 align="center">
+  <img src="https://gist.githubusercontent.com/potatomashed/632c58cc8df7df7fdd067aabb34c1ef6/raw/7900472d1f7fce520fef5fad2e47a6f5fb234d08/mlc-python-logo.svg" alt="MLC Logo" style="width:10%; height:auto;">
 
-🛠️ MLC is a Python-first toolkit for building ML compilers, runtimes, and compound AI systems. It enables you to define nested data structures (like compiler IRs) as roundtrippable text formats in Python syntax, with structural comparison for unit-testing and zero-copy C++ interop when needed.
+  MLC-Python
+</h1>
 
-## 🔑 Key features
+* [:key: Key features](#keykey-features)
+* [:inbox_tray: Installation](#inbox_trayinstallation)
+  + [:package: Install From PyPI](#packageinstall-from-pypi)
+  + [:gear: Build from Source](#gearbuild-from-source)
+  + [:ferris_wheel: Create MLC-Python Wheels](#ferris_wheel-create-mlc-python-wheels)
 
-### 🐍 `mlc.ast`: Text formats in Python Syntax
+MLC is a Python-first toolkit that makes it more ergonomic to build AI compilers, runtimes, and compound AI systems. It provides Pythonic dataclasses with rich tooling infra, which includes:
+
+- Structure-aware equality and hashing methods;
+- Serialization in JSON / pickle;
+- Text format printing and parsing in Python syntax.
+
+Additionally, MLC language bindings support:
+
+- Zero-copy bidirectional functioning calling for all MLC dataclasses.
+
+## :key: Key features
 
 TBD
 
-### 🏗️ `mlc.dataclasses`: Cross-Language Dataclasses
+## :inbox_tray: Installation
 
-TBD
-
-### ⚡ `mlc.Func`: Zero-Copy Cross-Language Function Calling
-
-TBD
-
-### 🎯 Structural Testing for Nested Dataclasses
-
-TBD
-
-## 📥 Installation
-
-### 📦 Install From PyPI
+### :package: Install From PyPI
 
 ```bash
 pip install -U mlc-python
 ```
 
-### ⚙️ Build from Source
+### :gear: Build from Source
 
 ```bash
 python -m venv .venv
@@ -38,7 +41,7 @@ python -m pip install --verbose --editable ".[dev]"
 pre-commit install
 ```
 
-### 🎡 Create MLC-Python Wheels
+### :ferris_wheel: Create MLC-Python Wheels
 
 This project uses `cibuildwheel` to build cross-platform wheels. See `.github/workflows/wheels.ym` for more details.
 

@@ -261,65 +261,32 @@ struct _POD_REG {
           .MemFn("__str__", &::mlc::base::TypeTraits<std::nullptr_t>::__str__);
   inline static const int32_t _int = //
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCInt))
+          .StaticFn("__init__", [](AnyView value) { return value.operator int64_t(); })
           .StaticFn("__new_ref__",
-                    [](void *_dst, int64_t value) {
-                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
-                      MLCAny *ret = ::mlc::PODAllocator<int64_t>::New(value);
-                      if (*dst != nullptr) {
-                        ::mlc::base::DecRef(*dst);
-                      }
-                      *dst = ret;
-                    })
+                    [](void *dst, Optional<int64_t> value) { *reinterpret_cast<Optional<int64_t> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<int64_t>::__str__);
-  inline static const int32_t _float = //
+  inline static const int32_t _float =
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCFloat))
           .StaticFn("__new_ref__",
-                    [](void *_dst, double value) {
-                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
-                      MLCAny *ret = ::mlc::PODAllocator<double>::New(value);
-                      if (*dst != nullptr) {
-                        ::mlc::base::DecRef(*dst);
-                      }
-                      *dst = ret;
-                    })
+                    [](void *dst, Optional<double> value) { *reinterpret_cast<Optional<double> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<double>::__str__);
-  inline static const int32_t _ptr = //
+  inline static const int32_t _ptr =
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCPtr))
           .StaticFn("__new_ref__",
-                    [](void *_dst, void *value) {
-                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
-                      MLCAny *ret = ::mlc::PODAllocator<void *>::New(value);
-                      if (*dst != nullptr) {
-                        ::mlc::base::DecRef(*dst);
-                      }
-                      *dst = ret;
-                    })
+                    [](void *dst, Optional<void *> value) { *reinterpret_cast<Optional<void *> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<void *>::__str__);
-  inline static const int32_t _device = //
+  inline static const int32_t _device =
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDevice))
           .StaticFn("__init__", [](AnyView device) { return device.operator DLDevice(); })
           .StaticFn("__new_ref__",
-                    [](void *_dst, DLDevice value) {
-                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
-                      MLCAny *ret = ::mlc::PODAllocator<DLDevice>::New(value);
-                      if (*dst != nullptr) {
-                        ::mlc::base::DecRef(*dst);
-                      }
-                      *dst = ret;
-                    })
+                    [](void *dst, Optional<DLDevice> value) { *reinterpret_cast<Optional<DLDevice> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<DLDevice>::__str__);
-  inline static const int32_t _dtype = //
+  inline static const int32_t _dtype =
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDataType))
           .StaticFn("__init__", [](AnyView dtype) { return dtype.operator DLDataType(); })
-          .StaticFn("__new_ref__",
-                    [](void *_dst, DLDataType value) {
-                      MLCAny **dst = reinterpret_cast<MLCAny **>(_dst);
-                      MLCAny *ret = ::mlc::PODAllocator<DLDataType>::New(value);
-                      if (*dst != nullptr) {
-                        ::mlc::base::DecRef(*dst);
-                      }
-                      *dst = ret;
-                    })
+          .StaticFn(
+              "__new_ref__",
+              [](void *dst, Optional<DLDataType> value) { *reinterpret_cast<Optional<DLDataType> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<DLDataType>::__str__);
   inline static const int32_t _str = //
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCRawStr))

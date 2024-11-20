@@ -9,7 +9,7 @@ from .object import Object
 _CallableType = TypeVar("_CallableType", bound=Callable)
 
 
-@c_class("object.Func")
+@c_class("object.Func", init=False)
 class Func(Object):
     def __init__(self, func: Callable) -> None:
         assert callable(func), "func must be callable"

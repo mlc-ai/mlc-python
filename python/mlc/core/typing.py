@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ctypes
+import sys
+import types
 import typing
 
 from mlc._cython import DLDataType, DLDevice, MLCAny, MLCObjPtr, Ptr, type_cast
@@ -8,8 +10,13 @@ from mlc.dataclasses import c_class
 
 from .object import Object
 
+if sys.version_info >= (3, 10):
+    UnionType = types.UnionType
+else:
+    UnionType = None
 
-@c_class("mlc.core.typing.Type")
+
+@c_class("mlc.core.typing.Type", init=False)
 class Type(Object):
     def args(self) -> tuple[Type, ...]:
         raise NotImplementedError
@@ -23,9 +30,6 @@ class Type(Object):
 
 @c_class("mlc.core.typing.AnyType")
 class AnyType(Type):
-    def __init__(self) -> None:
-        self._mlc_init("__init__")
-
     def args(self) -> tuple:
         return ()
 
@@ -36,9 +40,6 @@ class AnyType(Type):
 @c_class("mlc.core.typing.AtomicType")
 class AtomicType(Type):
     type_index: int
-
-    def __init__(self, type_index: int) -> None:
-        self._mlc_init("__init__", type_index)
 
     def args(self) -> tuple:
         return ()
@@ -52,11 +53,8 @@ class AtomicType(Type):
         raise ValueError(f"Unsupported type index: {type_index}")
 
 
-@c_class("mlc.core.typing.PtrType")
+@c_class("mlc.core.typing.PtrType", init=False)
 class PtrType(Type):
-    def __init__(self) -> None:
-        self._mlc_init("__init__")
-
     @property
     def ty(self) -> Type:
         return self._C("_ty", self)
@@ -68,10 +66,10 @@ class PtrType(Type):
         return MLCObjPtr
 
 
-@c_class("mlc.core.typing.Optional")
+@c_class("mlc.core.typing.Optional", init=False)
 class Optional(Type):
     def __init__(self, ty: Type) -> None:
-        self._mlc_init("__init__", ty)
+        self._mlc_init(ty)
 
     @property
     def ty(self) -> Type:
@@ -84,10 +82,10 @@ class Optional(Type):
         return MLCObjPtr
 
 
-@c_class("mlc.core.typing.List")
+@c_class("mlc.core.typing.List", init=False)
 class List(Type):
     def __init__(self, ty: Type) -> None:
-        self._mlc_init("__init__", ty)
+        self._mlc_init(ty)
 
     @property
     def ty(self) -> Type:
@@ -100,10 +98,10 @@ class List(Type):
         return MLCObjPtr
 
 
-@c_class("mlc.core.typing.Dict")
+@c_class("mlc.core.typing.Dict", init=False)
 class Dict(Type):
     def __init__(self, key_ty: Type, value_ty: Type) -> None:
-        self._mlc_init("__init__", key_ty, value_ty)
+        self._mlc_init(key_ty, value_ty)
 
     @property
     def key(self) -> Type:
@@ -140,6 +138,13 @@ def from_py(ann: type) -> Type:
             raise ValueError(f"Unsupported type: {ann}")
         elif origin is tuple:
             raise ValueError("Unsupported type: `tuple`. Use `list` instead.")
+        elif (origin is UnionType) or (origin is typing.Union):
+            if len(args) == 2:
+                if args[1] is type(None):
+                    return Optional(from_py(args[0]))
+                if args[0] is type(None):
+                    return Optional(from_py(args[1]))
+            raise ValueError(f"Unsupported type: {ann}")
     raise ValueError(f"Unsupported type: {ann}")
 
 

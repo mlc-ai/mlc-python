@@ -274,3 +274,8 @@ def dtype_normalize(dtype: str | np.dtype | DataType) -> str | DataType:
 
 def device_normalize(device: str | Device) -> str | Device:
     return device
+
+
+def new_object(cls):  # noqa: ANN001, ANN202
+    """Helper function for pickle"""
+    return cls.__new__(cls)

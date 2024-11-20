@@ -6,8 +6,12 @@ from mlc.dataclasses import c_class
 
 @c_class("object.Object")
 class Object(PyAny):
-    def __init__(self) -> None:
-        self._mlc_init("__init__")
+    def json(self) -> str:
+        return super()._mlc_json()
+
+    @staticmethod
+    def from_json(json_str: str) -> Object:
+        return PyAny._mlc_from_json(json_str)  # type: ignore[attr-defined]
 
 
 class PyClass(Object):

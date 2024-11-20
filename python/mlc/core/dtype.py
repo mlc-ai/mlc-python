@@ -6,10 +6,10 @@ from mlc._cython import DataTypeCode, PyAny, dtype_as_triple, dtype_normalize
 from mlc.dataclasses import c_class
 
 
-@c_class("dtype")
+@c_class("dtype", init=False)
 class DataType(PyAny):
     def __init__(self, dtype: str | np.dtype | DataType) -> None:
-        self._mlc_init("__init__", dtype_normalize(dtype))
+        self._mlc_init(dtype_normalize(dtype))
 
     @property
     def _dtype_triple(self) -> tuple[int, int, int]:

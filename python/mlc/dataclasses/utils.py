@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import inspect
 import typing
+from collections.abc import Callable
+
+from mlc._cython import TypeField
 
 
 def attach_field(
@@ -34,3 +38,35 @@ def attach_method(
     method.__qualname__ = f"{cls.__qualname__}.{name}"  # type: ignore[attr-defined]
     method.__doc__ = f"Method `{name}` of class `{cls.__qualname__}`"  # type: ignore[attr-defined]
     setattr(cls, name, method)
+
+
+def method_init(
+    type_cls: type,
+    type_hints: dict[str, type],
+    fields: typing.Sequence[TypeField],
+) -> Callable[..., None]:
+    sig = inspect.Signature(
+        parameters=[
+            inspect.Parameter(
+                name=field.name,
+                kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+            for field in fields
+        ],
+    )
+
+    def bind_args(*args: typing.Any, **kwargs: typing.Any) -> inspect.BoundArguments:
+        try:
+            bound = sig.bind(*args, **kwargs)
+            bound.apply_defaults()
+        except TypeError as e:
+            name = f"{type_cls.__module__}.{type_cls.__qualname__}"
+            raise TypeError(f"Error in `{name}.__init__`: {e}")  # type: ignore[attr-defined]
+        return bound
+
+    def method(self: type, *args: typing.Any, **kwargs: typing.Any) -> None:
+        args = bind_args(*args, **kwargs).args
+        self._mlc_init(*args)  # type: ignore[attr-defined]
+
+    method.__annotations__ = dict(type_hints) | {"return": None}
+    return method

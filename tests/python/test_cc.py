@@ -31,9 +31,6 @@ def test_jit_load() -> None:
         x: str
         y: int
 
-        def __init__(self, x: str, y: int) -> None:
-            self._mlc_init("__init__", x, y)
-
         def YPlusOne(self) -> int:
             raise NotImplementedError
 

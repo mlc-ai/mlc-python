@@ -11,14 +11,14 @@ from .object import Object
 T = TypeVar("T")
 
 
-@c_class("object.List")
+@c_class("object.List", init=False)
 class List(Object, Sequence[T]):
     capacity: int
     size: int
     data: Ptr
 
     def __init__(self, iterable: Iterable[T] = ()) -> None:
-        self._mlc_init("__init__", *tuple(iterable))
+        self._mlc_init(*iterable)
 
     def __len__(self) -> int:
         return self.size

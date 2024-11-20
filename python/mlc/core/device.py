@@ -4,10 +4,10 @@ from mlc._cython import DeviceType, PyAny, device_as_pair, device_normalize
 from mlc.dataclasses import c_class
 
 
-@c_class("Device")
+@c_class("Device", init=False)
 class Device(PyAny):
     def __init__(self, device: str | Device) -> None:
-        self._mlc_init("__init__", device_normalize(device))
+        self._mlc_init(device_normalize(device))
 
     @property
     def _device_pair(self) -> tuple[int, int]:

@@ -1,7 +1,5 @@
 #include "./registry.h"
-#include <cstdint>
-#include <cstdlib>
-#include <iostream>
+#include "mlc/core/str.h"
 
 namespace mlc {
 namespace registry {
@@ -22,6 +20,22 @@ using ::mlc::registry::TypeTable;
 namespace {
 thread_local Any last_error;
 MLC_REGISTER_FUNC("mlc.ffi.LoadDSO").set_body([](std::string name) { TypeTable::Get(nullptr)->LoadDSO(name); });
+MLC_REGISTER_FUNC("mlc.core.JSONParse").set_body([](AnyView json_str) {
+  if (json_str.type_index == kMLCRawStr) {
+    return ::mlc::core::ParseJSON(json_str.operator const char *());
+  } else {
+    ::mlc::Str str = json_str;
+    return ::mlc::core::ParseJSON(str);
+  }
+});
+MLC_REGISTER_FUNC("mlc.core.JSONSerialize").set_body(::mlc::core::Serialize);
+MLC_REGISTER_FUNC("mlc.core.JSONDeserialize").set_body([](AnyView json_str) {
+  if (json_str.type_index == kMLCRawStr) {
+    return ::mlc::core::Deserialize(json_str.operator const char *());
+  } else {
+    return ::mlc::core::Deserialize(json_str.operator ::mlc::Str());
+  }
+});
 } // namespace
 
 MLC_API MLCAny MLCGetLastError() {
@@ -154,14 +168,7 @@ MLC_API int32_t MLCExtObjCreate(int32_t num_bytes, int32_t type_index, MLCAny *r
 
 MLC_API int32_t _MLCExtObjDeleteImpl(void *objptr) {
   MLC_SAFE_CALL_BEGIN();
-  MLCAny *header = reinterpret_cast<MLCAny *>(objptr);
-  if (MLCTypeInfo *info = TypeTable::Global()->GetTypeInfo(header->type_index)) {
-    ::mlc::core::VisitTypeField(objptr, info, ::mlc::core::ExternObjDeleter{});
-    std::free(objptr);
-  } else {
-    std::cerr << "Cannot find type info for type index: " << header->type_index << std::endl;
-    std::abort();
-  }
+  ::mlc::core::DeleteExternObject(static_cast<MLCAny *>(objptr));
   MLC_SAFE_CALL_END(&last_error);
 }
 

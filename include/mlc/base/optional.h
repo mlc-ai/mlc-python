@@ -36,12 +36,15 @@ template <typename T> struct Optional {
   }
   /***** Section 2. Accessor and bool operator *****/
   MLC_INLINE const TObj *get() const { return ref_.get(); }
+  MLC_INLINE const TObj *value() const { return ref_.get(); }
   MLC_INLINE TObj *get() { return ref_.get(); }
+  MLC_INLINE TObj *value() { return ref_.get(); }
   MLC_INLINE const TObj *operator->() const { return ref_.operator->(); }
-  MLC_INLINE TObj *operator->() { return ref_.operator->(); }
   MLC_INLINE const TObj &operator*() const { return ref_.operator*(); }
+  MLC_INLINE TObj *operator->() { return ref_.operator->(); }
   MLC_INLINE TObj &operator*() { return ref_.operator*(); }
   MLC_INLINE bool defined() const { return ref_.defined(); }
+  MLC_INLINE bool has_value() const { return ref_.defined(); }
   MLC_INLINE bool operator==(std::nullptr_t) const { return !defined(); }
   MLC_INLINE bool operator!=(std::nullptr_t) const { return defined(); }
   MLC_INLINE operator bool() const { return defined(); }

@@ -18,6 +18,7 @@ public:                                                                         
   MLC_INLINE const char *GetTypeKey() const {                                                                          \
     return ::mlc::base::TypeIndex2TypeKey(reinterpret_cast<const MLCAny *>(this));                                     \
   }                                                                                                                    \
+  MLC_INLINE int32_t GetTypeIndex() const { return reinterpret_cast<const MLCAny *>(this)->type_index; }               \
   [[maybe_unused]] static constexpr const char *_type_key = TypeKey;                                                   \
   [[maybe_unused]] static inline MLCTypeInfo *_type_info =                                                             \
       ::mlc::core::TypeRegister<SelfType>(static_cast<int32_t>(ParentType::_type_index), /**/                          \

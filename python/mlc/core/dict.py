@@ -14,7 +14,7 @@ V = TypeVar("V")
 T = TypeVar("T")
 
 
-@c_class("object.Dict")
+@c_class("object.Dict", init=False)
 class Dict(Object, Mapping[K, V]):
     capacity: int
     size: int
@@ -35,8 +35,7 @@ class Dict(Object, Mapping[K, V]):
             raise TypeError(f"expected mapping or iterable, got {type(_source).__name__}")
         if kwargs:
             py_args += tuple(kwargs.items())
-        py_args = tuple(itertools.chain.from_iterable(py_args))
-        self._mlc_init("__init__", *py_args)
+        self._mlc_init(*itertools.chain.from_iterable(py_args))
 
     def __len__(self) -> int:
         return self.size

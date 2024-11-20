@@ -288,8 +288,9 @@ cdef class PyAny:
     def __init__(self):
         pass
 
-    def _mlc_init(self, init_func, *init_args) -> None:
+    def _mlc_init(self, *init_args, **kwargs) -> None:
         cdef PyAny func
+        cdef object init_func = kwargs.get("init_func", "__init__")
         if isinstance(init_func, str):
             func = type(self)._mlc_type_info.methods_lookup[init_func]
         else:
@@ -313,6 +314,25 @@ cdef class PyAny:
     def __str__(self) -> str:
         return self.__repr__()
 
+    def __reduce__(self):
+        return (base.new_object, (type(self),), self.__getstate__())
+
+    def __getstate__(self):
+        return {"mlc_json": func_call(_SERIALIZE, (self,))}
+
+    def __setstate__(self, state):
+        cdef PyAny ret = func_call(_DESERIALIZE, (state["mlc_json"], ))
+        cdef MLCAny tmp = self._mlc_any
+        self._mlc_any = ret._mlc_any
+        ret._mlc_any = tmp
+
+    def _mlc_json(self):
+        return func_call(_SERIALIZE, (self,))
+
+    @staticmethod
+    def _mlc_from_json(mlc_json):
+        return func_call(_DESERIALIZE, (mlc_json,))
+
     @classmethod
     def _C(cls, str name, *args):
         cdef PyAny func
@@ -329,8 +349,17 @@ cdef class Str(str):
     def __cinit__(self):
         self._mlc_any = _MLCAnyNone()
 
+    def __init__(self, value):
+        cdef str value_unicode = self
+        cdef bytes value_c = str_py2c(value_unicode)
+        self._mlc_any = _MLCAnyRawStr(value_c)
+        _check_error(_C_AnyInplaceViewToOwned(&self._mlc_any))
+
     def __dealloc__(self):
         _check_error(_C_AnyDecRef(&self._mlc_any))
+
+    def __reduce__(self):
+        return (Str, (str(self),))
 
 cdef inline MLCAny _MLCAnyNone():
     cdef MLCAny x
@@ -417,6 +446,8 @@ cdef inline tuple _flatten_dict_to_tuple(dict x):
     return tuple(itertools.chain.from_iterable(x.items()))
 
 cdef inline uint64_t _addr_from_ptr(object ptr):
+    if ptr is None:
+        return 0
     assert isinstance(ptr, Ptr)
     return <uint64_t>(ptr.value) if ptr.value else <uint64_t>0
 
@@ -776,7 +807,10 @@ cdef class TypeCheckAtomicObject:
     def __init__(self, int32_t type_index):
         self.type_index = type_index
         self.type_depth = _type_index2py_type_info(type_index).type_depth
-        self.any_to_ref = _type_get_method(type_index, "__any_to_ref__")
+        try:
+            self.any_to_ref = _type_get_method(type_index, "__any_to_ref__")
+        except Exception as e:  # no-cython-lint
+            self.any_to_ref = NULL
 
     @staticmethod
     cdef MLCAny convert(object _self, object value, list temporary_storage):
@@ -784,6 +818,7 @@ cdef class TypeCheckAtomicObject:
         cdef PyAny v
         cdef tuple type_ancestors  # ancestors of `value`'s type
         cdef MLCAny ret
+        cdef str type_key
         # (1) Fast path: check `type_index` first
         try:
             assert value is not None
@@ -802,10 +837,13 @@ cdef class TypeCheckAtomicObject:
             except IndexError:  # fall through
                 ...
         # (2) Slow path: convert `value` to `MLCAny`, and then convert to `Ref<TObject>`
-        ret = _MLCAnyNone()
-        _func_call_impl(self.any_to_ref, (value,), &ret)  # maybe throw exception
-        temporary_storage.append(_pyany_no_inc_ref(ret))
-        return ret
+        if self.any_to_ref is not NULL:
+            ret = _MLCAnyNone()
+            _func_call_impl(self.any_to_ref, (value,), &ret)  # maybe throw exception
+            temporary_storage.append(_pyany_no_inc_ref(ret))
+            return ret
+        type_key = str_c2py(_type_index2py_type_info(self.type_index).type_key)
+        raise TypeError(f"Expected type: `{type_key}`, but got: {type(value)}")
 
     cdef TypeChecker get(self):
         cdef TypeChecker ret = TypeChecker()
@@ -840,13 +878,15 @@ cdef class TypeCheckerList:
 
     @staticmethod
     cdef MLCAny convert(object _self, object _value, list temporary_storage):
+        from mlc.core.list import List as mlc_list
+
         cdef TypeCheckerList self = <TypeCheckerList>_self
         cdef tuple value
         cdef int32_t num_args = 0
         cdef MLCAny* c_args = NULL
         cdef MLCAny ret = _MLCAnyNone()
-        if not isinstance(_value, (list, tuple)):
-            raise TypeError(f"Expected `list | tuple`, but got: {type(_value)}")
+        if not isinstance(_value, (list, tuple, mlc_list)):
+            raise TypeError(f"Expected `list` or `tuple`, but got: {type(_value)}")
         value = tuple(_value)
         num_args = len(value)
         c_args = <MLCAny*> malloc(num_args * sizeof(MLCAny))
@@ -952,6 +992,7 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
     cdef int32_t num_bytes = type_field.num_bytes
     cdef MLCAny* ty = (<PyAny?>(type_field.ty))._mlc_any.v.v_obj
     cdef int32_t idx = -1
+    cdef TypeChecker checker
     if (ty.type_index, num_bytes) == (kMLCTypingAny, sizeof(MLCAny)):
         def f(PyAny self): return _any_c2py_inc_ref((<MLCAny*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
         def g(PyAny self, object value):  # no-cython-lint
@@ -1056,17 +1097,36 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
                 cdef MLCAny** addr = <MLCAny**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny* ptr = addr[0]
                 return _any_c2py_inc_ref(_MLCAnyObj(ptr)) if ptr != NULL else None
-            return f, None  # TODO
+            checker = TypeCheckerOptional(_type_checker_from_ty(ty)).get()
+            def g(PyAny self, object value):  # no-cython-lint
+                cdef MLCAny **addr = <MLCAny**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
+                cdef MLCAny save = _MLCAnyNone() if addr[0] == NULL else _MLCAnyObj(addr[0])
+                cdef list temporary_storage = []
+                cdef MLCAny ret
+                try:
+                    ret = _type_checker_call(checker, value, temporary_storage)
+                    if ret.type_index == kMLCNone:
+                        addr[0] = NULL
+                    elif ret.type_index >= kMLCStaticObjectBegin:
+                        addr[0] = ret.v.v_obj
+                        _check_error(_C_AnyIncRef(&ret))
+                    else:
+                        raise TypeError(f"Unexpected type index: {ret.type_index}")
+                else:
+                    _check_error(_C_AnyDecRef(&save))
+            return f, g
         elif type_index == kMLCInt:
             def f(PyAny self):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCBoxedPOD* ptr = addr[0]
                 return ptr.data.v_int64 if ptr != NULL else None
 
-            def g(PyAny self, int64_t value):
+            def g(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
-                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyInt(value)]
                 cdef MLCAny ret = _MLCAnyNone()
+                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
+                if value is not None:
+                    args[1] = _MLCAnyInt(<int64_t?>value)
                 _func_call_impl_with_c_args(_INT_NEW, 2, args, &ret)
             return f, g
         elif type_index == kMLCFloat:
@@ -1075,10 +1135,12 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
                 cdef MLCBoxedPOD* ptr = addr[0]
                 return ptr.data.v_float64 if ptr != NULL else None
 
-            def g(PyAny self, double value):
+            def g(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
-                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyFloat(value)]
                 cdef MLCAny ret = _MLCAnyNone()
+                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
+                if value is not None:
+                    args[1] = _MLCAnyFloat(<double?>value)
                 _func_call_impl_with_c_args(_FLOAT_NEW, 2, args, &ret)
             return f, g
         elif type_index == kMLCPtr:
@@ -1089,8 +1151,10 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
 
             def g(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
-                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyPtr(_addr_from_ptr(value))]
                 cdef MLCAny ret = _MLCAnyNone()
+                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
+                if value is not None:
+                    args[1] = _MLCAnyPtr(_addr_from_ptr(value))
                 _func_call_impl_with_c_args(_PTR_NEW, 2, args, &ret)
             return f, g
         elif type_index == kMLCDataType:
@@ -1103,8 +1167,9 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
                 cdef MLCAny ret = _MLCAnyNone()
-                _func_call_impl(_DTYPE_INIT, (base.dtype_normalize(value), ), &args[1])
-                _func_call_impl_with_c_args(_DTYPE_INIT, 2, args, &ret)
+                if value is not None:
+                    _func_call_impl(_DTYPE_INIT, (base.dtype_normalize(value), ), &args[1])
+                _func_call_impl_with_c_args(_DTYPE_NEW, 2, args, &ret)
             return f, g
         elif type_index == kMLCDevice:
             def f(PyAny self):
@@ -1114,10 +1179,11 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
 
             def g(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
-                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
                 cdef MLCAny ret = _MLCAnyNone()
-                _func_call_impl(_DEVICE_INIT, (base.device_normalize(value), ), &args[1])
-                _func_call_impl_with_c_args(_DEVICE_INIT, 2, args, &ret)
+                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
+                if value is not None:
+                    _func_call_impl(_DEVICE_INIT, (base.device_normalize(value), ), &args[1])
+                _func_call_impl_with_c_args(_DEVICE_NEW, 2, args, &ret)
             return f, g
     raise ValueError(f"Unsupported {num_bytes}-byte type field: {type_field.ty.__str__()}")
 
@@ -1149,6 +1215,11 @@ cpdef object func_get(str name):
     cdef MLCAny c_ret = _MLCAnyNone()
     _check_error(_C_FuncGetGlobal(NULL, str_py2c(name), &c_ret))
     return _any_c2py_no_inc_ref(c_ret)
+
+cpdef PyAny func_get_untyped(str name):
+    cdef PyAny ret = PyAny()
+    _check_error(_C_FuncGetGlobal(NULL, str_py2c(name), &ret._mlc_any))
+    return ret
 
 cpdef list error_get_info(PyAny err):
     cdef list ret
@@ -1189,39 +1260,73 @@ cpdef tuple type_field_get_accessor(object type_field):
 def type_create(
     object super_type_cls,
     str type_key,
-    tuple fields,
-    tuple methods,
+    list fields,
+    list methods,
     int32_t parent_type_index,
     int32_t num_bytes,
 ):
     cdef MLCTypeInfo* c_info = NULL
     cdef vector[MLCTypeField] mlc_fields
+    cdef vector[MLCTypeMethod] mlc_methods
+    cdef PyAny tmp_any
     cdef object type_info
     cdef int32_t type_index
     cdef list temporary_storage = []
+    cdef _setters = tuple(field.setter for field in fields)
 
-    for field in fields:
-        name = str_py2c(field.name)
-        temporary_storage.append(name)
-        mlc_fields.push_back(MLCTypeField(
-            name=name,
-            offset=field.offset,
-            num_bytes=field.num_bytes,
-            frozen=field.frozen,
-            ty=(<PyAny?>(field.ty))._mlc_any.v.v_obj,
-        ))
     _check_error(_C_TypeRegister(NULL, parent_type_index, str_py2c(type_key), -1, &c_info))
-    type_index = c_info.type_index
-    _check_error(_C_TypeDefReflection(NULL, type_index, len(fields), mlc_fields.data(), 0, NULL))
 
     @functools.wraps(super_type_cls, updated=())
     class type_cls(super_type_cls):
         __slots__ = ()
 
-        def _mlc_pre_init(self):
-            cdef PyAny me = <PyAny?>self
-            assert me._mlc_any.type_index == kMLCNone
-            _check_error(_C_ExtObjCreate(num_bytes, type_index, &me._mlc_any))
+        def _mlc_init(self, *args):
+            cdef tuple setters = _setters
+            assert len(args) == len(setters)
+            for i, (setter, arg) in enumerate(zip(setters, args)):
+                try:
+                    setter(self, arg)
+                except Exception as e:  # no-cython-lint
+                    raise ValueError(f"Failed to set field `{type_key}.{fields[i].name}`: {str(e)}. Got: {arg}")
+
+        def __new__(cls, *args, **kwargs):
+            cdef PyAny self = PyAny.__new__(cls)
+            assert self._mlc_any.type_index == kMLCNone
+            _check_error(_C_ExtObjCreate(num_bytes, type_index, &self._mlc_any))
+            return self
+
+    methods.append(base.TypeMethod(
+        name="__init__",
+        func=_pyany_from_func(lambda *args: type_cls(*args)),
+        kind=1,
+    ))
+    type_index = c_info.type_index
+    for field in fields:
+        name = str_py2c(field.name)
+        temporary_storage.append(name)
+        tmp_any = <PyAny?>(field.ty)
+        mlc_fields.push_back(MLCTypeField(
+            name=name,
+            offset=field.offset,
+            num_bytes=field.num_bytes,
+            frozen=field.frozen,
+            ty=tmp_any._mlc_any.v.v_obj,
+        ))
+    for method in methods:
+        name = str_py2c(method.name)
+        temporary_storage.append(name)
+        tmp_any = <PyAny?>(method.func)
+        assert tmp_any._mlc_any.type_index == kMLCFunc
+        mlc_methods.push_back(MLCTypeMethod(
+            name=name,
+            func=<MLCFunc*>(tmp_any._mlc_any.v.v_obj),
+            kind=method.kind,
+        ))
+    _check_error(_C_TypeDefReflection(
+        NULL, type_index,
+        len(fields), mlc_fields.data(),
+        len(methods), mlc_methods.data(),
+    ))
 
     type_info = base.TypeInfo(
         type_cls=type_cls,
@@ -1229,8 +1334,8 @@ def type_create(
         type_key=type_key,
         type_depth=c_info.type_depth,
         type_ancestors=tuple(c_info.type_ancestors[i] for i in range(c_info.type_depth)),
-        fields=fields,
-        methods=methods,
+        fields=tuple(fields),
+        methods=tuple(methods),
     )
     if (prev := _list_set(TYPE_INDEX_TO_INFO, type_index, type_info)) is not None:
         raise ValueError(
@@ -1251,3 +1356,5 @@ cdef MLCFunc* _DEVICE_NEW = _type_get_method(kMLCDevice, "__new_ref__")
 cdef MLCFunc* _DEVICE_INIT = _type_get_method(kMLCDevice, "__init__")
 cdef MLCFunc* _LIST_INIT = _type_get_method(kMLCList, "__init__")
 cdef MLCFunc* _DICT_INIT = _type_get_method(kMLCDict, "__init__")
+cdef PyAny _SERIALIZE = func_get_untyped("mlc.core.JSONSerialize")  # Any -> str
+cdef PyAny _DESERIALIZE = func_get_untyped("mlc.core.JSONDeserialize")  # str -> Any

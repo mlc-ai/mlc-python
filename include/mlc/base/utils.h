@@ -113,11 +113,25 @@ MLC_INLINE MLCTypeInfo *TypeIndex2TypeInfo(int32_t type_index) {
   return type_info;
 }
 
+MLC_INLINE MLCTypeInfo *TypeKey2TypeInfo(const char *type_key) {
+  MLCTypeInfo *type_info;
+  MLCTypeKey2Info(nullptr, type_key, &type_info);
+  return type_info;
+}
+
 MLC_INLINE const char *TypeIndex2TypeKey(int32_t type_index) {
   if (MLCTypeInfo *type_info = TypeIndex2TypeInfo(type_index)) {
     return type_info->type_key;
   }
   return "(undefined)";
+}
+
+MLC_INLINE int32_t TypeKey2TypeIndex(const char *type_key) {
+  if (MLCTypeInfo *type_info = TypeKey2TypeInfo(type_key)) {
+    return type_info->type_index;
+  }
+  MLC_THROW(TypeError) << "Cannot find type with key: " << type_key;
+  MLC_UNREACHABLE();
 }
 
 MLC_INLINE const char *TypeIndex2TypeKey(const MLCAny *self) {
@@ -185,6 +199,80 @@ template <typename _T> struct Type2Str {
     }
   }
 };
+
+void ReportTypeFieldError(const char *type_key, MLCTypeField *field);
+
+template <typename Visitor> inline void VisitTypeField(void *obj_addr, MLCTypeInfo *info, Visitor &&visitor) {
+  MLCTypeField *fields = info->fields;
+  MLCTypeField *field = fields;
+  int32_t i = 0;
+  for (; field->name != nullptr; ++i, ++field) {
+    void *field_addr = static_cast<char *>(obj_addr) + field->offset;
+    int32_t num_bytes = field->num_bytes;
+    if (field->ty->type_index == kMLCTypingAny && num_bytes == sizeof(MLCAny)) {
+      visitor(i, field, reinterpret_cast<Any *>(field_addr));
+    } else if (field->ty->type_index == kMLCTypingAtomic) {
+      int32_t type_index = reinterpret_cast<MLCTypingAtomic *>(field->ty)->type_index;
+      if (type_index >= MLCTypeIndex::kMLCStaticObjectBegin && num_bytes == sizeof(MLCObjPtr)) {
+        visitor(i, field, reinterpret_cast<ObjectRef *>(field_addr));
+      } else if (type_index == kMLCInt && num_bytes == 1) {
+        visitor(i, field, reinterpret_cast<int8_t *>(field_addr));
+      } else if (type_index == kMLCInt && num_bytes == 2) {
+        visitor(i, field, reinterpret_cast<int16_t *>(field_addr));
+      } else if (type_index == kMLCInt && num_bytes == 4) {
+        visitor(i, field, reinterpret_cast<int32_t *>(field_addr));
+      } else if (type_index == kMLCInt && num_bytes == 8) {
+        visitor(i, field, reinterpret_cast<int64_t *>(field_addr));
+      } else if (type_index == kMLCFloat && num_bytes == 4) {
+        visitor(i, field, reinterpret_cast<float *>(field_addr));
+      } else if (type_index == kMLCFloat && num_bytes == 8) {
+        visitor(i, field, reinterpret_cast<double *>(field_addr));
+      } else if (type_index == kMLCPtr && num_bytes == sizeof(void *)) {
+        visitor(i, field, reinterpret_cast<void **>(field_addr));
+      } else if (type_index == kMLCDataType && num_bytes == sizeof(DLDataType)) {
+        visitor(i, field, reinterpret_cast<DLDataType *>(field_addr));
+      } else if (type_index == kMLCDevice && num_bytes == sizeof(DLDevice)) {
+        visitor(i, field, reinterpret_cast<DLDevice *>(field_addr));
+      } else if (type_index == kMLCRawStr) {
+        visitor(i, field, reinterpret_cast<const char *>(field_addr));
+      } else {
+        ReportTypeFieldError(info->type_key, field);
+      }
+    } else if (field->ty->type_index == kMLCTypingPtr) { // TODO: support pointer type
+      MLC_THROW(InternalError) << "Pointer type is not supported yet";
+    } else if (field->ty->type_index == kMLCTypingOptional && num_bytes == sizeof(MLCObjPtr)) {
+      MLCAny *ty = reinterpret_cast<MLCTypingOptional *>(field->ty)->ty.ptr;
+      MLCTypingAtomic *ty_atomic = reinterpret_cast<MLCTypingAtomic *>(ty);
+      if (ty->type_index == kMLCTypingAtomic) {
+        if (ty_atomic->type_index >= kMLCStaticObjectBegin) {
+          visitor(i, field, reinterpret_cast<Optional<Object> *>(field_addr));
+        } else if (ty_atomic->type_index == kMLCInt) {
+          visitor(i, field, reinterpret_cast<Optional<int64_t> *>(field_addr));
+        } else if (ty_atomic->type_index == kMLCFloat) {
+          visitor(i, field, reinterpret_cast<Optional<double> *>(field_addr));
+        } else if (ty_atomic->type_index == kMLCPtr) {
+          visitor(i, field, reinterpret_cast<Optional<void *> *>(field_addr));
+        } else if (ty_atomic->type_index == kMLCDataType) {
+          visitor(i, field, reinterpret_cast<Optional<DLDataType> *>(field_addr));
+        } else if (ty_atomic->type_index == kMLCDevice) {
+          visitor(i, field, reinterpret_cast<Optional<DLDevice> *>(field_addr));
+        } else {
+          ReportTypeFieldError(info->type_key, field);
+        }
+      } else if (ty->type_index == kMLCTypingList || ty->type_index == kMLCTypingDict) {
+        visitor(i, field, reinterpret_cast<Optional<Object> *>(field_addr));
+      } else {
+        ReportTypeFieldError(info->type_key, field);
+      }
+    } else if (field->ty->type_index == kMLCTypingList && num_bytes == sizeof(MLCObjPtr)) {
+      visitor(i, field, reinterpret_cast<::mlc::ObjectRef *>(field_addr));
+    } else if (field->ty->type_index == kMLCTypingDict && num_bytes == sizeof(MLCObjPtr)) {
+      visitor(i, field, reinterpret_cast<::mlc::ObjectRef *>(field_addr));
+    } else {
+      ReportTypeFieldError(info->type_key, field);
+    }
+  }
+}
 
 MLC_INLINE void IncRef(MLCAny *obj) {
   if (obj != nullptr) {

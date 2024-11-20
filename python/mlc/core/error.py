@@ -9,7 +9,7 @@ from mlc.dataclasses import c_class
 from .object import Object
 
 
-@c_class("object.Error")
+@c_class("object.Error", init=False)
 class Error(Object):
     kind: str
 

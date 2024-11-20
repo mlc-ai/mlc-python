@@ -100,7 +100,7 @@ struct OptionalObj : protected MLCTypingOptional {
   Type Ty() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->MLCTypingOptional::ty)); }
   std::string __str__() const {
     std::ostringstream os;
-    os << "Optional[" << this->Ty() << "]";
+    os << this->Ty() << " | None";
     return os.str();
   }
   MLC_DEF_STATIC_TYPE(OptionalObj, TypeObj, MLCTypeIndex::kMLCTypingOptional, "mlc.core.typing.Optional");
@@ -183,10 +183,10 @@ template <typename T> struct TypeAnnParser {
     } else if constexpr (IsRef<T> || IsOptional<T>) {
       using U = typename T::TObj;
       return typing::Optional(ParseType<U>());
-    } else if constexpr (std::is_base_of_v<UListObj, T>) {
+    } else if constexpr (std::is_base_of_v<UList, T> || std::is_base_of_v<UListObj, T>) {
       using E = typename T::TElem;
       return typing::List(ParseType<E>());
-    } else if constexpr (std::is_base_of_v<UDictObj, T>) {
+    } else if constexpr (std::is_base_of_v<UDict, T> || std::is_base_of_v<UDictObj, T>) {
       using K = typename T::TKey;
       using V = typename T::TValue;
       return typing::Dict(ParseType<K>(), ParseType<V>());
