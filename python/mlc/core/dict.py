@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import itertools
+from abc import ABCMeta
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, ValuesView
 from typing import TypeVar, overload
 
-from mlc._cython import Ptr
-from mlc.dataclasses import c_class
+from mlc._cython import MetaNoSlots, Ptr
+from mlc.dataclasses.c_class import c_class
 
 from .object import Object
 
@@ -14,8 +15,11 @@ V = TypeVar("V")
 T = TypeVar("T")
 
 
+class DictMeta(MetaNoSlots, ABCMeta): ...
+
+
 @c_class("object.Dict", init=False)
-class Dict(Object, Mapping[K, V]):
+class Dict(Object, Mapping[K, V], metaclass=DictMeta):
     capacity: int
     size: int
     data: Ptr

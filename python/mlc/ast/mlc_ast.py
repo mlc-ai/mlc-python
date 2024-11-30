@@ -3,8 +3,7 @@
 
 from typing import Any, Optional
 
-from mlc.core import PyClass
-from mlc.dataclasses import py_class
+from mlc.dataclasses import PyClass, py_class
 
 _Identifier = str
 

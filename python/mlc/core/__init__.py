@@ -5,4 +5,4 @@ from .dtype import DataType
 from .error import Error
 from .func import Func
 from .list import List
-from .object import Object, PyClass
+from .object import Object

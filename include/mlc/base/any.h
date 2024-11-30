@@ -35,6 +35,8 @@ struct AnyView : public MLCAny {
   }
   /***** Misc *****/
   bool defined() const { return this->type_index != static_cast<int32_t>(MLCTypeIndex::kMLCNone); }
+  const char *GetTypeKey() const { return ::mlc::base::TypeIndex2TypeInfo(this->type_index)->type_key; }
+  int32_t GetTypeIndex() const { return this->type_index; }
   Str str() const;
   friend std::ostream &operator<<(std::ostream &os, const AnyView &src);
 
@@ -76,6 +78,8 @@ struct Any : public MLCAny {
   }
   /***** Misc *****/
   bool defined() const { return this->type_index != static_cast<int32_t>(MLCTypeIndex::kMLCNone); }
+  const char *GetTypeKey() const { return ::mlc::base::TypeIndex2TypeInfo(this->type_index)->type_key; }
+  int32_t GetTypeIndex() const { return this->type_index; }
   Str str() const;
   friend std::ostream &operator<<(std::ostream &os, const Any &src);
 

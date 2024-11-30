@@ -6,7 +6,7 @@ import types
 import typing
 
 from mlc._cython import DLDataType, DLDevice, MLCAny, MLCObjPtr, Ptr, type_cast
-from mlc.dataclasses import c_class
+from mlc.dataclasses.c_class import c_class
 
 from .object import Object
 

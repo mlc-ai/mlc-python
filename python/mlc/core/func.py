@@ -2,7 +2,7 @@ from collections.abc import Callable
 from typing import Any, TypeVar
 
 from mlc._cython import func_call, func_get, func_init, func_register
-from mlc.dataclasses import c_class
+from mlc.dataclasses.c_class import c_class
 
 from .object import Object
 

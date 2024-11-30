@@ -15,8 +15,8 @@ def test_json() -> None:
     obj = ObjTest(1, 2.0, "3")
     obj_json = obj.json()
     obj_json_dict = json.loads(obj_json)
-    assert obj_json_dict["type_keys"] == ["int", "Device", "dtype", "mlc.testing.serialize"]
-    assert obj_json_dict["values"] == ["3", [3, [0, 1], 2.0, 0]]
+    assert obj_json_dict["type_keys"] == ["mlc.testing.serialize", "int"]
+    assert obj_json_dict["values"] == ["3", [0, [1, 1], 2.0, 0]]
     obj_from_json = ObjTest.from_json(obj_json)
     assert obj.a == obj_from_json.a
     assert obj.b == obj_from_json.b

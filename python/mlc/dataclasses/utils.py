@@ -25,7 +25,9 @@ def attach_field(
         fset=fset if (not frozen) and setter else None,
         doc=f"{cls.__module__}.{cls.__qualname__}.{name}",
     )
+    old_field = getattr(cls, name, None)
     setattr(cls, name, prop)
+    cls._mlc_dataclass_fields[name] = old_field  # type: ignore[attr-defined]
 
 
 def attach_method(

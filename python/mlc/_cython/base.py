@@ -279,3 +279,16 @@ def device_normalize(device: str | Device) -> str | Device:
 def new_object(cls):  # noqa: ANN001, ANN202
     """Helper function for pickle"""
     return cls.__new__(cls)
+
+
+class MetaNoSlots(type):
+    def __new__(
+        cls,
+        name: str,
+        bases: tuple[type, ...],
+        dict: dict[str, typing.Any],
+    ) -> type:
+        if dict.get("__slots__", ()):
+            raise TypeError("Non-empty __slots__ not allowed in MLC dataclasses")
+        dict["__slots__"] = ()
+        return super().__new__(cls, name, bases, dict)

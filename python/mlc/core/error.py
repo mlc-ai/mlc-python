@@ -4,7 +4,7 @@ import sys
 from typing import TextIO
 
 from mlc._cython import error_get_info
-from mlc.dataclasses import c_class
+from mlc.dataclasses.c_class import c_class
 
 from .object import Object
 

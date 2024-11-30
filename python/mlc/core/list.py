@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+from abc import ABCMeta
 from collections.abc import Iterable, Iterator, Sequence
 from typing import TypeVar, overload
 
-from mlc._cython import Ptr
-from mlc.dataclasses import c_class
+from mlc._cython import MetaNoSlots, Ptr
+from mlc.dataclasses.c_class import c_class
 
 from .object import Object
 
 T = TypeVar("T")
 
 
+class ListMeta(MetaNoSlots, ABCMeta): ...
+
+
 @c_class("object.List", init=False)
-class List(Object, Sequence[T]):
+class List(Object, Sequence[T], metaclass=ListMeta):
     capacity: int
     size: int
     data: Ptr

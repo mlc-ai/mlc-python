@@ -165,6 +165,7 @@ cdef extern from "mlc/c_api.h" nogil:
 
     ctypedef struct MLCTypeField:
         const char* name
+        int32_t index
         int64_t offset
         int32_t num_bytes
         int32_t frozen
@@ -196,7 +197,7 @@ ctypedef int32_t (*_T_FuncSafeCall)(MLCFunc* func, int32_t num_args, MLCAny *arg
 ctypedef int32_t (*_T_TypeIndex2Info)(MLCTypeTableHandle self, int32_t type_index, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_TypeKey2Info)(MLCTypeTableHandle self, const char* type_key, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_TypeRegister)(MLCTypeTableHandle self, int32_t parent_type_index, const char *type_key, int32_t type_index, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
-ctypedef int32_t (*_T_TypeDefReflection)(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields, MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods) noexcept nogil # no-cython-lint
+ctypedef int32_t (*_T_TypeDefReflection)(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields, MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods, int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices, int32_t *sub_structure_kinds) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_VTableSet)(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_VTableGet)(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_ErrorCreate)(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret) noexcept nogil # no-cython-lint
@@ -278,6 +279,7 @@ cdef inline void _check_error_from(int32_t err_code, MLCAny* c_ret):
 
 cdef class PyAny:
     cdef MLCAny _mlc_any
+    __slots__ = ()
 
     def __cinit__(self):
         self._mlc_any = _MLCAnyNone()
@@ -333,6 +335,10 @@ cdef class PyAny:
     def _mlc_from_json(mlc_json):
         return func_call(_DESERIALIZE, (mlc_json,))
 
+    @staticmethod
+    def _mlc_eq_s(PyAny lhs, PyAny rhs, bind_free_vars: bool, assert_mode: bool) -> bool:
+        return bool(func_call(_STRUCUTRAL_EQUAL, (lhs, rhs, bind_free_vars, assert_mode)))
+
     @classmethod
     def _C(cls, str name, *args):
         cdef PyAny func
@@ -360,6 +366,11 @@ cdef class Str(str):
 
     def __reduce__(self):
         return (Str, (str(self),))
+
+
+class PyAnyNoSlots(PyAny, metaclass=base.MetaNoSlots):
+    ...
+
 
 cdef inline MLCAny _MLCAnyNone():
     cdef MLCAny x
@@ -842,7 +853,7 @@ cdef class TypeCheckAtomicObject:
             _func_call_impl(self.any_to_ref, (value,), &ret)  # maybe throw exception
             temporary_storage.append(_pyany_no_inc_ref(ret))
             return ret
-        type_key = str_c2py(_type_index2py_type_info(self.type_index).type_key)
+        type_key = _type_index2py_type_info(self.type_index).type_key
         raise TypeError(f"Expected type: `{type_key}`, but got: {type(value)}")
 
     cdef TypeChecker get(self):
@@ -1264,10 +1275,15 @@ def type_create(
     list methods,
     int32_t parent_type_index,
     int32_t num_bytes,
+    int32_t struct_kind,
+    tuple sub_structure_indices,
+    tuple sub_structure_kinds,
 ):
     cdef MLCTypeInfo* c_info = NULL
     cdef vector[MLCTypeField] mlc_fields
     cdef vector[MLCTypeMethod] mlc_methods
+    cdef vector[int32_t] mlc_sub_structure_indices
+    cdef vector[int32_t] mlc_sub_structure_kinds
     cdef PyAny tmp_any
     cdef object type_info
     cdef int32_t type_index
@@ -1287,7 +1303,7 @@ def type_create(
                 try:
                     setter(self, arg)
                 except Exception as e:  # no-cython-lint
-                    raise ValueError(f"Failed to set field `{type_key}.{fields[i].name}`: {str(e)}. Got: {arg}")
+                    raise ValueError(f"Failed to set field `{type_key}.{fields[i].name}`: {str(e)}")
 
         def __new__(cls, *args, **kwargs):
             cdef PyAny self = PyAny.__new__(cls)
@@ -1301,12 +1317,13 @@ def type_create(
         kind=1,
     ))
     type_index = c_info.type_index
-    for field in fields:
+    for i, field in enumerate(fields):
         name = str_py2c(field.name)
         temporary_storage.append(name)
         tmp_any = <PyAny?>(field.ty)
         mlc_fields.push_back(MLCTypeField(
             name=name,
+            index=i,
             offset=field.offset,
             num_bytes=field.num_bytes,
             frozen=field.frozen,
@@ -1322,12 +1339,19 @@ def type_create(
             func=<MLCFunc*>(tmp_any._mlc_any.v.v_obj),
             kind=method.kind,
         ))
+    for i in sub_structure_indices:
+        mlc_sub_structure_indices.push_back(i)
+    for i in sub_structure_kinds:
+        mlc_sub_structure_kinds.push_back(i)
     _check_error(_C_TypeDefReflection(
         NULL, type_index,
         len(fields), mlc_fields.data(),
         len(methods), mlc_methods.data(),
+        struct_kind,
+        len(sub_structure_indices),
+        mlc_sub_structure_indices.data(),
+        mlc_sub_structure_kinds.data(),
     ))
-
     type_info = base.TypeInfo(
         type_cls=type_cls,
         type_index=type_index,
@@ -1358,3 +1382,4 @@ cdef MLCFunc* _LIST_INIT = _type_get_method(kMLCList, "__init__")
 cdef MLCFunc* _DICT_INIT = _type_get_method(kMLCDict, "__init__")
 cdef PyAny _SERIALIZE = func_get_untyped("mlc.core.JSONSerialize")  # Any -> str
 cdef PyAny _DESERIALIZE = func_get_untyped("mlc.core.JSONDeserialize")  # str -> Any
+cdef PyAny _STRUCUTRAL_EQUAL = func_get_untyped("mlc.core.StructuralEqual")  # (Any, Any) -> bool

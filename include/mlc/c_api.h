@@ -78,7 +78,6 @@ typedef enum {
 #endif
 
 struct MLCAny;
-struct MLCTypeInfo;
 typedef void (*MLCDeleterType)(void *);
 typedef void (*MLCFuncCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret);
 typedef int32_t (*MLCFuncSafeCallType)(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret);
@@ -183,10 +182,9 @@ typedef struct {
   MLCObjPtr ty_v;
 } MLCTypingDict;
 
-typedef struct MLCTypeField MLCTypeField;
-
 typedef struct MLCTypeField {
   const char *name;
+  int32_t index;
   int64_t offset;
   int32_t num_bytes;
   int32_t frozen;
@@ -206,6 +204,19 @@ typedef struct MLCTypeInfo {
   int32_t *type_ancestors; // Range: [0, type_depth)
   MLCTypeField *fields;    // Ends with a field with name == nullptr
   MLCTypeMethod *methods;  // Ends with a method with name == nullptr
+  /*
+   * structure_kind = 0: StructureKind::kNone;
+   * structure_kind = 1: StructureKind::kNoBind;
+   * structure_kind = 2: StructureKind::kBind;
+   * structure_kind = 3: StructureKind::kVar.
+   */
+  int32_t structure_kind;
+  int32_t *sub_structure_indices; // Ends with -1
+  /*
+   * sub_structure_kind = StructureFieldKind::kNoBind;
+   * sub_structure_kind = StructureFieldKind::kBind;
+   */
+  int32_t *sub_structure_kinds; // Ends with -1
 } MLCTypeInfo;
 
 typedef void *MLCTypeTableHandle;
@@ -222,7 +233,9 @@ MLC_API int32_t MLCTypeKey2Info(MLCTypeTableHandle self, const char *type_key, M
 MLC_API int32_t MLCTypeRegister(MLCTypeTableHandle self, int32_t parent_type_index, const char *type_key,
                                 int32_t type_index, MLCTypeInfo **out_type_info);
 MLC_API int32_t MLCTypeDefReflection(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields,
-                                     MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods);
+                                     MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods,
+                                     int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices,
+                                     int32_t *sub_structure_kinds);
 MLC_API int32_t MLCVTableSet(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value);
 MLC_API int32_t MLCVTableGet(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value);
 MLC_API int32_t MLCErrorCreate(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret);

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from mlc._cython import DataTypeCode, PyAny, dtype_as_triple, dtype_normalize
-from mlc.dataclasses import c_class
+from mlc.dataclasses.c_class import c_class
 
 
 @c_class("dtype", init=False)

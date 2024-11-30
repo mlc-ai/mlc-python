@@ -35,6 +35,8 @@ struct UListObj : protected core::ListBase {
   MLC_INLINE bool empty() const { return size() == 0; }
   MLC_INLINE Any &operator[](int64_t i) { return static_cast<Any *>(data())[i]; }
   MLC_INLINE const Any &operator[](int64_t i) const { return static_cast<const Any *>(data())[i]; }
+  MLC_INLINE Any &at(int64_t i) { return this->operator[](i); }
+  MLC_INLINE const Any &at(int64_t i) const { return this->operator[](i); }
   MLC_INLINE const Any &front() const { return this->operator[](0); }
   MLC_INLINE const Any &back() const { return this->operator[](this->MLCList::size - 1); }
   MLC_INLINE Any &front() { return this->operator[](0); }

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from mlc._cython import DeviceType, PyAny, device_as_pair, device_normalize
-from mlc.dataclasses import c_class
+from mlc.dataclasses.c_class import c_class
 
 
 @c_class("Device", init=False)

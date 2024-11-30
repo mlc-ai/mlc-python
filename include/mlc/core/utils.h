@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <mlc/base/all.h>
 #include <type_traits>
+#include <vector>
 
 #define MLC_SAFE_CALL_BEGIN()                                                                                          \
   try {                                                                                                                \
@@ -24,6 +25,16 @@
   MLC_UNREACHABLE()
 
 namespace mlc {
+enum class StructureKind : int32_t {
+  kNone = 0,
+  kNoBind = 1,
+  kBind = 2,
+  kVar = 3,
+};
+enum class StructureFieldKind : int32_t {
+  kNoBind = 0,
+  kBind = 1,
+};
 namespace core {
 namespace typing {
 struct Type;
@@ -132,7 +143,7 @@ struct ReflectionHelper {
   static constexpr int32_t kMemFn = 0;
   static constexpr int32_t kStaticFn = 1;
 
-  explicit ReflectionHelper(int32_t type_index) : type_index(type_index), func_any_to_ref(nullptr) {}
+  explicit ReflectionHelper(int32_t type_index) : type_index(type_index) {}
 
   template <typename Cls> inline ReflectionHelper &Init() {
     this->func_any_to_ref = CallableToAny(AnyToRef<Cls>);
@@ -168,6 +179,37 @@ struct ReflectionHelper {
     return *this;
   }
 
+  inline ReflectionHelper &Structure(std::vector<std::string> sub_structures, StructureKind kind) {
+    this->structure_kind = kind;
+    this->sub_structure_indices.clear();
+    this->sub_structure_kinds.clear();
+    for (std::string name : sub_structures) {
+      int32_t sub_kind = 0;
+      if (std::size_t pos = name.find(':'); pos != std::string::npos) {
+        std::string kind_name = name.substr(pos + 1);
+        name = name.substr(0, pos);
+        if (kind_name == "bind") {
+          sub_kind = 1;
+        } else {
+          MLC_THROW(InternalError) << "Unknown sub-structure kind: " << kind_name;
+        }
+      }
+      int32_t index = [&]() -> int32_t {
+        for (const auto &entry : this->fields) {
+          std::string field_name = entry.name;
+          if (field_name == name) {
+            return entry.index;
+          }
+        }
+        MLC_THROW(InternalError) << "Field not found: " << name;
+        MLC_UNREACHABLE();
+      }();
+      this->sub_structure_indices.push_back(index);
+      this->sub_structure_kinds.push_back(sub_kind);
+    }
+    return *this;
+  }
+
   inline operator int32_t() {
     if (!this->fields.empty() || !this->methods.empty()) {
       auto has_method = [&](const char *name) {
@@ -187,7 +229,9 @@ struct ReflectionHelper {
                                                  kStaticFn});
       }
       MLCTypeDefReflection(nullptr, this->type_index, this->fields.size(), this->fields.data(), this->methods.size(),
-                           this->methods.data());
+                           this->methods.data(), static_cast<int32_t>(this->structure_kind),
+                           this->sub_structure_indices.size(), this->sub_structure_indices.data(),
+                           this->sub_structure_kinds.data());
     }
     return 0;
   }
@@ -211,12 +255,13 @@ private:
     static_assert(!std::is_same_v<std::decay_t<FieldType>, std::string>, //
                   "Not allowed field type: `std::string "
                   "because it doesn't have a stable ABI");
+    int32_t index = static_cast<int32_t>(this->fields.size());
     int64_t field_offset = static_cast<int64_t>(ReflectOffset(field));
     int32_t num_bytes = static_cast<int32_t>(sizeof(FieldType));
     int32_t frozen = false;
     Any ty = ParseType<FieldType>();
     this->any_pool.push_back(ty);
-    return MLCTypeField{name, field_offset, num_bytes, frozen, ty.v.v_obj};
+    return MLCTypeField{name, index, field_offset, num_bytes, frozen, ty.v.v_obj};
   }
 
   template <typename Callable> inline MLCTypeMethod PrepareMethod(const char *name, Callable &&method) {
@@ -226,7 +271,10 @@ private:
   }
 
   int32_t type_index;
-  Any func_any_to_ref;
+  StructureKind structure_kind = StructureKind::kNone;
+  std::vector<int32_t> sub_structure_indices = {};
+  std::vector<int32_t> sub_structure_kinds = {};
+  Any func_any_to_ref{nullptr};
   std::vector<MLCTypeField> fields = {};
   std::vector<MLCTypeMethod> methods = {};
   std::vector<Any> any_pool = {};

@@ -37,6 +37,7 @@ def c_class(
             _check_c_class(super_type_cls, type_info, type_hints)
 
         # Step 3. Attach fields
+        setattr(type_cls, "_mlc_dataclass_fields", {})
         for field in type_info.fields:
             attach_field(
                 cls=type_cls,

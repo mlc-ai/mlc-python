@@ -73,8 +73,11 @@ struct TypeInfoWrapper {
   void Reset();
   void ResetFields();
   void ResetMethods();
+  void ResetStructure();
   void SetFields(int64_t new_num_fields, MLCTypeField *fields);
   void SetMethods(int64_t new_num_methods, MLCTypeMethod *methods);
+  void SetStructure(int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices,
+                    int32_t *sub_structure_kinds);
   ~TypeInfoWrapper() { this->Reset(); }
 };
 
@@ -210,6 +213,9 @@ struct TypeTable {
     }
     info->fields = nullptr;
     info->methods = nullptr;
+    info->structure_kind = 0;
+    info->sub_structure_indices = nullptr;
+    info->sub_structure_kinds = nullptr;
     wrapper->table = this;
     return info;
   }
@@ -231,9 +237,7 @@ struct TypeTable {
     this->NewObjPtr(&it->second, func);
   }
 
-  void TypeDefReflection(int32_t type_index,                       //
-                         int64_t num_fields, MLCTypeField *fields, //
-                         int64_t num_methods, MLCTypeMethod *methods) {
+  TypeInfoWrapper *GetTypeInfoWrapper(int32_t type_index) {
     TypeInfoWrapper *wrapper = nullptr;
     try {
       wrapper = this->type_table.at(type_index).get();
@@ -242,8 +246,7 @@ struct TypeTable {
     if (wrapper == nullptr || wrapper->table != this) {
       MLC_THROW(KeyError) << "Type index `" << type_index << "` not registered";
     }
-    wrapper->SetFields(num_fields, fields);
-    wrapper->SetMethods(num_methods, methods);
+    return wrapper;
   }
 
   void LoadDSO(std::string name) {
@@ -352,6 +355,15 @@ inline void TypeInfoWrapper::ResetMethods() {
   }
 }
 
+inline void TypeInfoWrapper::ResetStructure() {
+  if (this->info.sub_structure_indices) {
+    this->table->DelArray(this->info.sub_structure_indices);
+  }
+  if (this->info.sub_structure_kinds) {
+    this->table->DelArray(this->info.sub_structure_kinds);
+  }
+}
+
 inline void TypeInfoWrapper::SetFields(int64_t new_num_fields, MLCTypeField *fields) {
   this->ResetFields();
   this->num_fields = new_num_fields;
@@ -360,6 +372,9 @@ inline void TypeInfoWrapper::SetFields(int64_t new_num_fields, MLCTypeField *fie
     dst[i] = fields[i];
     dst[i].name = this->table->NewArray(fields[i].name);
     this->table->NewObjPtr(&dst[i].ty, dst[i].ty);
+    if (dst[i].index != i) {
+      MLC_THROW(ValueError) << "Field index mismatch: " << i << " vs " << dst[i].index;
+    }
   }
   dst[num_fields] = MLCTypeField{};
   std::sort(dst, dst + num_fields, [](const MLCTypeField &a, const MLCTypeField &b) { return a.offset < b.offset; });
@@ -380,6 +395,25 @@ inline void TypeInfoWrapper::SetMethods(int64_t new_num_methods, MLCTypeMethod *
   dst[num_methods] = MLCTypeMethod{};
   std::sort(dst, dst + num_methods,
             [](const MLCTypeMethod &a, const MLCTypeMethod &b) { return std::strcmp(a.name, b.name) < 0; });
+}
+
+inline void TypeInfoWrapper::SetStructure(int32_t structure_kind, int64_t num_sub_structures,
+                                          int32_t *sub_structure_indices, int32_t *sub_structure_kinds) {
+  this->ResetStructure();
+  this->info.structure_kind = structure_kind;
+  if (num_sub_structures > 0) {
+    this->info.sub_structure_indices = this->table->NewArray<int32_t>(num_sub_structures + 1);
+    this->info.sub_structure_kinds = this->table->NewArray<int32_t>(num_sub_structures + 1);
+    std::memcpy(this->info.sub_structure_indices, sub_structure_indices, num_sub_structures * sizeof(int32_t));
+    std::memcpy(this->info.sub_structure_kinds, sub_structure_kinds, num_sub_structures * sizeof(int32_t));
+    std::reverse(this->info.sub_structure_indices, this->info.sub_structure_indices + num_sub_structures);
+    std::reverse(this->info.sub_structure_kinds, this->info.sub_structure_kinds + num_sub_structures);
+    this->info.sub_structure_indices[num_sub_structures] = -1;
+    this->info.sub_structure_kinds[num_sub_structures] = -1;
+  } else {
+    this->info.sub_structure_indices = nullptr;
+    this->info.sub_structure_kinds = nullptr;
+  }
 }
 
 } // namespace registry

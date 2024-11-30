@@ -1,17 +1,19 @@
 #ifndef MLC_CORE_ALL_H_
 #define MLC_CORE_ALL_H_
-#include "./dict.h"         // IWYU pragma: export
-#include "./error.h"        // IWYU pragma: export
-#include "./func.h"         // IWYU pragma: export
-#include "./func_details.h" // IWYU pragma: export
-#include "./func_traits.h"  // IWYU pragma: export
-#include "./json.h"         // IWYU pragma: export
-#include "./list.h"         // IWYU pragma: export
-#include "./object.h"       // IWYU pragma: export
-#include "./str.h"          // IWYU pragma: export
-#include "./typing.h"       // IWYU pragma: export
-#include "./udict.h"        // IWYU pragma: export
-#include "./ulist.h"        // IWYU pragma: export
+#include "./dict.h"          // IWYU pragma: export
+#include "./error.h"         // IWYU pragma: export
+#include "./field_visitor.h" // IWYU pragma: export
+#include "./func.h"          // IWYU pragma: export
+#include "./func_details.h"  // IWYU pragma: export
+#include "./func_traits.h"   // IWYU pragma: export
+#include "./json.h"          // IWYU pragma: export
+#include "./list.h"          // IWYU pragma: export
+#include "./object.h"        // IWYU pragma: export
+#include "./str.h"           // IWYU pragma: export
+#include "./structure.h"     // IWYU pragma: export
+#include "./typing.h"        // IWYU pragma: export
+#include "./udict.h"         // IWYU pragma: export
+#include "./ulist.h"         // IWYU pragma: export
 
 namespace mlc {
 namespace core {
@@ -69,50 +71,45 @@ template <typename K, typename V> MLC_INLINE_NO_MSVC void NestedTypeCheck<Dict<K
   }
 }
 
-MLC_INLINE void DeleteExternObject(MLCAny *objptr) {
-  MLCTypeInfo *info = nullptr;
-  MLCTypeIndex2Info(nullptr, objptr->type_index, &info);
-  if (info) {
-    struct ExternObjDeleter {
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, Any *any) { any->Reset(); }
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, ObjectRef *obj) { obj->Reset(); }
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, Optional<Object> *opt) { opt->Reset(); }
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, Optional<int64_t> *opt) { opt->Reset(); }
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, Optional<double> *opt) { opt->Reset(); }
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, Optional<DLDevice> *opt) { opt->Reset(); }
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, Optional<DLDataType> *opt) { opt->Reset(); }
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, Optional<void *> *opt) { opt->Reset(); }
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, int8_t *) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, int16_t *) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, int32_t *) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, int64_t *) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, float *) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, double *) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, void **) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, DLDataType *) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, DLDevice *) {}
-      MLC_INLINE void operator()(int32_t, MLCTypeField *, const char *) {}
-    };
-    ::mlc::base::VisitTypeField(objptr, info, ExternObjDeleter{});
-    std::free(objptr);
-  } else {
-    MLC_THROW(InternalError) << "Cannot find type info for type index: " << objptr->type_index;
-  }
-}
-
-} // namespace core
-} // namespace mlc
-
-namespace mlc {
-namespace base {
-
 inline void ReportTypeFieldError(const char *type_key, MLCTypeField *field) {
   ::mlc::Object *field_ty = reinterpret_cast<::mlc::Object *>(field->ty);
   MLC_THROW(InternalError) << "Field `" << type_key << "." << field->name << "` whose size is " << field->num_bytes
                            << " byte(s) is not supported yet, because its type is: " << AnyView(field_ty);
 }
 
-} // namespace base
+MLC_INLINE void DeleteExternObject(Object *objptr) {
+  MLCTypeInfo *info = nullptr;
+  int32_t type_index = objptr->GetTypeIndex();
+  MLCTypeIndex2Info(nullptr, type_index, &info);
+  if (info) {
+    struct ExternObjDeleter {
+      MLC_INLINE void operator()(MLCTypeField *, Any *any) { any->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { obj->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<Object> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<void *> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, int8_t *) {}
+      MLC_INLINE void operator()(MLCTypeField *, int16_t *) {}
+      MLC_INLINE void operator()(MLCTypeField *, int32_t *) {}
+      MLC_INLINE void operator()(MLCTypeField *, int64_t *) {}
+      MLC_INLINE void operator()(MLCTypeField *, float *) {}
+      MLC_INLINE void operator()(MLCTypeField *, double *) {}
+      MLC_INLINE void operator()(MLCTypeField *, void **) {}
+      MLC_INLINE void operator()(MLCTypeField *, DLDataType *) {}
+      MLC_INLINE void operator()(MLCTypeField *, DLDevice *) {}
+      MLC_INLINE void operator()(MLCTypeField *, const char **) {}
+    };
+    VisitFields(objptr, info, ExternObjDeleter{});
+    std::free(objptr);
+  } else {
+    MLC_THROW(InternalError) << "Cannot find type info for type index: " << type_index;
+  }
+}
+
+} // namespace core
 } // namespace mlc
 
 #endif // MLC_CORE_ALL_H_

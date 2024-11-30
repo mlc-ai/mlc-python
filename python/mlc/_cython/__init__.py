@@ -11,6 +11,7 @@ from .base import (
     DeviceType,
     DLDataType,
     DLDevice,
+    MetaNoSlots,
     MLCAny,
     MLCHeader,
     MLCObjPtr,
@@ -40,5 +41,5 @@ from .core import (  # type: ignore[import-not-found]
 
 LIB: ctypes.CDLL = _core.LIB
 LIB_PATH: pathlib.Path = _core.LIB_PATH
-PyAny: type = _core.PyAny
+PyAny: type = _core.PyAnyNoSlots
 Str: type = _core.Str

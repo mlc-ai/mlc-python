@@ -1,5 +1,5 @@
 #include "./registry.h"
-#include "mlc/core/str.h"
+#include <mlc/all.h>
 
 namespace mlc {
 namespace registry {
@@ -20,15 +20,15 @@ using ::mlc::registry::TypeTable;
 namespace {
 thread_local Any last_error;
 MLC_REGISTER_FUNC("mlc.ffi.LoadDSO").set_body([](std::string name) { TypeTable::Get(nullptr)->LoadDSO(name); });
-MLC_REGISTER_FUNC("mlc.core.JSONParse").set_body([](AnyView json_str) {
+MLC_REGISTER_FUNC("mlc.core.JSONLoads").set_body([](AnyView json_str) {
   if (json_str.type_index == kMLCRawStr) {
-    return ::mlc::core::ParseJSON(json_str.operator const char *());
+    return ::mlc::core::JSONLoads(json_str.operator const char *());
   } else {
     ::mlc::Str str = json_str;
-    return ::mlc::core::ParseJSON(str);
+    return ::mlc::core::JSONLoads(str);
   }
 });
-MLC_REGISTER_FUNC("mlc.core.JSONSerialize").set_body(::mlc::core::Serialize);
+MLC_REGISTER_FUNC("mlc.core.JSONSerialize").set_body(::mlc::core::Serialize); // TODO: `AnyView` as function argument
 MLC_REGISTER_FUNC("mlc.core.JSONDeserialize").set_body([](AnyView json_str) {
   if (json_str.type_index == kMLCRawStr) {
     return ::mlc::core::Deserialize(json_str.operator const char *());
@@ -36,6 +36,7 @@ MLC_REGISTER_FUNC("mlc.core.JSONDeserialize").set_body([](AnyView json_str) {
     return ::mlc::core::Deserialize(json_str.operator ::mlc::Str());
   }
 });
+MLC_REGISTER_FUNC("mlc.core.StructuralEqual").set_body(::mlc::core::StructuralEqual);
 } // namespace
 
 MLC_API MLCAny MLCGetLastError() {
@@ -64,9 +65,14 @@ MLC_API int32_t MLCTypeKey2Info(MLCTypeTableHandle _self, const char *type_key, 
 }
 
 MLC_API int32_t MLCTypeDefReflection(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields,
-                                     MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods) {
+                                     MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods,
+                                     int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices,
+                                     int32_t *sub_structure_kinds) {
   MLC_SAFE_CALL_BEGIN();
-  TypeTable::Get(self)->TypeDefReflection(type_index, num_fields, fields, num_methods, methods);
+  auto *type_info = TypeTable::Get(self)->GetTypeInfoWrapper(type_index);
+  type_info->SetFields(num_fields, fields);
+  type_info->SetMethods(num_methods, methods);
+  type_info->SetStructure(structure_kind, num_sub_structures, sub_structure_indices, sub_structure_kinds);
   MLC_SAFE_CALL_END(&last_error);
 }
 
@@ -168,7 +174,7 @@ MLC_API int32_t MLCExtObjCreate(int32_t num_bytes, int32_t type_index, MLCAny *r
 
 MLC_API int32_t _MLCExtObjDeleteImpl(void *objptr) {
   MLC_SAFE_CALL_BEGIN();
-  ::mlc::core::DeleteExternObject(static_cast<MLCAny *>(objptr));
+  ::mlc::core::DeleteExternObject(static_cast<::mlc::Object *>(objptr));
   MLC_SAFE_CALL_END(&last_error);
 }
 
