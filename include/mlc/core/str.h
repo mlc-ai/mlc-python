@@ -43,7 +43,6 @@ struct StrObj : public MLCStr {
   MLC_INLINE const char *data() const { return this->MLCStr::data; }
   MLC_INLINE int64_t length() const { return this->MLCStr::length; }
   MLC_INLINE int64_t size() const { return this->MLCStr::length; }
-  MLC_INLINE uint64_t Hash() const;
   MLC_INLINE bool StartsWith(const std::string &prefix) {
     int64_t N = static_cast<int64_t>(prefix.length());
     return N <= MLCStr::length && strncmp(MLCStr::data, prefix.data(), prefix.length()) == 0;
@@ -53,9 +52,21 @@ struct StrObj : public MLCStr {
     return N <= MLCStr::length && strncmp(MLCStr::data + MLCStr::length - N, suffix.data(), N) == 0;
   }
   MLC_INLINE void PrintEscape(std::ostream &os) const;
-  MLC_INLINE int Compare(const StrObj *other) const { return std::strncmp(c_str(), other->c_str(), this->size() + 1); }
-  MLC_INLINE int Compare(const std::string &other) const { return std::strncmp(c_str(), other.c_str(), size() + 1); }
-  MLC_INLINE int Compare(const char *other) const { return std::strncmp(this->c_str(), other, this->size() + 1); }
+  MLC_INLINE int32_t Compare(const char *rhs_str, int64_t rhs_len) const {
+    return ::mlc::base::StrCompare(this->MLCStr::data, rhs_str, this->MLCStr::length, rhs_len);
+  }
+  MLC_INLINE int32_t Compare(const StrObj *other) const {
+    return this->Compare(other->c_str(), other->MLCStr::length); //
+  }
+  MLC_INLINE int32_t Compare(const std::string &other) const {
+    return this->Compare(other.data(), static_cast<int64_t>(other.length()));
+  }
+  MLC_INLINE int32_t Compare(const char *other) const {
+    return this->Compare(other, static_cast<int64_t>(std::strlen(other)));
+  }
+  MLC_INLINE uint64_t Hash() const {
+    return ::mlc::base::StrHash(this->MLCStr::data, this->MLCStr::length); //
+  }
   MLC_DEF_STATIC_TYPE(StrObj, Object, MLCTypeIndex::kMLCStr, "object.Str")
       .FieldReadOnly("length", &MLCStr::length)
       .FieldReadOnly("data", &MLCStr::data)
@@ -247,7 +258,7 @@ inline std::ostream &operator<<(std::ostream &os, const Object &src) {
   return os;
 }
 
-void StrObj::PrintEscape(std::ostream &oss) const {
+inline void StrObj::PrintEscape(std::ostream &oss) const {
   const char *data = this->MLCStr::data;
   int64_t length = this->MLCStr::length;
   oss << '"';
@@ -322,53 +333,7 @@ void StrObj::PrintEscape(std::ostream &oss) const {
   oss << '"';
 }
 
-} // namespace mlc
-
-namespace mlc {
-namespace core {
-
-MLC_INLINE int32_t StrCompare(const MLCStr *a, const MLCStr *b) {
-  if (a->length != b->length) {
-    return static_cast<int32_t>(a->length - b->length);
-  }
-  return std::strncmp(a->data, b->data, a->length);
-}
-
-MLC_INLINE uint64_t StrHash(const MLCStr *str) {
-  const constexpr uint64_t kMultiplier = 1099511628211ULL;
-  const constexpr uint64_t kMod = 2147483647ULL;
-  const char *it = str->data;
-  const char *end = it + str->length;
-  uint64_t result = 0;
-  for (; it + 8 <= end; it += 8) {
-    uint64_t b = (static_cast<uint64_t>(it[0]) << 56) | (static_cast<uint64_t>(it[1]) << 48) |
-                 (static_cast<uint64_t>(it[2]) << 40) | (static_cast<uint64_t>(it[3]) << 32) |
-                 (static_cast<uint64_t>(it[4]) << 24) | (static_cast<uint64_t>(it[5]) << 16) |
-                 (static_cast<uint64_t>(it[6]) << 8) | static_cast<uint64_t>(it[7]);
-    result = (result * kMultiplier + b) % kMod;
-  }
-  if (it < end) {
-    uint64_t b = 0;
-    if (it + 4 <= end) {
-      b = (static_cast<uint64_t>(it[0]) << 24) | (static_cast<uint64_t>(it[1]) << 16) |
-          (static_cast<uint64_t>(it[2]) << 8) | static_cast<uint64_t>(it[3]);
-      it += 4;
-    }
-    if (it + 2 <= end) {
-      b = (b << 16) | (static_cast<uint64_t>(it[0]) << 8) | static_cast<uint64_t>(it[1]);
-      it += 2;
-    }
-    if (it + 1 <= end) {
-      b = (b << 8) | static_cast<uint64_t>(it[0]);
-      it += 1;
-    }
-    result = (result * kMultiplier + b) % kMod;
-  }
-  return result;
-}
-} // namespace core
-
-MLC_INLINE Str Str::FromEscaped(int64_t N, const char *str) {
+inline Str Str::FromEscaped(int64_t N, const char *str) {
   std::ostringstream oss;
   if (N < 2 || str[0] != '\"' || str[N - 1] != '\"') {
     MLC_THROW(ValueError) << "Invalid escaped string: " << str;
@@ -443,13 +408,14 @@ MLC_INLINE Str Str::FromEscaped(int64_t N, const char *str) {
   }
   return Str(oss.str());
 }
+} // namespace mlc
 
+namespace mlc {
 namespace base {
 MLC_INLINE StrObj *StrCopyFromCharArray(const char *source, size_t length) {
   return StrObj::Allocator::New(source, length + 1);
 }
 } // namespace base
-MLC_INLINE uint64_t StrObj::Hash() const { return ::mlc::core::StrHash(reinterpret_cast<const MLCStr *>(this)); }
 } // namespace mlc
 
 #endif // MLC_CORE_STR_H_

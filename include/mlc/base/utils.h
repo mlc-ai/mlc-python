@@ -16,6 +16,7 @@
 #endif
 #include "./base_traits.h"
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <sstream>
 #include <type_traits>
@@ -297,6 +298,54 @@ inline int64_t StrToInt(const std::string &str, size_t start_pos = 0) {
   }
   return result;
 }
+
+MLC_INLINE uint64_t HashCombine(uint64_t seed, uint64_t value) {
+  return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
+
+MLC_INLINE int32_t StrCompare(const char *a, const char *b, int64_t a_len, int64_t b_len) {
+  if (a_len != b_len) {
+    return static_cast<int32_t>(a_len - b_len);
+  }
+  return std::strncmp(a, b, a_len);
+}
+
+inline uint64_t StrHash(const char *str, int64_t length) {
+  const char *it = str;
+  const char *end = str + length;
+  uint64_t result = 0;
+  for (; it + 8 <= end; it += 8) {
+    uint64_t b = (static_cast<uint64_t>(it[0]) << 56) | (static_cast<uint64_t>(it[1]) << 48) |
+                 (static_cast<uint64_t>(it[2]) << 40) | (static_cast<uint64_t>(it[3]) << 32) |
+                 (static_cast<uint64_t>(it[4]) << 24) | (static_cast<uint64_t>(it[5]) << 16) |
+                 (static_cast<uint64_t>(it[6]) << 8) | static_cast<uint64_t>(it[7]);
+    result = HashCombine(result, b);
+  }
+  if (it < end) {
+    uint64_t b = 0;
+    if (it + 4 <= end) {
+      b = (static_cast<uint64_t>(it[0]) << 24) | (static_cast<uint64_t>(it[1]) << 16) |
+          (static_cast<uint64_t>(it[2]) << 8) | static_cast<uint64_t>(it[3]);
+      it += 4;
+    }
+    if (it + 2 <= end) {
+      b = (b << 16) | (static_cast<uint64_t>(it[0]) << 8) | static_cast<uint64_t>(it[1]);
+      it += 2;
+    }
+    if (it + 1 <= end) {
+      b = (b << 8) | static_cast<uint64_t>(it[0]);
+      it += 1;
+    }
+    result = HashCombine(result, b);
+  }
+  return result;
+}
+
+inline uint64_t StrHash(const char *str) {
+  int64_t length = static_cast<int64_t>(std::strlen(str));
+  return StrHash(str, length);
+}
+
 } // namespace base
 } // namespace mlc
 

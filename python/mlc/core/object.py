@@ -21,3 +21,6 @@ class Object(PyAny):
         assert_mode: bool = False,
     ) -> bool:
         return PyAny._mlc_eq_s(self, other, bind_free_vars, assert_mode)  # type: ignore[attr-defined]
+
+    def hash_s(self) -> int:
+        return PyAny._mlc_hash_s(self)  # type: ignore[attr-defined]

@@ -200,6 +200,7 @@ typedef struct {
 typedef struct MLCTypeInfo {
   int32_t type_index;
   const char *type_key;
+  uint64_t type_key_hash;
   int32_t type_depth;
   int32_t *type_ancestors; // Range: [0, type_depth)
   MLCTypeField *fields;    // Ends with a field with name == nullptr

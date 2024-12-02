@@ -179,10 +179,14 @@ cdef extern from "mlc/c_api.h" nogil:
     ctypedef struct MLCTypeInfo:
         int32_t type_index
         const char* type_key
+        uint64_t type_key_hash
         int32_t type_depth
         int32_t* type_ancestors
         MLCTypeField *fields
         MLCTypeMethod *methods
+        int32_t structure_kind
+        int32_t *sub_structure_indices
+        int32_t *sub_structure_kinds
 
     ctypedef void* MLCTypeTableHandle
 
@@ -338,6 +342,13 @@ cdef class PyAny:
     @staticmethod
     def _mlc_eq_s(PyAny lhs, PyAny rhs, bind_free_vars: bool, assert_mode: bool) -> bool:
         return bool(func_call(_STRUCUTRAL_EQUAL, (lhs, rhs, bind_free_vars, assert_mode)))
+
+    @staticmethod
+    def _mlc_hash_s(PyAny x) -> object:
+        cdef object ret = func_call(_STRUCUTRAL_HASH, (x,))
+        if ret < 0:
+            ret += 2 ** 63
+        return ret
 
     @classmethod
     def _C(cls, str name, *args):
@@ -1382,4 +1393,5 @@ cdef MLCFunc* _LIST_INIT = _type_get_method(kMLCList, "__init__")
 cdef MLCFunc* _DICT_INIT = _type_get_method(kMLCDict, "__init__")
 cdef PyAny _SERIALIZE = func_get_untyped("mlc.core.JSONSerialize")  # Any -> str
 cdef PyAny _DESERIALIZE = func_get_untyped("mlc.core.JSONDeserialize")  # str -> Any
-cdef PyAny _STRUCUTRAL_EQUAL = func_get_untyped("mlc.core.StructuralEqual")  # (Any, Any) -> bool
+cdef PyAny _STRUCUTRAL_EQUAL = func_get_untyped("mlc.core.StructuralEqual")
+cdef PyAny _STRUCUTRAL_HASH = func_get_untyped("mlc.core.StructuralHash")

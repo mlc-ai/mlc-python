@@ -37,6 +37,10 @@ MLC_REGISTER_FUNC("mlc.core.JSONDeserialize").set_body([](AnyView json_str) {
   }
 });
 MLC_REGISTER_FUNC("mlc.core.StructuralEqual").set_body(::mlc::core::StructuralEqual);
+MLC_REGISTER_FUNC("mlc.core.StructuralHash").set_body([](::mlc::Object *obj) -> int64_t {
+  uint64_t ret = ::mlc::core::StructuralHash(obj);
+  return static_cast<int64_t>(ret);
+});
 } // namespace
 
 MLC_API MLCAny MLCGetLastError() {

@@ -205,6 +205,7 @@ struct TypeTable {
     MLCTypeInfo *info = &wrapper->info;
     info->type_index = type_index;
     info->type_key = this->NewArray(type_key);
+    info->type_key_hash = ::mlc::base::StrHash(type_key, std::strlen(type_key));
     info->type_depth = (parent == nullptr) ? 0 : (parent->type_depth + 1);
     info->type_ancestors = this->NewArray<int32_t>(info->type_depth);
     if (parent) {

@@ -3,44 +3,44 @@
 
 from typing import Any, Optional
 
-from mlc.dataclasses import PyClass, py_class
+from mlc import dataclasses as mlcd
 
 _Identifier = str
 
 
-@py_class(type_key="mlc.ast.AST")
-class AST(PyClass): ...
+@mlcd.py_class(type_key="mlc.ast.AST", structure="bind")
+class AST(mlcd.PyClass): ...
 
 
-@py_class(type_key="mlc.ast.mod")
+@mlcd.py_class(type_key="mlc.ast.mod", structure="bind")
 class mod(AST): ...
 
 
-@py_class(type_key="mlc.ast.expr_context")
+@mlcd.py_class(type_key="mlc.ast.expr_context", structure="bind")
 class expr_context(AST): ...
 
 
-@py_class(type_key="mlc.ast.operator")
+@mlcd.py_class(type_key="mlc.ast.operator", structure="bind")
 class operator(AST): ...
 
 
-@py_class(type_key="mlc.ast.cmpop")
+@mlcd.py_class(type_key="mlc.ast.cmpop", structure="bind")
 class cmpop(AST): ...
 
 
-@py_class(type_key="mlc.ast.unaryop")
+@mlcd.py_class(type_key="mlc.ast.unaryop", structure="bind")
 class unaryop(AST): ...
 
 
-@py_class(type_key="mlc.ast.boolop")
+@mlcd.py_class(type_key="mlc.ast.boolop", structure="bind")
 class boolop(AST): ...
 
 
-@py_class(type_key="mlc.ast.type_ignore")
+@mlcd.py_class(type_key="mlc.ast.type_ignore", structure="bind")
 class type_ignore(AST): ...
 
 
-@py_class(type_key="mlc.ast.stmt")
+@mlcd.py_class(type_key="mlc.ast.stmt", structure="bind")
 class stmt(AST):
     lineno: Optional[int]
     col_offset: Optional[int]
@@ -48,7 +48,7 @@ class stmt(AST):
     end_col_offset: Optional[int]
 
 
-@py_class(type_key="mlc.ast.expr")
+@mlcd.py_class(type_key="mlc.ast.expr", structure="bind")
 class expr(AST):
     lineno: Optional[int]
     col_offset: Optional[int]
@@ -56,7 +56,7 @@ class expr(AST):
     end_col_offset: Optional[int]
 
 
-@py_class(type_key="mlc.ast.type_param")
+@mlcd.py_class(type_key="mlc.ast.type_param", structure="bind")
 class type_param(AST):
     lineno: Optional[int]
     col_offset: Optional[int]
@@ -64,7 +64,7 @@ class type_param(AST):
     end_col_offset: Optional[int]
 
 
-@py_class(type_key="mlc.ast.pattern")
+@mlcd.py_class(type_key="mlc.ast.pattern", structure="bind")
 class pattern(AST):
     lineno: Optional[int]
     col_offset: Optional[int]
@@ -72,7 +72,7 @@ class pattern(AST):
     end_col_offset: Optional[int]
 
 
-@py_class(type_key="mlc.ast.arg")
+@mlcd.py_class(type_key="mlc.ast.arg", structure="bind")
 class arg(AST):
     lineno: Optional[int]
     col_offset: Optional[int]
@@ -83,7 +83,7 @@ class arg(AST):
     type_comment: Optional[str]
 
 
-@py_class(type_key="mlc.ast.keyword")
+@mlcd.py_class(type_key="mlc.ast.keyword", structure="bind")
 class keyword(AST):
     lineno: Optional[int]
     col_offset: Optional[int]
@@ -93,7 +93,7 @@ class keyword(AST):
     value: expr
 
 
-@py_class(type_key="mlc.ast.alias")
+@mlcd.py_class(type_key="mlc.ast.alias", structure="bind")
 class alias(AST):
     lineno: Optional[int]
     col_offset: Optional[int]
@@ -103,7 +103,7 @@ class alias(AST):
     asname: Optional[_Identifier]
 
 
-@py_class(type_key="mlc.ast.arguments")
+@mlcd.py_class(type_key="mlc.ast.arguments", structure="bind")
 class arguments(AST):
     posonlyargs: list[arg]
     args: list[arg]
@@ -114,7 +114,7 @@ class arguments(AST):
     defaults: list[expr]
 
 
-@py_class(type_key="mlc.ast.comprehension")
+@mlcd.py_class(type_key="mlc.ast.comprehension", structure="bind")
 class comprehension(AST):
     target: expr
     iter: expr
@@ -122,41 +122,41 @@ class comprehension(AST):
     is_async: int
 
 
-@py_class(type_key="mlc.ast.withitem")
+@mlcd.py_class(type_key="mlc.ast.withitem", structure="bind")
 class withitem(AST):
     context_expr: expr
     optional_vars: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.TypeIgnore")
+@mlcd.py_class(type_key="mlc.ast.TypeIgnore", structure="bind")
 class TypeIgnore(type_ignore):
     lineno: Optional[int]
     tag: str
 
 
-@py_class(type_key="mlc.ast.Module")
+@mlcd.py_class(type_key="mlc.ast.Module", structure="bind")
 class Module(mod):
     body: list[stmt]
     type_ignores: list[TypeIgnore]
 
 
-@py_class(type_key="mlc.ast.Interactive")
+@mlcd.py_class(type_key="mlc.ast.Interactive", structure="bind")
 class Interactive(mod):
     body: list[stmt]
 
 
-@py_class(type_key="mlc.ast.Expression")
+@mlcd.py_class(type_key="mlc.ast.Expression", structure="bind")
 class Expression(mod):
     body: expr
 
 
-@py_class(type_key="mlc.ast.FunctionType")
+@mlcd.py_class(type_key="mlc.ast.FunctionType", structure="bind")
 class FunctionType(mod):
     argtypes: list[expr]
     returns: expr
 
 
-@py_class(type_key="mlc.ast.FunctionDef")
+@mlcd.py_class(type_key="mlc.ast.FunctionDef", structure="bind")
 class FunctionDef(stmt):
     name: _Identifier
     args: arguments
@@ -167,7 +167,7 @@ class FunctionDef(stmt):
     type_params: Optional[list[type_param]]
 
 
-@py_class(type_key="mlc.ast.AsyncFunctionDef")
+@mlcd.py_class(type_key="mlc.ast.AsyncFunctionDef", structure="bind")
 class AsyncFunctionDef(stmt):
     name: _Identifier
     args: arguments
@@ -178,7 +178,7 @@ class AsyncFunctionDef(stmt):
     type_params: Optional[list[type_param]]
 
 
-@py_class(type_key="mlc.ast.ClassDef")
+@mlcd.py_class(type_key="mlc.ast.ClassDef", structure="bind")
 class ClassDef(stmt):
     name: _Identifier
     bases: list[expr]
@@ -188,45 +188,45 @@ class ClassDef(stmt):
     type_params: Optional[list[type_param]]
 
 
-@py_class(type_key="mlc.ast.Return")
+@mlcd.py_class(type_key="mlc.ast.Return", structure="bind")
 class Return(stmt):
     value: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.Delete")
+@mlcd.py_class(type_key="mlc.ast.Delete", structure="bind")
 class Delete(stmt):
     targets: list[expr]
 
 
-@py_class(type_key="mlc.ast.Assign")
+@mlcd.py_class(type_key="mlc.ast.Assign", structure="bind")
 class Assign(stmt):
     targets: list[expr]
     value: expr
     type_comment: Optional[str]
 
 
-@py_class(type_key="mlc.ast.Attribute")
+@mlcd.py_class(type_key="mlc.ast.Attribute", structure="bind")
 class Attribute(expr):
     value: expr
     attr: _Identifier
     ctx: expr_context
 
 
-@py_class(type_key="mlc.ast.Subscript")
+@mlcd.py_class(type_key="mlc.ast.Subscript", structure="bind")
 class Subscript(expr):
     value: expr
     slice: expr
     ctx: expr_context
 
 
-@py_class(type_key="mlc.ast.AugAssign")
+@mlcd.py_class(type_key="mlc.ast.AugAssign", structure="bind")
 class AugAssign(stmt):
     target: Any  # Name | Attribute | Subscript
     op: operator
     value: expr
 
 
-@py_class(type_key="mlc.ast.AnnAssign")
+@mlcd.py_class(type_key="mlc.ast.AnnAssign", structure="bind")
 class AnnAssign(stmt):
     target: Any  # Name | Attribute | Subscript
     annotation: expr
@@ -234,7 +234,7 @@ class AnnAssign(stmt):
     simple: int
 
 
-@py_class(type_key="mlc.ast.For")
+@mlcd.py_class(type_key="mlc.ast.For", structure="bind")
 class For(stmt):
     target: expr
     iter: expr
@@ -243,7 +243,7 @@ class For(stmt):
     type_comment: Optional[str]
 
 
-@py_class(type_key="mlc.ast.AsyncFor")
+@mlcd.py_class(type_key="mlc.ast.AsyncFor", structure="bind")
 class AsyncFor(stmt):
     target: expr
     iter: expr
@@ -252,54 +252,54 @@ class AsyncFor(stmt):
     type_comment: Optional[str]
 
 
-@py_class(type_key="mlc.ast.While")
+@mlcd.py_class(type_key="mlc.ast.While", structure="bind")
 class While(stmt):
     test: expr
     body: list[stmt]
     orelse: list[stmt]
 
 
-@py_class(type_key="mlc.ast.If")
+@mlcd.py_class(type_key="mlc.ast.If", structure="bind")
 class If(stmt):
     test: expr
     body: list[stmt]
     orelse: list[stmt]
 
 
-@py_class(type_key="mlc.ast.With")
+@mlcd.py_class(type_key="mlc.ast.With", structure="bind")
 class With(stmt):
     items: list[withitem]
     body: list[stmt]
     type_comment: Optional[str]
 
 
-@py_class(type_key="mlc.ast.AsyncWith")
+@mlcd.py_class(type_key="mlc.ast.AsyncWith", structure="bind")
 class AsyncWith(stmt):
     items: list[withitem]
     body: list[stmt]
     type_comment: Optional[str]
 
 
-@py_class(type_key="mlc.ast.match_case")
+@mlcd.py_class(type_key="mlc.ast.match_case", structure="bind")
 class match_case(AST):
     pattern: pattern
     guard: Optional[expr]
     body: list[stmt]
 
 
-@py_class(type_key="mlc.ast.Match")
+@mlcd.py_class(type_key="mlc.ast.Match", structure="bind")
 class Match(stmt):
     subject: expr
     cases: list[match_case]
 
 
-@py_class(type_key="mlc.ast.Raise")
+@mlcd.py_class(type_key="mlc.ast.Raise", structure="bind")
 class Raise(stmt):
     exc: Optional[expr]
     cause: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.ExceptHandler")
+@mlcd.py_class(type_key="mlc.ast.ExceptHandler", structure="bind")
 class ExceptHandler(AST):
     lineno: Optional[int]
     col_offset: Optional[int]
@@ -310,7 +310,7 @@ class ExceptHandler(AST):
     body: list[stmt]
 
 
-@py_class(type_key="mlc.ast.Try")
+@mlcd.py_class(type_key="mlc.ast.Try", structure="bind")
 class Try(stmt):
     body: list[stmt]
     handlers: list[ExceptHandler]
@@ -318,7 +318,7 @@ class Try(stmt):
     finalbody: list[stmt]
 
 
-@py_class(type_key="mlc.ast.TryStar")
+@mlcd.py_class(type_key="mlc.ast.TryStar", structure="bind")
 class TryStar(stmt):
     body: list[stmt]
     handlers: list[ExceptHandler]
@@ -326,359 +326,359 @@ class TryStar(stmt):
     finalbody: list[stmt]
 
 
-@py_class(type_key="mlc.ast.Assert")
+@mlcd.py_class(type_key="mlc.ast.Assert", structure="bind")
 class Assert(stmt):
     test: expr
     msg: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.Import")
+@mlcd.py_class(type_key="mlc.ast.Import", structure="bind")
 class Import(stmt):
     names: list[alias]
 
 
-@py_class(type_key="mlc.ast.ImportFrom")
+@mlcd.py_class(type_key="mlc.ast.ImportFrom", structure="bind")
 class ImportFrom(stmt):
     module: Optional[str]
     names: list[alias]
     level: int
 
 
-@py_class(type_key="mlc.ast.Global")
+@mlcd.py_class(type_key="mlc.ast.Global", structure="bind")
 class Global(stmt):
     names: list[_Identifier]
 
 
-@py_class(type_key="mlc.ast.Nonlocal")
+@mlcd.py_class(type_key="mlc.ast.Nonlocal", structure="bind")
 class Nonlocal(stmt):
     names: list[_Identifier]
 
 
-@py_class(type_key="mlc.ast.Expr")
+@mlcd.py_class(type_key="mlc.ast.Expr", structure="bind")
 class Expr(stmt):
     value: expr
 
 
-@py_class(type_key="mlc.ast.Pass")
+@mlcd.py_class(type_key="mlc.ast.Pass", structure="bind")
 class Pass(stmt): ...
 
 
-@py_class(type_key="mlc.ast.Break")
+@mlcd.py_class(type_key="mlc.ast.Break", structure="bind")
 class Break(stmt): ...
 
 
-@py_class(type_key="mlc.ast.Continue")
+@mlcd.py_class(type_key="mlc.ast.Continue", structure="bind")
 class Continue(stmt): ...
 
 
-@py_class(type_key="mlc.ast.BoolOp")
+@mlcd.py_class(type_key="mlc.ast.BoolOp", structure="bind")
 class BoolOp(expr):
     op: boolop
     values: list[expr]
 
 
-@py_class(type_key="mlc.ast.Name")
+@mlcd.py_class(type_key="mlc.ast.Name", structure="bind")
 class Name(expr):
     id: _Identifier
     ctx: expr_context
 
 
-@py_class(type_key="mlc.ast.NamedExpr")
+@mlcd.py_class(type_key="mlc.ast.NamedExpr", structure="bind")
 class NamedExpr(expr):
     target: Name
     value: expr
 
 
-@py_class(type_key="mlc.ast.BinOp")
+@mlcd.py_class(type_key="mlc.ast.BinOp", structure="bind")
 class BinOp(expr):
     left: expr
     op: operator
     right: expr
 
 
-@py_class(type_key="mlc.ast.UnaryOp")
+@mlcd.py_class(type_key="mlc.ast.UnaryOp", structure="bind")
 class UnaryOp(expr):
     op: unaryop
     operand: expr
 
 
-@py_class(type_key="mlc.ast.Lambda")
+@mlcd.py_class(type_key="mlc.ast.Lambda", structure="bind")
 class Lambda(expr):
     args: arguments
     body: expr
 
 
-@py_class(type_key="mlc.ast.IfExp")
+@mlcd.py_class(type_key="mlc.ast.IfExp", structure="bind")
 class IfExp(expr):
     test: expr
     body: expr
     orelse: expr
 
 
-@py_class(type_key="mlc.ast.Dict")
+@mlcd.py_class(type_key="mlc.ast.Dict", structure="bind")
 class Dict(expr):
     keys: list[Optional[expr]]
     values: list[expr]
 
 
-@py_class(type_key="mlc.ast.Set")
+@mlcd.py_class(type_key="mlc.ast.Set", structure="bind")
 class Set(expr):
     elts: list[expr]
 
 
-@py_class(type_key="mlc.ast.ListComp")
+@mlcd.py_class(type_key="mlc.ast.ListComp", structure="bind")
 class ListComp(expr):
     elt: expr
     generators: list[comprehension]
 
 
-@py_class(type_key="mlc.ast.SetComp")
+@mlcd.py_class(type_key="mlc.ast.SetComp", structure="bind")
 class SetComp(expr):
     elt: expr
     generators: list[comprehension]
 
 
-@py_class(type_key="mlc.ast.DictComp")
+@mlcd.py_class(type_key="mlc.ast.DictComp", structure="bind")
 class DictComp(expr):
     key: expr
     value: expr
     generators: list[comprehension]
 
 
-@py_class(type_key="mlc.ast.GeneratorExp")
+@mlcd.py_class(type_key="mlc.ast.GeneratorExp", structure="bind")
 class GeneratorExp(expr):
     elt: expr
     generators: list[comprehension]
 
 
-@py_class(type_key="mlc.ast.Await")
+@mlcd.py_class(type_key="mlc.ast.Await", structure="bind")
 class Await(expr):
     value: expr
 
 
-@py_class(type_key="mlc.ast.Yield")
+@mlcd.py_class(type_key="mlc.ast.Yield", structure="bind")
 class Yield(expr):
     value: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.YieldFrom")
+@mlcd.py_class(type_key="mlc.ast.YieldFrom", structure="bind")
 class YieldFrom(expr):
     value: expr
 
 
-@py_class(type_key="mlc.ast.Compare")
+@mlcd.py_class(type_key="mlc.ast.Compare", structure="bind")
 class Compare(expr):
     left: expr
     ops: list[cmpop]
     comparators: list[expr]
 
 
-@py_class(type_key="mlc.ast.Call")
+@mlcd.py_class(type_key="mlc.ast.Call", structure="bind")
 class Call(expr):
     func: expr
     args: list[expr]
     keywords: list[keyword]
 
 
-@py_class(type_key="mlc.ast.FormattedValue")
+@mlcd.py_class(type_key="mlc.ast.FormattedValue", structure="bind")
 class FormattedValue(expr):
     value: expr
     conversion: int
     format_spec: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.JoinedStr")
+@mlcd.py_class(type_key="mlc.ast.JoinedStr", structure="bind")
 class JoinedStr(expr):
     values: list[expr]
 
 
-@py_class(type_key="mlc.ast.Ellipsis")
-class Ellipsis(PyClass): ...
+@mlcd.py_class(type_key="mlc.ast.Ellipsis", structure="bind")
+class Ellipsis(mlcd.PyClass): ...
 
 
-@py_class(type_key="mlc.ast.Constant")
+@mlcd.py_class(type_key="mlc.ast.Constant", structure="bind")
 class Constant(expr):
     value: Any  # None, str, bytes, bool, int, float, complex, Ellipsis
     kind: Optional[str]
 
 
-@py_class(type_key="mlc.ast.Starred")
+@mlcd.py_class(type_key="mlc.ast.Starred", structure="bind")
 class Starred(expr):
     value: expr
     ctx: expr_context
 
 
-@py_class(type_key="mlc.ast.List")
+@mlcd.py_class(type_key="mlc.ast.List", structure="bind")
 class List(expr):
     elts: list[expr]
     ctx: expr_context
 
 
-@py_class(type_key="mlc.ast.Tuple")
+@mlcd.py_class(type_key="mlc.ast.Tuple", structure="bind")
 class Tuple(expr):
     elts: list[expr]
     ctx: expr_context
     dims: list[expr]
 
 
-@py_class(type_key="mlc.ast.Slice")
+@mlcd.py_class(type_key="mlc.ast.Slice", structure="bind")
 class Slice(expr):
     lower: Optional[expr]
     upper: Optional[expr]
     step: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.Load")
+@mlcd.py_class(type_key="mlc.ast.Load", structure="bind")
 class Load(expr_context): ...
 
 
-@py_class(type_key="mlc.ast.Store")
+@mlcd.py_class(type_key="mlc.ast.Store", structure="bind")
 class Store(expr_context): ...
 
 
-@py_class(type_key="mlc.ast.Del")
+@mlcd.py_class(type_key="mlc.ast.Del", structure="bind")
 class Del(expr_context): ...
 
 
-@py_class(type_key="mlc.ast.And")
+@mlcd.py_class(type_key="mlc.ast.And", structure="bind")
 class And(boolop): ...
 
 
-@py_class(type_key="mlc.ast.Or")
+@mlcd.py_class(type_key="mlc.ast.Or", structure="bind")
 class Or(boolop): ...
 
 
-@py_class(type_key="mlc.ast.Add")
+@mlcd.py_class(type_key="mlc.ast.Add", structure="bind")
 class Add(operator): ...
 
 
-@py_class(type_key="mlc.ast.Sub")
+@mlcd.py_class(type_key="mlc.ast.Sub", structure="bind")
 class Sub(operator): ...
 
 
-@py_class(type_key="mlc.ast.Mult")
+@mlcd.py_class(type_key="mlc.ast.Mult", structure="bind")
 class Mult(operator): ...
 
 
-@py_class(type_key="mlc.ast.MatMult")
+@mlcd.py_class(type_key="mlc.ast.MatMult", structure="bind")
 class MatMult(operator): ...
 
 
-@py_class(type_key="mlc.ast.Div")
+@mlcd.py_class(type_key="mlc.ast.Div", structure="bind")
 class Div(operator): ...
 
 
-@py_class(type_key="mlc.ast.Mod")
+@mlcd.py_class(type_key="mlc.ast.Mod", structure="bind")
 class Mod(operator): ...
 
 
-@py_class(type_key="mlc.ast.Pow")
+@mlcd.py_class(type_key="mlc.ast.Pow", structure="bind")
 class Pow(operator): ...
 
 
-@py_class(type_key="mlc.ast.LShift")
+@mlcd.py_class(type_key="mlc.ast.LShift", structure="bind")
 class LShift(operator): ...
 
 
-@py_class(type_key="mlc.ast.RShift")
+@mlcd.py_class(type_key="mlc.ast.RShift", structure="bind")
 class RShift(operator): ...
 
 
-@py_class(type_key="mlc.ast.BitOr")
+@mlcd.py_class(type_key="mlc.ast.BitOr", structure="bind")
 class BitOr(operator): ...
 
 
-@py_class(type_key="mlc.ast.BitXor")
+@mlcd.py_class(type_key="mlc.ast.BitXor", structure="bind")
 class BitXor(operator): ...
 
 
-@py_class(type_key="mlc.ast.BitAnd")
+@mlcd.py_class(type_key="mlc.ast.BitAnd", structure="bind")
 class BitAnd(operator): ...
 
 
-@py_class(type_key="mlc.ast.FloorDiv")
+@mlcd.py_class(type_key="mlc.ast.FloorDiv", structure="bind")
 class FloorDiv(operator): ...
 
 
-@py_class(type_key="mlc.ast.Invert")
+@mlcd.py_class(type_key="mlc.ast.Invert", structure="bind")
 class Invert(unaryop): ...
 
 
-@py_class(type_key="mlc.ast.Not")
+@mlcd.py_class(type_key="mlc.ast.Not", structure="bind")
 class Not(unaryop): ...
 
 
-@py_class(type_key="mlc.ast.UAdd")
+@mlcd.py_class(type_key="mlc.ast.UAdd", structure="bind")
 class UAdd(unaryop): ...
 
 
-@py_class(type_key="mlc.ast.USub")
+@mlcd.py_class(type_key="mlc.ast.USub", structure="bind")
 class USub(unaryop): ...
 
 
-@py_class(type_key="mlc.ast.Eq")
+@mlcd.py_class(type_key="mlc.ast.Eq", structure="bind")
 class Eq(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.NotEq")
+@mlcd.py_class(type_key="mlc.ast.NotEq", structure="bind")
 class NotEq(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.Lt")
+@mlcd.py_class(type_key="mlc.ast.Lt", structure="bind")
 class Lt(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.LtE")
+@mlcd.py_class(type_key="mlc.ast.LtE", structure="bind")
 class LtE(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.Gt")
+@mlcd.py_class(type_key="mlc.ast.Gt", structure="bind")
 class Gt(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.GtE")
+@mlcd.py_class(type_key="mlc.ast.GtE", structure="bind")
 class GtE(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.Is")
+@mlcd.py_class(type_key="mlc.ast.Is", structure="bind")
 class Is(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.IsNot")
+@mlcd.py_class(type_key="mlc.ast.IsNot", structure="bind")
 class IsNot(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.In")
+@mlcd.py_class(type_key="mlc.ast.In", structure="bind")
 class In(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.NotIn")
+@mlcd.py_class(type_key="mlc.ast.NotIn", structure="bind")
 class NotIn(cmpop): ...
 
 
-@py_class(type_key="mlc.ast.MatchValue")
+@mlcd.py_class(type_key="mlc.ast.MatchValue", structure="bind")
 class MatchValue(pattern):
     value: expr
 
 
-@py_class(type_key="mlc.ast.MatchSingleton")
+@mlcd.py_class(type_key="mlc.ast.MatchSingleton", structure="bind")
 class MatchSingleton(pattern):
     value: int  # boolean
 
 
-@py_class(type_key="mlc.ast.MatchSequence")
+@mlcd.py_class(type_key="mlc.ast.MatchSequence", structure="bind")
 class MatchSequence(pattern):
     patterns: list[pattern]
 
 
-@py_class(type_key="mlc.ast.MatchMapping")
+@mlcd.py_class(type_key="mlc.ast.MatchMapping", structure="bind")
 class MatchMapping(pattern):
     keys: list[expr]
     patterns: list[pattern]
     rest: Optional[_Identifier]
 
 
-@py_class(type_key="mlc.ast.MatchClass")
+@mlcd.py_class(type_key="mlc.ast.MatchClass", structure="bind")
 class MatchClass(pattern):
     cls: expr
     patterns: list[pattern]
@@ -686,42 +686,42 @@ class MatchClass(pattern):
     kwd_patterns: list[pattern]
 
 
-@py_class(type_key="mlc.ast.MatchStar")
+@mlcd.py_class(type_key="mlc.ast.MatchStar", structure="bind")
 class MatchStar(pattern):
     name: Optional[_Identifier]
 
 
-@py_class(type_key="mlc.ast.MatchAs")
+@mlcd.py_class(type_key="mlc.ast.MatchAs", structure="bind")
 class MatchAs(pattern):
     pattern: Optional[pattern]
     name: Optional[_Identifier]
 
 
-@py_class(type_key="mlc.ast.MatchOr")
+@mlcd.py_class(type_key="mlc.ast.MatchOr", structure="bind")
 class MatchOr(pattern):
     patterns: list[pattern]
 
 
-@py_class(type_key="mlc.ast.TypeVar")
+@mlcd.py_class(type_key="mlc.ast.TypeVar", structure="bind")
 class TypeVar(type_param):
     name: _Identifier
     bound: Optional[expr]
     default_value: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.ParamSpec")
+@mlcd.py_class(type_key="mlc.ast.ParamSpec", structure="bind")
 class ParamSpec(type_param):
     name: _Identifier
     default_value: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.TypeVarTuple")
+@mlcd.py_class(type_key="mlc.ast.TypeVarTuple", structure="bind")
 class TypeVarTuple(type_param):
     name: _Identifier
     default_value: Optional[expr]
 
 
-@py_class(type_key="mlc.ast.TypeAlias")
+@mlcd.py_class(type_key="mlc.ast.TypeAlias", structure="bind")
 class TypeAlias(stmt):
     name: Name
     type_params: Optional[list[type_param]]

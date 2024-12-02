@@ -7,9 +7,10 @@
 namespace mlc {
 namespace core {
 struct AnyHash {
-  uint64_t operator()(const MLCAny &a) const {
+  inline uint64_t operator()(const MLCAny &a) const {
     if (a.type_index == static_cast<int32_t>(MLCTypeIndex::kMLCStr)) {
-      return ::mlc::core::StrHash(reinterpret_cast<MLCStr *>(a.v.v_obj));
+      const MLCStr *str = reinterpret_cast<MLCStr *>(a.v.v_obj);
+      return ::mlc::base::StrHash(str->data, str->length);
     }
     union {
       int64_t i64;
@@ -26,7 +27,9 @@ struct AnyEqual {
       return false;
     }
     if (a.type_index == static_cast<int32_t>(MLCTypeIndex::kMLCStr)) {
-      return ::mlc::core::StrCompare(reinterpret_cast<MLCStr *>(a.v.v_obj), reinterpret_cast<MLCStr *>(b.v.v_obj)) == 0;
+      const MLCStr *str_a = reinterpret_cast<MLCStr *>(a.v.v_obj);
+      const MLCStr *str_b = reinterpret_cast<MLCStr *>(b.v.v_obj);
+      return ::mlc::base::StrCompare(str_a->data, str_b->data, str_a->length, str_b->length) == 0;
     }
     return a.v.v_int64 == b.v.v_int64;
   }

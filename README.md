@@ -92,7 +92,7 @@ class Let(Expr):
   body: Expr
 ```
 
-**Structural equality**. Method eq_s is ready to use to compare the structural equality (alpha equivalence) of two IRs.
+**Structural equality**. Member method `eq_s` compares the structural equality (alpha equivalence) of two IRs represented by MLC's structured dataclass.
 
 ```python
 """
@@ -110,7 +110,13 @@ True
 ValueError: Structural equality check failed at {root}.rhs.b: Inconsistent binding. RHS has been bound to a different node while LHS is not bound
 ```
 
-**Structural hashing**. TBD
+**Structural hashing**. The structure of MLC dataclasses can be hashed via `hash_s`, which guarantees if two dataclasses are alpha-equivalent, they will share the same structural hash:
+
+```python
+>>> L1_hash, L2_hash, L3_hash = L1.hash_s(), L2.hash_s(), L3.hash_s()
+>>> assert L1_hash == L2_hash
+>>> assert L1_hash != L3_hash
+```
 
 ### :snake: Text Formats in Python AST
 
