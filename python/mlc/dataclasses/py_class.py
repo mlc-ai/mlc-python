@@ -1,27 +1,42 @@
 from __future__ import annotations
 
 import ctypes
+import functools
 import typing
 from collections.abc import Callable
 
 from mlc._cython import (
+    MLCHeader,
     TypeField,
     TypeInfo,
-    TypeMethod,
+    attach_field,
+    attach_method,
+    make_mlc_init,
+    type_add_method,
     type_create,
+    type_create_instance,
     type_field_get_accessor,
+    type_register_fields,
+    type_register_structure,
 )
-from mlc.core.object import Object
+from mlc.core import Object
 
-from .field import get_dataclass_fields
-from .structure import Structure, structure_parse, structure_to_c
-from .utils import attach_field, attach_method, method_init
+from .utils import (
+    Structure,
+    inspect_dataclass_fields,
+    method_init,
+    structure_parse,
+    structure_to_c,
+)
 
 ClsType = typing.TypeVar("ClsType")
 
 
 class PyClass(Object):
     _mlc_type_info = Object._mlc_type_info
+
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        raise NotImplementedError
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -53,28 +68,42 @@ def py_class(
             type_key = f"{super_type_cls.__module__}.{super_type_cls.__qualname__}"
         assert isinstance(type_key, str)
 
-        extra_methods: dict[str, Callable] = {}
-        methods: list[TypeMethod] = []
-        fields: list[TypeField]
-        type_cls: type[ClsType]
-        type_info: TypeInfo
-
-        # Step 1. Extract fields and methods
+        # Step 1. Create the type according to its parent type
         parent_type_info: TypeInfo = _type_parent(super_type_cls)._mlc_type_info  # type: ignore[attr-defined]
-        type_hints = typing.get_type_hints(super_type_cls)
-        CType, fields = _model_as_ctype(type_key, type_hints, parent_type_info)
-        d_fields = get_dataclass_fields(super_type_cls, fields)
-        # Step 2. Add extra methods
-        if init:
-            extra_methods["__init__"] = method_init(super_type_cls, type_hints, fields)
-        if repr:
-            extra_methods["__repr__"] = _insert_to_method_list(
-                methods,
-                name="__str__",
-                fn=_method_repr(type_key, fields),
-                is_static=True,
+        type_info: TypeInfo = type_create(parent_type_info.type_index, type_key)
+        type_index = type_info.type_index
+
+        # Step 2. Reflect all the fields of the type
+        fields, d_fields = inspect_dataclass_fields(type_key, super_type_cls, parent_type_info)
+        num_bytes = _add_field_properties(fields)
+        type_info.fields = tuple(fields)
+        type_register_fields(type_index, fields)
+        mlc_init = make_mlc_init(fields)
+
+        # Step 3. Create the proxy class with the fields as properties
+        @functools.wraps(super_type_cls, updated=())
+        class type_cls(super_type_cls):  # type: ignore[valid-type,misc]
+            __slots__ = ()
+
+            def _mlc_init(self, *args: typing.Any) -> None:
+                mlc_init(self, *args)
+
+            def __new__(cls, *args: typing.Any, **kwargs: typing.Any) -> type[ClsType]:
+                return type_create_instance(cls, type_index, num_bytes)
+
+        type_info.type_cls = type_cls
+        setattr(type_cls, "_mlc_dataclass_fields", {})
+        setattr(type_cls, "_mlc_type_info", type_info)
+        for field in fields:
+            attach_field(
+                type_cls,
+                name=field.name,
+                getter=field.getter,
+                setter=field.setter,
+                frozen=field.frozen,
             )
-        # Step 3. Figure out the structure of the class
+
+        # Step 4. Register the structure of the class
         struct: Structure
         struct_kind: int
         sub_structure_indices: list[int]
@@ -92,38 +121,31 @@ def py_class(
             assert struct_kind == 0
             assert not sub_structure_indices
             assert not sub_structure_kinds
-        # Step 4. Register the type
-        type_cls, type_info = type_create(
-            super_type_cls,
-            type_key=type_key,
-            fields=fields,
-            methods=methods,
-            parent_type_index=parent_type_info.type_index,
-            num_bytes=ctypes.sizeof(CType),
-            struct_kind=struct_kind,
+        type_register_structure(
+            type_index,
+            struct_kind,
             sub_structure_indices=tuple(sub_structure_indices),
             sub_structure_kinds=tuple(sub_structure_kinds),
         )
-        # Step 5. Attach fields
-        setattr(type_cls, "_mlc_dataclass_fields", {})
-        for field in type_info.fields:
-            attach_field(
-                type_cls,
-                name=field.name,
-                getter=field.getter,
-                setter=field.setter,
-                frozen=field.frozen,
-            )
+        setattr(type_cls, "_mlc_structure", struct)
 
         # Step 5. Attach methods
-        for method_name, fn in extra_methods.items():
-            attach_method(
-                type_cls,
-                name=method_name,
-                method=fn,
-            )
-        setattr(type_cls, "_mlc_type_info", type_info)
-        setattr(type_cls, "_mlc_structure", struct)
+        fn: Callable[..., typing.Any]
+        type_add_method(type_index, "__init__", type_cls, 1)  # static
+        if init:
+            fn = method_init(super_type_cls, d_fields)
+            attach_method(super_type_cls, type_cls, "__init__", fn, check_exists=True)
+        if repr:
+            fn = _method_repr(type_key, fields)
+            type_add_method(type_index, "__str__", fn, 1)  # static
+            attach_method(super_type_cls, type_cls, "__repr__", fn, check_exists=True)
+            attach_method(super_type_cls, type_cls, "__str__", fn, check_exists=True)
+        for name, func in vars(super_type_cls).items():
+            if (
+                callable(func)
+                and (is_static := getattr(func, "_mlc_is_static_func", None)) is not None
+            ):
+                type_add_method(type_index, name, func, int(is_static))
         return type_cls
 
     return decorator
@@ -142,82 +164,20 @@ def _type_parent(type_cls: type) -> type:
     )
 
 
-def _model_as_ctype(
-    type_key: str,
-    type_hints: dict[str, type],
-    parent_type_info: TypeInfo,
-) -> tuple[type[ctypes.Structure], list[TypeField]]:
-    from mlc._cython import MLCHeader
-    from mlc.core import typing as mlc_typing
-
-    type_hints = dict(type_hints)
-    fields: list[TypeField] = []
+def _add_field_properties(type_fields: list[TypeField]) -> int:
     c_fields = [("_mlc_header", MLCHeader)]
-    for type_field in parent_type_info.fields:
+    for type_field in type_fields:
         field_name = type_field.name
-        if type_hints.pop(field_name, None) is None:
-            raise ValueError(
-                f"Missing field `{type_key}::{field_name}`, "
-                f"which appears in its parent class `{parent_type_info.type_key}`."
-            )
-        field_ty = type_field.ty
-        field_ty_c = field_ty._ctype()
+        field_ty_c = type_field.ty._ctype()
         c_fields.append((field_name, field_ty_c))
-        fields.append(
-            TypeField(
-                name=field_name,
-                offset=-1,
-                num_bytes=ctypes.sizeof(field_ty_c),
-                frozen=False,
-                ty=field_ty,
-            )
-        )
-
-    for field_name, field_ty_py in type_hints.items():
-        if field_name.startswith("_"):
-            continue
-        field_ty = mlc_typing.from_py(field_ty_py)
-        field_ty_c = field_ty._ctype()
-        c_fields.append((field_name, field_ty_c))
-        fields.append(
-            TypeField(
-                name=field_name,
-                offset=-1,
-                num_bytes=ctypes.sizeof(field_ty_c),
-                frozen=False,
-                ty=field_ty,
-            )
-        )
 
     class CType(ctypes.Structure):
         _fields_ = c_fields
 
-    for field in fields:
+    for field in type_fields:
         field.offset = getattr(CType, field.name).offset
         field.getter, field.setter = type_field_get_accessor(field)
-    return CType, fields
-
-
-def _insert_to_method_list(
-    methods: list[TypeMethod],
-    name: str,
-    fn: Callable[..., typing.Any],
-    is_static: bool,
-) -> Callable[..., typing.Any]:
-    from mlc.core import Func
-
-    new_method = TypeMethod(
-        name=name,
-        func=Func(fn),
-        kind=1 if is_static else 0,
-    )
-
-    for i, method in enumerate(methods):
-        if method.name == name:
-            methods[i] = new_method
-            return fn
-    methods.append(new_method)
-    return fn
+    return ctypes.sizeof(CType)
 
 
 def _method_repr(

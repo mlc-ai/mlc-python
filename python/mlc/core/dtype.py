@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from mlc._cython import DataTypeCode, PyAny, dtype_as_triple, dtype_normalize
-from mlc.dataclasses.c_class import c_class
+from mlc._cython import DataTypeCode, PyAny, c_class_core, dtype_as_triple, dtype_normalize
 
 
-@c_class("dtype", init=False)
+@c_class_core("dtype")
 class DataType(PyAny):
     def __init__(self, dtype: str | np.dtype | DataType) -> None:
         self._mlc_init(dtype_normalize(dtype))

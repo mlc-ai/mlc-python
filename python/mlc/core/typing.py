@@ -5,8 +5,7 @@ import sys
 import types
 import typing
 
-from mlc._cython import DLDataType, DLDevice, MLCAny, MLCObjPtr, Ptr, type_cast
-from mlc.dataclasses.c_class import c_class
+from mlc._cython import DLDataType, DLDevice, MLCAny, MLCObjPtr, Ptr, c_class_core, type_cast
 
 from .object import Object
 
@@ -16,7 +15,7 @@ else:
     UnionType = None
 
 
-@c_class("mlc.core.typing.Type", init=False)
+@c_class_core("mlc.core.typing.Type")
 class Type(Object):
     def args(self) -> tuple[Type, ...]:
         raise NotImplementedError
@@ -27,9 +26,15 @@ class Type(Object):
     def _ctype(self) -> typing.Any:
         raise NotImplementedError
 
+    def cxx_str(self) -> str:
+        return self._C(b"__cxx_str__", self)
 
-@c_class("mlc.core.typing.AnyType")
+
+@c_class_core("mlc.core.typing.AnyType")
 class AnyType(Type):
+    def __init__(self) -> None:
+        self._mlc_init()
+
     def args(self) -> tuple:
         return ()
 
@@ -37,9 +42,12 @@ class AnyType(Type):
         return MLCAny
 
 
-@c_class("mlc.core.typing.AtomicType")
+@c_class_core("mlc.core.typing.AtomicType")
 class AtomicType(Type):
     type_index: int
+
+    def __init__(self, type_index: int) -> None:
+        self._mlc_init(type_index)
 
     def args(self) -> tuple:
         return ()
@@ -53,11 +61,11 @@ class AtomicType(Type):
         raise ValueError(f"Unsupported type index: {type_index}")
 
 
-@c_class("mlc.core.typing.PtrType", init=False)
+@c_class_core("mlc.core.typing.PtrType")
 class PtrType(Type):
     @property
     def ty(self) -> Type:
-        return self._C("_ty", self)
+        return self._C(b"_ty", self)
 
     def args(self) -> tuple:
         return (self.ty,)
@@ -66,14 +74,14 @@ class PtrType(Type):
         return MLCObjPtr
 
 
-@c_class("mlc.core.typing.Optional", init=False)
+@c_class_core("mlc.core.typing.Optional")
 class Optional(Type):
     def __init__(self, ty: Type) -> None:
         self._mlc_init(ty)
 
     @property
     def ty(self) -> Type:
-        return self._C("_ty", self)
+        return self._C(b"_ty", self)
 
     def args(self) -> tuple:
         return (self.ty,)
@@ -82,14 +90,14 @@ class Optional(Type):
         return MLCObjPtr
 
 
-@c_class("mlc.core.typing.List", init=False)
+@c_class_core("mlc.core.typing.List")
 class List(Type):
     def __init__(self, ty: Type) -> None:
         self._mlc_init(ty)
 
     @property
     def ty(self) -> Type:
-        return self._C("_ty", self)
+        return self._C(b"_ty", self)
 
     def args(self) -> tuple:
         return (self.ty,)
@@ -98,18 +106,18 @@ class List(Type):
         return MLCObjPtr
 
 
-@c_class("mlc.core.typing.Dict", init=False)
+@c_class_core("mlc.core.typing.Dict")
 class Dict(Type):
     def __init__(self, key_ty: Type, value_ty: Type) -> None:
         self._mlc_init(key_ty, value_ty)
 
     @property
     def key(self) -> Type:
-        return self._C("_key", self)
+        return self._C(b"_key", self)
 
     @property
     def value(self) -> Type:
-        return self._C("_value", self)
+        return self._C(b"_value", self)
 
     def args(self) -> tuple:
         return (self.key, self.value)

@@ -1,4 +1,3 @@
 from .c_class import c_class
-from .field import field
 from .py_class import PyClass, py_class
-from .structure import Structure
+from .utils import Structure, add_vtable_method, field, prototype_cxx, prototype_py, vtable_method

@@ -313,7 +313,7 @@ def test_mlc_class_list_any(mlc_class_for_test: MLCClassForTest) -> None:
     )
     obj.list_any = [4, 3.0, "two"]
     with pytest.raises(TypeError):
-        obj.list_any = mlc.Str("wrong")
+        obj.list_any = mlc.Str("wrong")  # type: ignore[assignment]
     assert (
         len(obj.list_any) == 3
         and obj.list_any[0] == 4
@@ -356,7 +356,7 @@ def test_mlc_class_dict_any_any(mlc_class_for_test: MLCClassForTest) -> None:
     )
     obj.dict_any_any = {4: 4, "three": "two", 3.0: 3}
     with pytest.raises(TypeError):
-        obj.dict_any_any = mlc.Str("wrong")
+        obj.dict_any_any = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.dict_any_any = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -380,7 +380,7 @@ def test_mlc_class_dict_str_any(mlc_class_for_test: MLCClassForTest) -> None:
     )
     obj.dict_str_any = {}
     with pytest.raises(TypeError):
-        obj.dict_str_any = mlc.Str("wrong")
+        obj.dict_str_any = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.dict_str_any = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -401,7 +401,7 @@ def test_mlc_class_dict_any_str(mlc_class_for_test: MLCClassForTest) -> None:
     )
     obj.dict_any_str = {4: "4", "three": "two", 3.0: "3"}
     with pytest.raises(TypeError):
-        obj.dict_any_str = mlc.Str("wrong")
+        obj.dict_any_str = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.dict_any_str = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -429,7 +429,7 @@ def test_mlc_class_dict_str_list_int(mlc_class_for_test: MLCClassForTest) -> Non
     )
     obj.dict_str_list_int = {"1": [4, 3, 2], "2": [1, 2, 3]}
     with pytest.raises(TypeError):
-        obj.dict_str_list_int = mlc.Str("wrong")
+        obj.dict_str_list_int = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.dict_str_list_int = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -500,7 +500,7 @@ def test_mlc_class_opt_func(mlc_class_for_test: MLCClassForTest) -> None:
     obj.opt_func = None
     assert obj.opt_func is None
     with pytest.raises(TypeError):
-        obj.opt_func = mlc.Str("wrong")
+        obj.opt_func = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_func = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -513,7 +513,7 @@ def test_mlc_class_opt_ulist(mlc_class_for_test: MLCClassForTest) -> None:
     assert obj.opt_ulist is None
     obj.opt_ulist = [4, 3.0, "two"]
     with pytest.raises(TypeError):
-        obj.opt_ulist = mlc.Str("wrong")
+        obj.opt_ulist = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_ulist = 42  # type: ignore[assignment]
     assert (
@@ -532,7 +532,7 @@ def test_mlc_class_opt_udict(mlc_class_for_test: MLCClassForTest) -> None:
     assert obj.opt_udict is None
     obj.opt_udict = {"4": 4, "3": "two", "2": 3.0}
     with pytest.raises(TypeError):
-        obj.opt_udict = mlc.Str("wrong")
+        obj.opt_udict = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_udict = 42  # type: ignore[assignment]
     assert (
@@ -561,7 +561,7 @@ def test_mlc_class_opt_list_any(mlc_class_for_test: MLCClassForTest) -> None:
     assert obj.opt_list_any[3]() == 4  # type: ignore[index]
     obj.opt_list_any = [4, 3.0, "two"]
     with pytest.raises(TypeError):
-        obj.opt_list_any = mlc.Str("wrong")
+        obj.opt_list_any = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_list_any = 42  # type: ignore[assignment]
     assert (
@@ -583,7 +583,7 @@ def test_mlc_class_opt_list_list_int(mlc_class_for_test: MLCClassForTest) -> Non
     assert tuple(obj.opt_list_list_int[1]) == (4, 5, 6)  # type: ignore[index]
     obj.opt_list_list_int = [[4, 3, 2], [1, 2, 3]]
     with pytest.raises(TypeError):
-        obj.opt_list_list_int = mlc.Str("wrong")
+        obj.opt_list_list_int = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_list_list_int = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -602,7 +602,7 @@ def test_mlc_class_opt_dict_any_any(mlc_class_for_test: MLCClassForTest) -> None
     assert obj.opt_dict_any_any is None
     obj.opt_dict_any_any = {4: 4, "three": "two", 3.0: 3}
     with pytest.raises(TypeError):
-        obj.opt_dict_any_any = mlc.Str("wrong")
+        obj.opt_dict_any_any = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_dict_any_any = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -629,7 +629,7 @@ def test_mlc_class_opt_dict_str_any(mlc_class_for_test: MLCClassForTest) -> None
     )
     obj.opt_dict_str_any = {}
     with pytest.raises(TypeError):
-        obj.opt_dict_str_any = mlc.Str("wrong")
+        obj.opt_dict_str_any = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_dict_str_any = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -651,7 +651,7 @@ def test_mlc_class_opt_dict_any_str(mlc_class_for_test: MLCClassForTest) -> None
     )
     obj.opt_dict_any_str = {4: "4", "three": "two", 3.0: "3"}
     with pytest.raises(TypeError):
-        obj.opt_dict_any_str = mlc.Str("wrong")
+        obj.opt_dict_any_str = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_dict_any_str = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):
@@ -682,7 +682,7 @@ def test_mlc_class_opt_dict_str_list_int(mlc_class_for_test: MLCClassForTest) ->
     )
     obj.opt_dict_str_list_int = {"1": [4, 3, 2], "2": [1, 2, 3]}
     with pytest.raises(TypeError):
-        obj.opt_dict_str_list_int = mlc.Str("wrong")
+        obj.opt_dict_str_list_int = mlc.Str("wrong")  # type: ignore[assignment]
     with pytest.raises(TypeError):
         obj.opt_dict_str_list_int = 42  # type: ignore[assignment]
     with pytest.raises(TypeError):

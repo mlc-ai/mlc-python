@@ -68,27 +68,45 @@ MLC_API int32_t MLCTypeKey2Info(MLCTypeTableHandle _self, const char *type_key, 
   MLC_SAFE_CALL_END(&last_error);
 }
 
-MLC_API int32_t MLCTypeDefReflection(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields,
-                                     MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods,
-                                     int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices,
-                                     int32_t *sub_structure_kinds) {
+MLC_API int32_t MLCTypeRegisterFields(MLCTypeTableHandle _self, int32_t type_index, int64_t num_fields,
+                                      MLCTypeField *fields) {
   MLC_SAFE_CALL_BEGIN();
-  auto *type_info = TypeTable::Get(self)->GetTypeInfoWrapper(type_index);
-  type_info->SetFields(num_fields, fields);
-  type_info->SetMethods(num_methods, methods);
-  type_info->SetStructure(structure_kind, num_sub_structures, sub_structure_indices, sub_structure_kinds);
+  TypeTable::Get(_self)->SetFields(type_index, num_fields, fields);
   MLC_SAFE_CALL_END(&last_error);
 }
 
-MLC_API int32_t MLCVTableSet(MLCTypeTableHandle _self, int32_t type_index, const char *key, MLCAny *value) {
+MLC_API int32_t MLCTypeRegisterStructure(MLCTypeTableHandle _self, int32_t type_index, int32_t structure_kind,
+                                         int64_t num_sub_structures, int32_t *sub_structure_indices,
+                                         int32_t *sub_structure_kinds) {
   MLC_SAFE_CALL_BEGIN();
-  TypeTable::Get(_self)->SetVTable(type_index, key, static_cast<AnyView *>(value));
+  TypeTable::Get(_self)->SetStructure(type_index, structure_kind, num_sub_structures, sub_structure_indices,
+                                      sub_structure_kinds);
   MLC_SAFE_CALL_END(&last_error);
 }
 
-MLC_API int32_t MLCVTableGet(MLCTypeTableHandle _self, int32_t type_index, const char *key, MLCAny *value) {
+MLC_API int32_t MLCTypeAddMethod(MLCTypeTableHandle _self, int32_t type_index, MLCTypeMethod method) {
   MLC_SAFE_CALL_BEGIN();
-  *static_cast<Any *>(value) = TypeTable::Get(_self)->GetVTable(type_index, key);
+  TypeTable::Get(_self)->AddMethod(type_index, method);
+  MLC_SAFE_CALL_END(&last_error);
+}
+
+MLC_API int32_t MLCVTableGetGlobal(MLCTypeTableHandle _self, const char *key, MLCVTableHandle *ret) {
+  MLC_SAFE_CALL_BEGIN();
+  *ret = TypeTable::Get(_self)->GetGlobalVTable(key);
+  MLC_SAFE_CALL_END(&last_error);
+}
+
+MLC_API int32_t MLCVTableGetFunc(MLCVTableHandle vtable, int32_t type_index, int32_t allow_ancestor, MLCAny *ret) {
+  using ::mlc::registry::VTable;
+  MLC_SAFE_CALL_BEGIN();
+  *static_cast<Any *>(ret) = static_cast<VTable *>(vtable)->GetFunc(type_index, allow_ancestor);
+  MLC_SAFE_CALL_END(&last_error);
+}
+
+MLC_API int32_t MLCVTableSetFunc(MLCVTableHandle vtable, int32_t type_index, MLCFunc *func, int32_t override_mode) {
+  using ::mlc::registry::VTable;
+  MLC_SAFE_CALL_BEGIN();
+  static_cast<VTable *>(vtable)->Set(type_index, static_cast<FuncObj *>(func), override_mode);
   MLC_SAFE_CALL_END(&last_error);
 }
 

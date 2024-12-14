@@ -5,8 +5,7 @@ from abc import ABCMeta
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, ValuesView
 from typing import TypeVar, overload
 
-from mlc._cython import MetaNoSlots, Ptr
-from mlc.dataclasses.c_class import c_class
+from mlc._cython import MetaNoSlots, Ptr, c_class_core
 
 from .object import Object
 
@@ -18,7 +17,7 @@ T = TypeVar("T")
 class DictMeta(MetaNoSlots, ABCMeta): ...
 
 
-@c_class("object.Dict", init=False)
+@c_class_core("object.Dict")
 class Dict(Object, Mapping[K, V], metaclass=DictMeta):
     capacity: int
     size: int
@@ -50,20 +49,20 @@ class Dict(Object, Mapping[K, V], metaclass=DictMeta):
     def _keys_iterator(self) -> Iterator[K]:
         cap = self.capacity
         i = -1
-        while (i := Dict._C("__iter_advance__", self, i)) < cap:
-            yield Dict._C("__iter_get_key__", self, i)
+        while (i := Dict._C(b"__iter_advance__", self, i)) < cap:
+            yield Dict._C(b"__iter_get_key__", self, i)
 
     def _values_iterator(self) -> Iterator[V]:
         cap = self.capacity
         i = -1
-        while (i := Dict._C("__iter_advance__", self, i)) < cap:
-            yield Dict._C("__iter_get_value__", self, i)
+        while (i := Dict._C(b"__iter_advance__", self, i)) < cap:
+            yield Dict._C(b"__iter_get_value__", self, i)
 
     def _items_iterator(self) -> Iterator[tuple[K, V]]:
         cap = self.capacity
         i = -1
-        while (i := Dict._C("__iter_advance__", self, i)) < cap:
-            yield Dict._C("__iter_get_key__", self, i), Dict._C("__iter_get_value__", self, i)
+        while (i := Dict._C(b"__iter_advance__", self, i)) < cap:
+            yield Dict._C(b"__iter_get_key__", self, i), Dict._C(b"__iter_get_value__", self, i)
 
     def keys(self) -> KeysView[K]:
         return _DictKeysView(self)
@@ -75,7 +74,7 @@ class Dict(Object, Mapping[K, V], metaclass=DictMeta):
         return _DictItemsView(self)
 
     def __getitem__(self, key: K) -> V:
-        return Dict._C("__getitem__", self, key)
+        return Dict._C(b"__getitem__", self, key)
 
     # Additional methods required by the Mapping ABC
     def __contains__(self, key: object) -> bool:

@@ -4,7 +4,6 @@
 #include "./object.h"
 #include "./udict.h"
 #include "./ulist.h"
-#include "mlc/c_api.h"
 #include <functional>
 #include <mlc/base/all.h>
 #include <unordered_map>

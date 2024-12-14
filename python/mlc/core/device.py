@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from mlc._cython import DeviceType, PyAny, device_as_pair, device_normalize
-from mlc.dataclasses.c_class import c_class
+from mlc._cython import DeviceType, PyAny, c_class_core, device_as_pair, device_normalize
 
 
-@c_class("Device", init=False)
+@c_class_core("Device")
 class Device(PyAny):
     def __init__(self, device: str | Device) -> None:
         self._mlc_init(device_normalize(device))

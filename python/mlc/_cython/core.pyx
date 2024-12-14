@@ -1,7 +1,6 @@
 # cython: language_level=3
 import ctypes
 import itertools
-import functools
 from libcpp.vector cimport vector
 from libc.stdint cimport int32_t, int64_t, uint64_t, uint8_t, uint16_t, int8_t, int16_t
 from libc.stdlib cimport malloc, free
@@ -189,6 +188,7 @@ cdef extern from "mlc/c_api.h" nogil:
         int32_t *sub_structure_kinds
 
     ctypedef void* MLCTypeTableHandle
+    ctypedef void* MLCVTableHandle
 
 ctypedef MLCAny (*_T_GetLastError)() noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_AnyIncRef)(MLCAny *any) noexcept nogil # no-cython-lint
@@ -201,9 +201,12 @@ ctypedef int32_t (*_T_FuncSafeCall)(MLCFunc* func, int32_t num_args, MLCAny *arg
 ctypedef int32_t (*_T_TypeIndex2Info)(MLCTypeTableHandle self, int32_t type_index, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_TypeKey2Info)(MLCTypeTableHandle self, const char* type_key, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_TypeRegister)(MLCTypeTableHandle self, int32_t parent_type_index, const char *type_key, int32_t type_index, MLCTypeInfo **out_type_info) noexcept nogil # no-cython-lint
-ctypedef int32_t (*_T_TypeDefReflection)(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields, MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods, int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices, int32_t *sub_structure_kinds) noexcept nogil # no-cython-lint
-ctypedef int32_t (*_T_VTableSet)(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value) noexcept nogil # no-cython-lint
-ctypedef int32_t (*_T_VTableGet)(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value) noexcept nogil # no-cython-lint
+ctypedef int32_t (*_T_TypeRegisterFields)(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields, MLCTypeField *fields) noexcept nogil # no-cython-lint
+ctypedef int32_t (*_T_TypeRegisterStructure)(MLCTypeTableHandle self, int32_t type_index, int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices, int32_t *sub_structure_kinds) noexcept nogil # no-cython-lint
+ctypedef int32_t (*_T_TypeAddMethod)(MLCTypeTableHandle self, int32_t type_index, MLCTypeMethod method) noexcept nogil # no-cython-lint
+ctypedef int32_t (*_T_VTableGetGlobal)(MLCTypeTableHandle self, const char *key, MLCVTableHandle *ret) noexcept nogil # no-cython-lint
+ctypedef int32_t (*_T_VTableGetFunc)(MLCVTableHandle vtable, int32_t type_index, int32_t allow_ancestor, MLCAny *ret) noexcept nogil # no-cython-lint
+ctypedef int32_t (*_T_VTableSetFunc)(MLCVTableHandle vtable, int32_t type_index, MLCFunc *func, int32_t override_mode) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_ErrorCreate)(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_ErrorGetInfo)(MLCAny err, int32_t* num_strs, const char*** strs) noexcept nogil # no-cython-lint
 ctypedef MLCByteArray (*_T_Traceback)(const char *filename, const char *lineno, const char *func_name) noexcept nogil # no-cython-lint
@@ -225,9 +228,12 @@ cdef _T_FuncSafeCall _C_FuncSafeCall = <_T_FuncSafeCall>_sym(LIB.MLCFuncSafeCall
 cdef _T_TypeIndex2Info _C_TypeIndex2Info = <_T_TypeIndex2Info>_sym(LIB.MLCTypeIndex2Info)
 cdef _T_TypeKey2Info _C_TypeKey2Info = <_T_TypeKey2Info>_sym(LIB.MLCTypeKey2Info)
 cdef _T_TypeRegister _C_TypeRegister = <_T_TypeRegister>_sym(LIB.MLCTypeRegister)
-cdef _T_TypeDefReflection _C_TypeDefReflection = <_T_TypeDefReflection>_sym(LIB.MLCTypeDefReflection)
-cdef _T_VTableSet _C_VTableSet = <_T_VTableSet>_sym(LIB.MLCVTableSet)
-cdef _T_VTableGet _C_VTableGet = <_T_VTableGet>_sym(LIB.MLCVTableGet)
+cdef _T_TypeRegisterFields _C_TypeRegisterFields = <_T_TypeRegisterFields>_sym(LIB.MLCTypeRegisterFields)
+cdef _T_TypeRegisterStructure _C_TypeRegisterStructure = <_T_TypeRegisterStructure>_sym(LIB.MLCTypeRegisterStructure)
+cdef _T_TypeAddMethod _C_TypeAddMethod = <_T_TypeAddMethod>_sym(LIB.MLCTypeAddMethod)
+cdef _T_VTableGetGlobal _C_VTableGetGlobal = <_T_VTableGetGlobal>_sym(LIB.MLCVTableGetGlobal)
+cdef _T_VTableGetFunc _C_VTableGetFunc = <_T_VTableGetFunc>_sym(LIB.MLCVTableGetFunc)
+cdef _T_VTableSetFunc _C_VTableSetFunc = <_T_VTableSetFunc>_sym(LIB.MLCVTableSetFunc)
 cdef _T_ErrorCreate _C_ErrorCreate = <_T_ErrorCreate>_sym(LIB.MLCErrorCreate)
 cdef _T_ErrorGetInfo _C_ErrorGetInfo = <_T_ErrorGetInfo>_sym(LIB.MLCErrorGetInfo)
 cdef _T_Traceback _C_Traceback = <_T_Traceback>_sym(LIB.MLCTraceback)
@@ -294,28 +300,17 @@ cdef class PyAny:
     def __init__(self):
         pass
 
-    def _mlc_init(self, *init_args, **kwargs) -> None:
-        cdef PyAny func
-        cdef object init_func = kwargs.get("init_func", "__init__")
-        if isinstance(init_func, str):
-            func = type(self)._mlc_type_info.methods_lookup[init_func]
-        else:
-            try:
-                func = <PyAny?>init_func
-            except Exception as e:  # no-cython-lint
-                raise TypeError(
-                    "Unsupported type of `init_func`. "
-                    f"Expected `str` or `mlc.Func`, but got: {type(init_func)}"
-                ) from e
-        assert func._mlc_any.type_index == kMLCFunc, str(func._mlc_any.type_index)
-        _func_call_impl(<MLCFunc*>(func._mlc_any.v.v_obj), init_args, &self._mlc_any)
+    def _mlc_init(self, *init_args) -> None:
+        cdef int32_t type_index = type(self)._mlc_type_info.type_index
+        cdef MLCFunc* func = _vtable_get_func_ptr(_VTABLE_INIT, type_index, False)
+        _func_call_impl(func, init_args, &self._mlc_any)
 
     def __repr__(self) -> str:
-        cdef PyAny func
-        if type(self) is PyAny:
-            func = _type_index2py_type_info(self._mlc_any.type_index).methods_lookup["__str__"]
-            return func_call(func, (self,))
-        return type(self)._C("__str__", self)
+        cdef int32_t type_index = self._mlc_any.type_index
+        cdef MLCAny c_ret = _MLCAnyNone()
+        cdef MLCFunc* func = _vtable_get_func_ptr(_VTABLE_STR, type_index, True)
+        _func_call_impl(func, (self, ), &c_ret)
+        return _any_c2py_no_inc_ref(c_ret)
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -351,13 +346,17 @@ cdef class PyAny:
         return ret
 
     @classmethod
-    def _C(cls, str name, *args):
-        cdef PyAny func
+    def _C(cls, bytes name, *args):
+        cdef int32_t type_index = cls._mlc_type_info.type_index
+        cdef MLCVTableHandle vtable = _vtable_get_global(name)
+        cdef MLCFunc* func = NULL
+        cdef MLCAny c_ret = _MLCAnyNone()
         try:
-            func = cls._mlc_type_info.methods_lookup[name]
+            func = _vtable_get_func_ptr(vtable, type_index, True)
         except Exception as e:  # no-cython-lint
             raise TypeError(f"Cannot find method `{name}` for type: {cls}") from e
-        return func_call(func, args)
+        _func_call_impl(func, args, &c_ret)
+        return _any_c2py_no_inc_ref(c_ret)
 
 cdef class Str(str):
     cdef MLCAny _mlc_any
@@ -377,10 +376,6 @@ cdef class Str(str):
 
     def __reduce__(self):
         return (Str, (str(self),))
-
-
-class PyAnyNoSlots(PyAny, metaclass=base.MetaNoSlots):
-    ...
 
 
 cdef inline MLCAny _MLCAnyNone():
@@ -685,11 +680,9 @@ cdef inline object _type_info_c2py(MLCTypeInfo* c_info):
     cdef int32_t type_index = c_info.type_index
     cdef int32_t type_depth = c_info.type_depth
     cdef MLCTypeField* fields_ptr = c_info.fields
-    cdef MLCTypeMethod* methods_ptr = c_info.methods
     cdef str type_key = str_c2py(c_info.type_key)
     cdef tuple type_ancestors = tuple(c_info.type_ancestors[i] for i in range(type_depth))
     cdef list fields = []
-    cdef list methods = []
     cdef object ret
     if (ret := _list_get(TYPE_INDEX_TO_INFO, type_index)) is not None:
         return ret
@@ -706,16 +699,6 @@ cdef inline object _type_info_c2py(MLCTypeInfo* c_info):
         type_field.getter, type_field.setter = _type_field_accessor(type_field)
         fields.append(type_field)
         fields_ptr += 1
-    while methods_ptr != NULL and methods_ptr.name != NULL:
-        assert methods_ptr.func != NULL
-        assert methods_ptr.func._mlc_header.type_index == kMLCFunc
-        type_method = base.TypeMethod(
-            name=str_c2py(methods_ptr.name),
-            func=_pyany_inc_ref(_MLCAnyObj(<MLCAny*>methods_ptr.func)),
-            kind=methods_ptr.kind,
-        )
-        methods.append(type_method)
-        methods_ptr += 1
     ret = base.TypeInfo(
         type_cls=None,
         type_index=type_index,
@@ -723,15 +706,27 @@ cdef inline object _type_info_c2py(MLCTypeInfo* c_info):
         type_depth=type_depth,
         type_ancestors=tuple(type_ancestors),
         fields=tuple(fields),
-        methods=tuple(methods),
     )
     _list_set(TYPE_INDEX_TO_INFO, type_index, ret)
     return ret
 
-cdef inline MLCFunc* _type_get_method(int32_t type_index, str method):
-    cdef PyAny func = _type_index2py_type_info(type_index).methods_lookup[method]
-    assert func._mlc_any.type_index == kMLCFunc
-    return <MLCFunc*>(func._mlc_any.v.v_obj)
+cdef inline MLCVTableHandle _vtable_get_global(bytes key):
+    cdef MLCVTableHandle ret = NULL
+    _C_VTableGetGlobal(NULL, key, &ret)
+    return ret
+
+cdef inline PyAny _vtable_get_func(MLCVTableHandle vtable, int32_t type_index, int32_t allow_ancestor):
+    cdef PyAny ret = PyAny()
+    _check_error(_C_VTableGetFunc(vtable, type_index, allow_ancestor, &ret._mlc_any))
+    if ret._mlc_any.type_index == kMLCNone:
+        raise ValueError(f"Cannot find function for type: {str_c2py(_type_index2c_type_info(type_index).type_key)}")
+    elif ret._mlc_any.type_index != kMLCFunc:
+        raise ValueError(f"Expected function, but got: {str_c2py(_type_index2c_type_info(ret.type_index).type_key)}")
+    return ret
+
+cdef inline MLCFunc* _vtable_get_func_ptr(MLCVTableHandle vtable, int32_t type_index, int32_t allow_ancestor):
+    cdef PyAny ret = _vtable_get_func(vtable, type_index, allow_ancestor)
+    return <MLCFunc*>(ret._mlc_any.v.v_obj)
 
 # Section 10. Type conversion
 
@@ -830,7 +825,7 @@ cdef class TypeCheckAtomicObject:
         self.type_index = type_index
         self.type_depth = _type_index2py_type_info(type_index).type_depth
         try:
-            self.any_to_ref = _type_get_method(type_index, "__any_to_ref__")
+            self.any_to_ref = _vtable_get_func_ptr(_VTABLE_ANY_TO_REF, type_index, False)
         except Exception as e:  # no-cython-lint
             self.any_to_ref = NULL
 
@@ -1278,99 +1273,117 @@ cpdef tuple type_field_get_accessor(object type_field):
     assert isinstance(type_field, base.TypeField)
     return _type_field_accessor(type_field)
 
+cpdef PyAny type_create_instance(object cls, int32_t type_index, int32_t num_bytes):
+    cdef PyAny self = PyAny.__new__(cls)
+    assert self._mlc_any.type_index == kMLCNone
+    _check_error(_C_ExtObjCreate(num_bytes, type_index, &self._mlc_any))
+    return self
 
-def type_create(
-    object super_type_cls,
-    str type_key,
-    list fields,
-    list methods,
-    int32_t parent_type_index,
-    int32_t num_bytes,
-    int32_t struct_kind,
-    tuple sub_structure_indices,
-    tuple sub_structure_kinds,
-):
-    cdef MLCTypeInfo* c_info = NULL
-    cdef vector[MLCTypeField] mlc_fields
-    cdef vector[MLCTypeMethod] mlc_methods
-    cdef vector[int32_t] mlc_sub_structure_indices
-    cdef vector[int32_t] mlc_sub_structure_kinds
-    cdef PyAny tmp_any
-    cdef object type_info
-    cdef int32_t type_index
+cpdef void type_register_fields(int32_t type_index, list fields):
+    cdef bytes name
     cdef list temporary_storage = []
-    cdef _setters = tuple(field.setter for field in fields)
+    cdef PyAny ty
+    cdef vector[MLCTypeField] mlc_fields
 
-    _check_error(_C_TypeRegister(NULL, parent_type_index, str_py2c(type_key), -1, &c_info))
-
-    @functools.wraps(super_type_cls, updated=())
-    class type_cls(super_type_cls):
-        __slots__ = ()
-
-        def _mlc_init(self, *args):
-            cdef tuple setters = _setters
-            assert len(args) == len(setters)
-            for i, (setter, arg) in enumerate(zip(setters, args)):
-                try:
-                    setter(self, arg)
-                except Exception as e:  # no-cython-lint
-                    raise ValueError(f"Failed to set field `{type_key}.{fields[i].name}`: {str(e)}")
-
-        def __new__(cls, *args, **kwargs):
-            cdef PyAny self = PyAny.__new__(cls)
-            assert self._mlc_any.type_index == kMLCNone
-            _check_error(_C_ExtObjCreate(num_bytes, type_index, &self._mlc_any))
-            return self
-
-    methods.append(base.TypeMethod(
-        name="__init__",
-        func=_pyany_from_func(lambda *args: type_cls(*args)),
-        kind=1,
-    ))
-    type_index = c_info.type_index
     for i, field in enumerate(fields):
         name = str_py2c(field.name)
         temporary_storage.append(name)
-        tmp_any = <PyAny?>(field.ty)
+        ty = <PyAny?>(field.ty)
         mlc_fields.push_back(MLCTypeField(
             name=name,
             index=i,
             offset=field.offset,
             num_bytes=field.num_bytes,
             frozen=field.frozen,
-            ty=tmp_any._mlc_any.v.v_obj,
+            ty=ty._mlc_any.v.v_obj,
         ))
-    for method in methods:
-        name = str_py2c(method.name)
-        temporary_storage.append(name)
-        tmp_any = <PyAny?>(method.func)
-        assert tmp_any._mlc_any.type_index == kMLCFunc
-        mlc_methods.push_back(MLCTypeMethod(
-            name=name,
-            func=<MLCFunc*>(tmp_any._mlc_any.v.v_obj),
-            kind=method.kind,
-        ))
+    _check_error(_C_TypeRegisterFields(NULL, type_index, len(fields), mlc_fields.data()))
+
+cpdef void type_register_structure(
+    int32_t type_index,
+    int32_t struct_kind,
+    tuple sub_structure_indices,
+    tuple sub_structure_kinds,
+):
+    cdef vector[int32_t] mlc_sub_structure_indices
+    cdef vector[int32_t] mlc_sub_structure_kinds
     for i in sub_structure_indices:
         mlc_sub_structure_indices.push_back(i)
     for i in sub_structure_kinds:
         mlc_sub_structure_kinds.push_back(i)
-    _check_error(_C_TypeDefReflection(
+    _check_error(_C_TypeRegisterStructure(
         NULL, type_index,
-        len(fields), mlc_fields.data(),
-        len(methods), mlc_methods.data(),
-        struct_kind,
-        len(sub_structure_indices),
-        mlc_sub_structure_indices.data(),
-        mlc_sub_structure_kinds.data(),
+        struct_kind, len(sub_structure_indices),
+        mlc_sub_structure_indices.data(), mlc_sub_structure_kinds.data()
     ))
+
+cpdef void type_add_method(
+    int32_t type_index,
+    str name,
+    py_callable,
+    int32_t kind,
+):
+    cdef PyAny func
+    if isinstance(py_callable, PyAny):
+        func = <PyAny?>py_callable
+    else:
+        func = _pyany_from_func(py_callable)
+    _C_TypeAddMethod(NULL, type_index, MLCTypeMethod(
+        name=str_py2c(name),
+        func=<MLCFunc*>(func._mlc_any.v.v_obj),
+        kind=kind,
+    ))
+
+cpdef list type_index2type_methods(int32_t type_index):
+    cdef MLCTypeInfo* c_info = _type_index2c_type_info(type_index)
+    cdef MLCTypeMethod* methods_ptr = c_info.methods
+    cdef list methods = []
+    while methods_ptr != NULL and methods_ptr.name != NULL:
+        assert methods_ptr.func != NULL
+        assert methods_ptr.func._mlc_header.type_index == kMLCFunc
+        methods.append(base.TypeMethod(
+            name=str_c2py(methods_ptr.name),
+            func=_pyany_inc_ref(_MLCAnyObj(<MLCAny*>methods_ptr.func)),
+            kind=methods_ptr.kind,
+        ))
+        methods_ptr += 1
+    return methods
+
+cpdef object type_index2cached_py_type_info(int32_t type_index):
+    return TYPE_INDEX_TO_INFO[type_index]
+
+
+def make_mlc_init(list fields):
+    cdef tuple _setters = tuple(field.setter for field in fields)
+
+    def _mlc_init(PyAny self, *args):
+        cdef tuple setters = _setters
+        cdef int32_t num_args = len(args)
+        cdef int32_t i = 0
+        assert num_args == len(setters)
+        while i < num_args:
+            try:
+                setters[i](self, args[i])
+            except Exception as e:  # no-cython-lint
+                raise ValueError(f"Failed to set field `{fields[i].name}`: {str(e)}. Got: {args[i]}")
+            i += 1
+
+    return _mlc_init
+
+
+def type_create(int32_t parent_type_index, str type_key):
+    cdef MLCTypeInfo* c_info = NULL
+    cdef object type_info
+    cdef int32_t type_index
+    _check_error(_C_TypeRegister(NULL, parent_type_index, str_py2c(type_key), -1, &c_info))
+    type_index = c_info.type_index
     type_info = base.TypeInfo(
-        type_cls=type_cls,
+        type_cls=None,
         type_index=type_index,
         type_key=type_key,
         type_depth=c_info.type_depth,
         type_ancestors=tuple(c_info.type_ancestors[i] for i in range(c_info.type_depth)),
-        fields=tuple(fields),
-        methods=tuple(methods),
+        fields=(),
     )
     if (prev := _list_set(TYPE_INDEX_TO_INFO, type_index, type_info)) is not None:
         raise ValueError(
@@ -1378,20 +1391,27 @@ def type_create(
             f"where current type key is `{type_key}`, "
             f"previous type key is `{prev.type_key}`"
         )
-    return type_cls, type_info
+    return type_info
 
 
 cdef list TYPE_INDEX_TO_INFO = [None]  # mapping: (type_index: int) ==> (type_info: base.TypeInfo)
-cdef MLCFunc* _INT_NEW = _type_get_method(kMLCInt, "__new_ref__")
-cdef MLCFunc* _FLOAT_NEW = _type_get_method(kMLCFloat, "__new_ref__")
-cdef MLCFunc* _PTR_NEW = _type_get_method(kMLCPtr, "__new_ref__")
-cdef MLCFunc* _DTYPE_NEW = _type_get_method(kMLCDataType, "__new_ref__")
-cdef MLCFunc* _DTYPE_INIT = _type_get_method(kMLCDataType, "__init__")
-cdef MLCFunc* _DEVICE_NEW = _type_get_method(kMLCDevice, "__new_ref__")
-cdef MLCFunc* _DEVICE_INIT = _type_get_method(kMLCDevice, "__init__")
-cdef MLCFunc* _LIST_INIT = _type_get_method(kMLCList, "__init__")
-cdef MLCFunc* _DICT_INIT = _type_get_method(kMLCDict, "__init__")
 cdef PyAny _SERIALIZE = func_get_untyped("mlc.core.JSONSerialize")  # Any -> str
 cdef PyAny _DESERIALIZE = func_get_untyped("mlc.core.JSONDeserialize")  # str -> Any
 cdef PyAny _STRUCUTRAL_EQUAL = func_get_untyped("mlc.core.StructuralEqual")
 cdef PyAny _STRUCUTRAL_HASH = func_get_untyped("mlc.core.StructuralHash")
+
+cdef MLCVTableHandle _VTABLE_INIT = _vtable_get_global(b"__init__")
+cdef MLCVTableHandle _VTABLE_STR = _vtable_get_global(b"__str__")
+cdef MLCVTableHandle _VTABLE_NEW_REF = _vtable_get_global(b"__new_ref__")
+cdef MLCVTableHandle _VTABLE_ANY_TO_REF = _vtable_get_global(b"__any_to_ref__")
+
+cdef MLCFunc* _INT_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCInt, False)
+cdef MLCFunc* _FLOAT_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCFloat, False)
+cdef MLCFunc* _PTR_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCPtr, False)
+cdef MLCFunc* _DTYPE_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCDataType, False)
+cdef MLCFunc* _DEVICE_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCDevice, False)
+
+cdef MLCFunc* _DTYPE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDataType, False)
+cdef MLCFunc* _DEVICE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDevice, False)
+cdef MLCFunc* _LIST_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCList, False)
+cdef MLCFunc* _DICT_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDict, False)

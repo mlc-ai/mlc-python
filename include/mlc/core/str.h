@@ -35,7 +35,7 @@ struct StrObj : public MLCStr {
   struct Allocator;
   std::string __str__() const {
     std::ostringstream os;
-    os << '"' << this->data() << '"';
+    this->PrintEscape(os);
     return os.str();
   }
   MLC_INLINE StrObj() : MLCStr() {}
@@ -100,18 +100,6 @@ struct StrPad : public StrObj {
     this->MLCStr::data = str_copy;
   }
 };
-
-inline void PrintAnyToStream(std::ostream &os, const MLCAny *v) {
-  Any attr;
-  MLCVTableGet(nullptr, v->type_index, "__str__", &attr);
-  if (::mlc::base::IsTypeIndexNone(attr.type_index)) {
-    MLC_THROW(InternalError) << "Method `__str__` is not defined for type "
-                             << ::mlc::base::TypeIndex2TypeKey(v->type_index);
-  }
-  Any ret;
-  ::mlc::base::FuncCall(attr.v.v_obj, 1, v, &ret);
-  os << ret.operator const char *();
-}
 
 } // namespace core
 } // namespace mlc
@@ -219,12 +207,12 @@ template <typename T> inline Str Ref<T>::str() const {
 }
 
 inline std::ostream &operator<<(std::ostream &os, const AnyView &src) {
-  ::mlc::core::PrintAnyToStream(os, &src);
+  os << ::mlc::base::LibState::Str(src)->data();
   return os;
 }
 
 inline std::ostream &operator<<(std::ostream &os, const Any &src) {
-  ::mlc::core::PrintAnyToStream(os, &src);
+  os << ::mlc::base::LibState::Str(src).data();
   return os;
 }
 
@@ -235,7 +223,7 @@ template <typename T> inline std::ostream &operator<<(std::ostream &os, const Re
     v.type_index = src.ptr->type_index;
     v.v.v_obj = src.ptr;
   }
-  ::mlc::core::PrintAnyToStream(os, &v);
+  os << ::mlc::base::LibState::Str(reinterpret_cast<const AnyView &>(v))->data();
   return os;
 }
 
@@ -246,7 +234,7 @@ inline std::ostream &operator<<(std::ostream &os, const ObjectRef &_src) {
     v.type_index = src.ptr->type_index;
     v.v.v_obj = src.ptr;
   }
-  ::mlc::core::PrintAnyToStream(os, &v);
+  os << ::mlc::base::LibState::Str(reinterpret_cast<const AnyView &>(v))->data();
   return os;
 }
 
@@ -254,7 +242,7 @@ inline std::ostream &operator<<(std::ostream &os, const Object &src) {
   MLCAny v{};
   v.type_index = src._mlc_header.type_index;
   v.v.v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(&src));
-  ::mlc::core::PrintAnyToStream(os, &v);
+  os << ::mlc::base::LibState::Str(reinterpret_cast<const AnyView &>(v))->data();
   return os;
 }
 
@@ -414,6 +402,20 @@ namespace mlc {
 namespace base {
 MLC_INLINE StrObj *StrCopyFromCharArray(const char *source, size_t length) {
   return StrObj::Allocator::New(source, length + 1);
+}
+
+inline ::mlc::Str LibState::CxxStr(AnyView obj) {
+  FuncObj *func = VTableGetFunc(cxx_str, obj.type_index, "__cxx_str__");
+  Any ret;
+  ::mlc::base::FuncCall(func, 1, &obj, &ret);
+  return ret;
+}
+
+inline ::mlc::Str LibState::Str(AnyView obj) {
+  FuncObj *func = VTableGetFunc(str, obj.type_index, "__str__");
+  Any ret;
+  ::mlc::base::FuncCall(func, 1, &obj, &ret);
+  return ret;
 }
 } // namespace base
 } // namespace mlc

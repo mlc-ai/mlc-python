@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-from mlc._cython import PyAny
-from mlc.dataclasses.c_class import c_class
+import typing
+
+from mlc._cython import PyAny, c_class_core
 
 
-@c_class("object.Object")
+@c_class_core("object.Object")
 class Object(PyAny):
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        def init() -> None:
+            self._mlc_init()
+
+        init(*args, **kwargs)
+
     def json(self) -> str:
         return super()._mlc_json()
 

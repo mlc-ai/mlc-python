@@ -346,6 +346,34 @@ inline uint64_t StrHash(const char *str) {
   return StrHash(str, length);
 }
 
+struct LibState {
+  static inline MLCVTableHandle VTableGetGlobal(const char *name) {
+    MLCVTableHandle ret;
+    MLCVTableGetGlobal(nullptr, name, &ret);
+    return ret;
+  }
+  static inline FuncObj *VTableGetFunc(MLCVTableHandle vtable, int32_t type_index, const char *vtable_name) {
+    MLCAny func{};
+    MLCVTableGetFunc(vtable, type_index, true, &func);
+    if (func.type_index != kMLCFunc) {
+      if (!IsTypeIndexPOD(func.type_index)) {
+        DecRef(&func);
+      }
+      MLC_THROW(TypeError) << "Function `" << vtable_name
+                           << "` for type: " << ::mlc::base::TypeIndex2TypeKey(type_index)
+                           << " is not callable. Its type is " << ::mlc::base::TypeIndex2TypeKey(func.type_index);
+    }
+    DecRef(&func);
+    FuncObj *ret = reinterpret_cast<FuncObj *>(func.v.v_obj);
+    return ret;
+  }
+  static inline ::mlc::Str CxxStr(AnyView obj);
+  static inline ::mlc::Str Str(AnyView obj);
+
+  static MLC_SYMBOL_HIDE inline MLCVTableHandle cxx_str = VTableGetGlobal("__cxx_str__");
+  static MLC_SYMBOL_HIDE inline MLCVTableHandle str = VTableGetGlobal("__str__");
+};
+
 } // namespace base
 } // namespace mlc
 

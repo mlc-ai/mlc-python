@@ -3,13 +3,13 @@ from __future__ import annotations
 import ctypes
 import dataclasses
 import enum
+import functools
 import platform
 import sys
 import threading
 import types
 import typing
 from collections.abc import Callable
-from io import StringIO
 from pathlib import Path
 
 import ml_dtypes
@@ -28,6 +28,8 @@ class InternalError(Exception):
 
 InternalError.__module__ = "mlc"
 Ptr = ctypes.c_void_p
+ClsType = typing.TypeVar("ClsType")
+MISSING = type("MISSING", (), {})()
 SYSTEM: str = platform.system()
 DSO_SUFFIX: str = ".so" if SYSTEM == "Linux" else ".dylib" if SYSTEM == "Darwin" else ".dll"
 _DATACLASS_SLOTS = {"slots": True} if sys.version_info >= (3, 10) else {}
@@ -174,31 +176,12 @@ class TypeInfo:
     type_depth: int
     type_ancestors: tuple[int, ...]
     fields: tuple[TypeField, ...]
-    methods: tuple[TypeMethod, ...]
-    methods_lookup: dict[str, TypeMethod] = dataclasses.field(default_factory=dict)
 
-    def __post_init__(self) -> None:
-        for method in self.methods:
-            self.methods_lookup[method.name] = method.func
+    def get_parent(self) -> TypeInfo:
+        from .core import type_index2cached_py_type_info  # type: ignore[import-not-found]
 
-    def prototype(self) -> str:
-        io = StringIO()
-        print(f"class {self.type_key}:", file=io)
-        print(f"  # type_index: {self.type_index}; type_ancestors: {self.type_ancestors}", file=io)
-        for field in self.fields:
-            ty = str(field.ty)
-            if ty == "char*":
-                ty = "str"
-            print(f"  {field.name}: {ty}", file=io)
-        for fn in self.methods:
-            if fn.name.startswith("_"):
-                continue
-            if fn.kind == 0:
-                print(f"  def {fn.name}(self, *args): ...", file=io)
-            else:
-                print("  @staticmethod", file=io)
-                print(f"  def {fn.name}(*args): ...", file=io)
-        return io.getvalue().rstrip()
+        type_index = self.type_ancestors[-1]
+        return type_index2cached_py_type_info(type_index)
 
 
 def translate_exception_to_c(exception: Exception) -> tuple[bytes, int, bytes]:
@@ -292,3 +275,90 @@ class MetaNoSlots(type):
             raise TypeError("Non-empty __slots__ not allowed in MLC dataclasses")
         dict["__slots__"] = ()
         return super().__new__(cls, name, bases, dict)
+
+
+def attach_field(
+    cls: type,
+    name: str,
+    getter: typing.Callable[[typing.Any], typing.Any] | None,
+    setter: typing.Callable[[typing.Any, typing.Any], None] | None,
+    frozen: bool,
+) -> None:
+    def fget(this: typing.Any, _name: str = name) -> typing.Any:
+        return getter(this)  # type: ignore[misc]
+
+    def fset(this: typing.Any, value: typing.Any, _name: str = name) -> None:
+        setter(this, value)  # type: ignore[misc]
+
+    prop = property(
+        fget=fget if getter else None,
+        fset=fset if (not frozen) and setter else None,
+        doc=f"{cls.__module__}.{cls.__qualname__}.{name}",
+    )
+    old_field = getattr(cls, name, MISSING)
+    setattr(cls, name, prop)
+    cls._mlc_dataclass_fields[name] = old_field  # type: ignore[attr-defined]
+
+
+def attach_method(
+    parent_cls: type,
+    cls: type,
+    name: str,
+    method: typing.Callable,
+    check_exists: bool,
+) -> None:
+    if check_exists:
+        if name in vars(parent_cls):
+            raise ValueError(
+                f"Cannot add `{name}` method in `{parent_cls}` because it's already defined"
+            )
+    method.__module__ = cls.__module__
+    method.__name__ = name
+    method.__qualname__ = f"{cls.__qualname__}.{name}"  # type: ignore[attr-defined]
+    method.__doc__ = f"Method `{name}` of class `{cls.__qualname__}`"  # type: ignore[attr-defined]
+    setattr(cls, name, method)
+
+
+def c_class_core(type_key: str) -> Callable[[type[ClsType]], type[ClsType]]:
+    def decorator(super_type_cls: type[ClsType]) -> type[ClsType]:
+        from .core import (  # type: ignore[import-not-found]
+            type_index2type_methods,
+            type_key2py_type_info,
+        )
+
+        @functools.wraps(super_type_cls, updated=())
+        class type_cls(super_type_cls):  # type: ignore[valid-type,misc]
+            __slots__ = ()
+
+        # Step 1. Retrieve `type_info` and set `_mlc_type_info`
+        type_info: TypeInfo = type_key2py_type_info(type_key)
+        if type_info.type_cls is not None:
+            raise ValueError(f"Type is already registered: {type_key}")
+        type_info.type_cls = type_cls
+        setattr(type_cls, "_mlc_type_info", type_info)
+
+        # Step 2. Attach fields
+        setattr(type_cls, "_mlc_dataclass_fields", {})
+        for field in type_info.fields:
+            attach_field(
+                cls=type_cls,
+                name=field.name,
+                getter=field.getter,
+                setter=field.setter,
+                frozen=field.frozen,
+            )
+
+        # Step 4. Attach methods
+        method: TypeMethod
+        for method in type_index2type_methods(type_info.type_index):
+            if not method.name.startswith("_"):
+                attach_method(
+                    parent_cls=super_type_cls,
+                    cls=type_cls,
+                    name=method.name,
+                    method=method.as_callable(),
+                    check_exists=False,
+                )
+        return type_cls
+
+    return decorator

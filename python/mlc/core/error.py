@@ -3,13 +3,12 @@ from __future__ import annotations
 import sys
 from typing import TextIO
 
-from mlc._cython import error_get_info
-from mlc.dataclasses.c_class import c_class
+from mlc._cython import c_class_core, error_get_info
 
 from .object import Object
 
 
-@c_class("object.Error", init=False)
+@c_class_core("object.Error")
 class Error(Object):
     kind: str
 

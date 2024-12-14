@@ -1,7 +1,8 @@
 import mlc
+import mlc.dataclasses as mlcd
 import pytest
 
-CPP_SOURCE = """
+mlc.cc.jit_load("""
 #include <mlc/all.h>
 #include <string>
 
@@ -20,20 +21,19 @@ struct MyObjRef : public mlc::ObjectRef {
       .StaticFn("__init__", mlc::InitOf<MyObj, mlc::Str, int32_t>)
       .MemFn("YPlusOne", &MyObj::YPlusOne);
 };
-"""
+""")
+
+
+@mlcd.c_class("mlc.MyObj")
+class MyObj(mlc.Object):
+    x: str
+    y: int
+
+    def YPlusOne(self) -> int:
+        raise NotImplementedError
 
 
 def test_jit_load() -> None:
-    mlc.cc.jit_load(CPP_SOURCE)
-
-    @mlc.dataclasses.c_class("mlc.MyObj")
-    class MyObj(mlc.Object):
-        x: str
-        y: int
-
-        def YPlusOne(self) -> int:
-            raise NotImplementedError
-
     obj = MyObj("hello", 42)
     assert obj.x == "hello"
     assert obj.y == 42

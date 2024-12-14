@@ -62,23 +62,188 @@ struct DSOLibrary {
 #endif
 };
 
+struct ResourcePool {
+  using ObjPtr = std::unique_ptr<MLCAny, void (*)(MLCAny *)>;
+
+  void AddObj(void *ptr) {
+    if (ptr != nullptr) {
+      MLCAny *ptr_cast = reinterpret_cast<MLCAny *>(ptr);
+      ::mlc::base::IncRef(ptr_cast);
+      this->objects.insert({ptr, ObjPtr(ptr_cast, ::mlc::base::DecRef)});
+    }
+  }
+
+  void DelObj(void *ptr) {
+    if (ptr != nullptr) {
+      this->objects.erase(this->objects.find(ptr));
+    }
+  }
+
+  template <typename PODType> PODType *NewPODArray(int64_t size) {
+    return static_cast<PODType *>(this->NewPODArrayImpl(size, sizeof(PODType)));
+  }
+
+  const char *NewStr(const char *source) {
+    if (source == nullptr) {
+      return nullptr;
+    }
+    size_t len = strlen(source);
+    char *ptr = this->NewPODArray<char>(len + 1);
+    std::memcpy(ptr, source, len + 1);
+    return ptr;
+  }
+
+  void DelPODArray(const void *ptr) {
+    if (ptr != nullptr) {
+      this->pod_array.erase(ptr);
+    }
+  }
+
+private:
+  MLC_INLINE void *NewPODArrayImpl(int64_t size, size_t pod_size) {
+    if (size == 0) {
+      return nullptr;
+    }
+    ::mlc::base::PODArray owned(static_cast<void *>(std::malloc(size * pod_size)), std::free);
+    void *ptr = owned.get();
+    auto [it, success] = this->pod_array.emplace(ptr, std::move(owned));
+    if (!success) {
+      std::cerr << "Array already registered: " << ptr;
+      std::abort();
+    }
+    return ptr;
+  }
+
+  std::unordered_map<const void *, ::mlc::base::PODArray> pod_array;
+  std::unordered_multimap<const void *, ObjPtr> objects;
+};
+
 struct TypeTable;
+
+struct VTable {
+  explicit VTable(TypeTable *type_table, std::string name) : type_table(type_table), name(std::move(name)), data() {}
+  void Set(int32_t type_index, FuncObj *func, int32_t override_mode);
+  FuncObj *GetFunc(int32_t type_index, bool allow_ancestor) const;
+
+private:
+  TypeTable *type_table;
+  std::string name;
+  std::unordered_map<int32_t, FuncObj *> data;
+};
 
 struct TypeInfoWrapper {
   MLCTypeInfo info{};
-  TypeTable *table = nullptr;
+  ResourcePool *pool = nullptr;
   int64_t num_fields = 0;
-  int64_t num_methods = 0;
+  std::vector<MLCTypeMethod> methods = {};
 
-  void Reset();
-  void ResetFields();
-  void ResetMethods();
-  void ResetStructure();
-  void SetFields(int64_t new_num_fields, MLCTypeField *fields);
-  void SetMethods(int64_t new_num_methods, MLCTypeMethod *methods);
-  void SetStructure(int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices,
-                    int32_t *sub_structure_kinds);
   ~TypeInfoWrapper() { this->Reset(); }
+
+  void Reset() {
+    if (this->pool) {
+      this->pool->DelPODArray(this->info.type_key);
+      this->pool->DelPODArray(this->info.type_ancestors);
+      this->ResetFields();
+      this->ResetMethods();
+      this->info.type_key = nullptr;
+      this->info.type_ancestors = nullptr;
+      this->pool = nullptr;
+    }
+  }
+
+  void ResetFields() {
+    if (this->num_fields > 0) {
+      MLCTypeField *&fields = this->info.fields;
+      for (int32_t i = 0; i < this->num_fields; i++) {
+        this->pool->DelPODArray(fields[i].name);
+      }
+      this->pool->DelPODArray(fields);
+      this->info.fields = nullptr;
+      this->num_fields = 0;
+    }
+  }
+
+  void ResetMethods() {
+    if (!this->methods.empty()) {
+      for (MLCTypeMethod &method : this->methods) {
+        if (method.name != nullptr) {
+          this->pool->DelPODArray(method.name);
+          this->pool->DelObj(method.func);
+        }
+      }
+      this->info.methods = nullptr;
+      this->methods.clear();
+    }
+  }
+
+  void ResetStructure() {
+    if (this->info.sub_structure_indices) {
+      this->pool->DelPODArray(this->info.sub_structure_indices);
+      this->info.sub_structure_indices = nullptr;
+    }
+    if (this->info.sub_structure_kinds) {
+      this->pool->DelPODArray(this->info.sub_structure_kinds);
+      this->info.sub_structure_kinds = nullptr;
+    }
+  }
+
+  void SetFields(int64_t new_num_fields, MLCTypeField *fields) {
+    this->ResetFields();
+    this->num_fields = new_num_fields;
+    MLCTypeField *dsts = this->info.fields = this->pool->NewPODArray<MLCTypeField>(new_num_fields + 1);
+    for (int64_t i = 0; i < num_fields; i++) {
+      MLCTypeField *dst = dsts + i;
+      *dst = fields[i];
+      this->pool->AddObj(dst->ty);
+      dst->name = this->pool->NewStr(dst->name);
+      if (dst->index != i) {
+        MLC_THROW(ValueError) << "Field index mismatch: " << i << " vs " << dst->index;
+      }
+    }
+    dsts[num_fields] = MLCTypeField{};
+    std::sort(dsts, dsts + num_fields,
+              [](const MLCTypeField &a, const MLCTypeField &b) { return a.offset < b.offset; });
+  }
+
+  void AddMethod(MLCTypeMethod method) {
+    for (MLCTypeMethod &m : this->methods) {
+      if (m.name && std::strcmp(m.name, method.name) == 0) {
+        this->pool->DelObj(m.func);
+        this->pool->AddObj(reinterpret_cast<FuncObj *>(method.func));
+        m.func = method.func;
+        m.kind = method.kind;
+        return;
+      }
+    }
+    if (this->methods.empty()) {
+      this->methods.emplace_back();
+    }
+    MLCTypeMethod &dst = this->methods.back();
+    dst = method;
+    dst.name = this->pool->NewStr(dst.name);
+    this->pool->AddObj(reinterpret_cast<FuncObj *>(dst.func));
+    this->methods.emplace_back();
+    this->info.methods = this->methods.data();
+  }
+
+  void SetStructure(int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices,
+                    int32_t *sub_structure_kinds) {
+    this->ResetStructure();
+    this->info.structure_kind = structure_kind;
+    if (num_sub_structures > 0) {
+      this->info.sub_structure_indices = this->pool->NewPODArray<int32_t>(num_sub_structures + 1);
+      this->info.sub_structure_kinds = this->pool->NewPODArray<int32_t>(num_sub_structures + 1);
+      std::memcpy(this->info.sub_structure_indices, sub_structure_indices, num_sub_structures * sizeof(int32_t));
+      std::memcpy(this->info.sub_structure_kinds, sub_structure_kinds, num_sub_structures * sizeof(int32_t));
+      std::reverse(this->info.sub_structure_indices, this->info.sub_structure_indices + num_sub_structures);
+      std::reverse(this->info.sub_structure_kinds, this->info.sub_structure_kinds + num_sub_structures);
+      this->info.sub_structure_indices[num_sub_structures] = -1;
+      this->info.sub_structure_kinds[num_sub_structures] = -1;
+    } else {
+      this->info.sub_structure_indices = nullptr;
+      this->info.sub_structure_kinds = nullptr;
+    }
+  }
 };
 
 struct TypeTable {
@@ -87,59 +252,10 @@ struct TypeTable {
   int32_t num_types;
   std::vector<std::unique_ptr<TypeInfoWrapper>> type_table;
   std::unordered_map<std::string, MLCTypeInfo *> type_key_to_info;
-  std::unordered_map<std::string, std::unordered_map<int32_t, FuncObj *>> vtable;
   std::unordered_map<std::string, FuncObj *> global_funcs;
-  std::unordered_map<const void *, ::mlc::base::PODArray> pool_pod_array;
-  std::unordered_map<const void *, ObjPtr> pool_obj_ptr;
-  std::unordered_map<std::string, std::unique_ptr<DSOLibrary>> dso_library;
-
-  template <typename PODType> inline PODType *NewArray(int64_t size) {
-    if (size == 0) {
-      return nullptr;
-    }
-    ::mlc::base::PODArray owned(static_cast<void *>(std::malloc(size * sizeof(PODType))), std::free);
-    PODType *ptr = reinterpret_cast<PODType *>(owned.get());
-    auto [it, success] = this->pool_pod_array.emplace(ptr, std::move(owned));
-    if (!success) {
-      std::cerr << "Array already registered: " << owned.get();
-      std::abort();
-    }
-    return ptr;
-  }
-
-  inline const char *NewArray(const char *source) {
-    if (source == nullptr) {
-      return nullptr;
-    }
-    size_t len = strlen(source);
-    char *ptr = this->NewArray<char>(len + 1);
-    std::memcpy(ptr, source, len + 1);
-    return ptr;
-  }
-
-  template <typename T> void NewObjPtr(T **dst, T *source) {
-    if (*dst != nullptr) {
-      this->pool_obj_ptr.erase(*dst);
-      *dst = nullptr;
-    }
-    *dst = source;
-    if (source != nullptr) {
-      auto [it, success] = this->pool_obj_ptr.emplace(source, ObjPtr(nullptr, nullptr));
-      if (!success) {
-        std::cerr << "Object already exists in the memory pool: " << source;
-        std::abort();
-      }
-      MLCAny *source_casted = reinterpret_cast<MLCAny *>(source);
-      ::mlc::base::IncRef(source_casted);
-      it->second = ObjPtr(source_casted, ::mlc::base::DecRef);
-    }
-  }
-
-  void DelArray(const void *ptr) {
-    if (ptr != nullptr) {
-      this->pool_pod_array.erase(ptr);
-    }
-  }
+  std::unordered_map<std::string, std::unique_ptr<VTable>> global_vtables;
+  std::unordered_map<std::string, std::unique_ptr<DSOLibrary>> dso_libraries;
+  ResourcePool pool;
 
   MLCTypeInfo *GetTypeInfo(int32_t type_index) {
     if (type_index < 0 || type_index >= static_cast<int32_t>(this->type_table.size())) {
@@ -158,12 +274,21 @@ struct TypeTable {
     }
   }
 
-  FuncObj *GetVTable(int32_t type_index, const char *attr_key) {
-    std::unordered_map<int32_t, FuncObj *> &attrs = this->vtable[attr_key];
-    if (auto it = attrs.find(type_index); it != attrs.end()) {
-      return it->second;
+  FuncObj *GetVTable(int32_t type_index, const char *attr_key, bool allow_ancestor) {
+    if (auto it = this->global_vtables.find(attr_key); it != this->global_vtables.end()) {
+      VTable *vtable = it->second.get();
+      return vtable->GetFunc(type_index, allow_ancestor);
     } else {
       return nullptr;
+    }
+  }
+
+  VTable *GetGlobalVTable(const char *name) {
+    if (auto it = this->global_vtables.find(name); it != this->global_vtables.end()) {
+      return it->second.get();
+    } else {
+      std::unique_ptr<VTable> &vtable = this->global_vtables[name] = std::make_unique<VTable>(this, name);
+      return vtable.get();
     }
   }
 
@@ -204,10 +329,10 @@ struct TypeTable {
     MLCTypeInfo *parent = parent_type_index == -1 ? nullptr : this->GetTypeInfo(parent_type_index);
     MLCTypeInfo *info = &wrapper->info;
     info->type_index = type_index;
-    info->type_key = this->NewArray(type_key);
+    info->type_key = this->pool.NewStr(type_key);
     info->type_key_hash = ::mlc::base::StrHash(type_key, std::strlen(type_key));
     info->type_depth = (parent == nullptr) ? 0 : (parent->type_depth + 1);
-    info->type_ancestors = this->NewArray<int32_t>(info->type_depth);
+    info->type_ancestors = this->pool.NewPODArray<int32_t>(info->type_depth);
     if (parent) {
       std::copy(parent->type_ancestors, parent->type_ancestors + parent->type_depth, info->type_ancestors);
       info->type_ancestors[parent->type_depth] = parent_type_index;
@@ -217,25 +342,18 @@ struct TypeTable {
     info->structure_kind = 0;
     info->sub_structure_indices = nullptr;
     info->sub_structure_kinds = nullptr;
-    wrapper->table = this;
+    wrapper->pool = &this->pool;
     return info;
   }
 
-  void SetFunc(const char *name, AnyView any_func, bool allow_override) {
+  void SetFunc(const char *name, FuncObj *func, bool allow_override) {
     auto [it, success] = this->global_funcs.try_emplace(std::string(name), nullptr);
     if (!success && !allow_override) {
       MLC_THROW(KeyError) << "Global function already registered: " << name;
+    } else {
+      it->second = func;
     }
-    FuncObj *func = any_func;
-    this->NewObjPtr(&it->second, func);
-  }
-
-  void SetVTable(int32_t type_index, const char *key, AnyView *value) {
-    std::unordered_map<int32_t, FuncObj *> &attrs = this->vtable[key];
-    auto [it, success] = attrs.try_emplace(type_index, nullptr);
-    (void)success; // Already registered
-    FuncObj *func = *value;
-    this->NewObjPtr(&it->second, func);
+    this->pool.AddObj(func);
   }
 
   TypeInfoWrapper *GetTypeInfoWrapper(int32_t type_index) {
@@ -244,14 +362,30 @@ struct TypeTable {
       wrapper = this->type_table.at(type_index).get();
     } catch (const std::out_of_range &) {
     }
-    if (wrapper == nullptr || wrapper->table != this) {
+    if (wrapper == nullptr || wrapper->pool != &this->pool) {
       MLC_THROW(KeyError) << "Type index `" << type_index << "` not registered";
     }
     return wrapper;
   }
 
+  void SetFields(int32_t type_index, int64_t num_fields, MLCTypeField *fields) {
+    this->GetTypeInfoWrapper(type_index)->SetFields(num_fields, fields);
+  }
+
+  void SetStructure(int32_t type_index, int32_t structure_kind, int64_t num_sub_structures,
+                    int32_t *sub_structure_indices, int32_t *sub_structure_kinds) {
+    this->GetTypeInfoWrapper(type_index)
+        ->SetStructure(structure_kind, num_sub_structures, sub_structure_indices, sub_structure_kinds);
+  }
+
+  void AddMethod(int32_t type_index, MLCTypeMethod method) {
+    // TODO: check `override_mode`
+    this->GetGlobalVTable(method.name)->Set(type_index, reinterpret_cast<FuncObj *>(method.func), 0);
+    this->GetTypeInfoWrapper(type_index)->AddMethod(method);
+  }
+
   void LoadDSO(std::string name) {
-    auto [it, success] = this->dso_library.try_emplace(name, nullptr);
+    auto [it, success] = this->dso_libraries.try_emplace(name, nullptr);
     if (!success) {
       return;
     }
@@ -317,104 +451,51 @@ inline TypeTable *TypeTable::New() {
   MLC_TYPE_TABLE_INIT_TYPE(const char *, self);
 #undef MLC_TYPE_TABLE_INIT_TYPE
   return self;
-} // namespace registry
-
-inline void TypeInfoWrapper::Reset() {
-  if (this->table) {
-    this->table->DelArray(this->info.type_key);
-    this->info.type_key = nullptr;
-    this->table->DelArray(this->info.type_ancestors);
-    this->info.type_ancestors = nullptr;
-    this->ResetFields();
-    this->ResetMethods();
-    this->table = nullptr;
-  }
 }
 
-inline void TypeInfoWrapper::ResetFields() {
-  if (this->num_fields > 0) {
-    MLCTypeField *&fields = this->info.fields;
-    for (int32_t i = 0; i < this->num_fields; i++) {
-      this->table->DelArray(fields[i].name);
-    }
-    this->table->DelArray(fields);
-    this->info.fields = nullptr;
-    this->num_fields = 0;
-  }
-}
-
-inline void TypeInfoWrapper::ResetMethods() {
-  if (this->num_methods > 0) {
-    MLCTypeMethod *&methods = this->info.methods;
-    for (int32_t i = 0; i < this->num_methods; i++) {
-      this->table->DelArray(methods[i].name);
-      this->table->NewObjPtr<MLCFunc>(&methods[i].func, nullptr);
-    }
-    this->table->DelArray(methods);
-    this->info.methods = nullptr;
-    this->num_methods = 0;
-  }
-}
-
-inline void TypeInfoWrapper::ResetStructure() {
-  if (this->info.sub_structure_indices) {
-    this->table->DelArray(this->info.sub_structure_indices);
-  }
-  if (this->info.sub_structure_kinds) {
-    this->table->DelArray(this->info.sub_structure_kinds);
-  }
-}
-
-inline void TypeInfoWrapper::SetFields(int64_t new_num_fields, MLCTypeField *fields) {
-  this->ResetFields();
-  this->num_fields = new_num_fields;
-  MLCTypeField *dst = this->info.fields = this->table->NewArray<MLCTypeField>(new_num_fields + 1);
-  for (int64_t i = 0; i < num_fields; i++) {
-    dst[i] = fields[i];
-    dst[i].name = this->table->NewArray(fields[i].name);
-    this->table->NewObjPtr(&dst[i].ty, dst[i].ty);
-    if (dst[i].index != i) {
-      MLC_THROW(ValueError) << "Field index mismatch: " << i << " vs " << dst[i].index;
+inline void VTable::Set(int32_t type_index, FuncObj *func, int32_t override_mode) {
+  auto [it, success] = this->data.try_emplace(type_index, nullptr);
+  if (!success) {
+    if (override_mode == 0) {
+      // No override
+      return;
+    } else if (override_mode == 1) {
+      // Allow override
+      this->type_table->pool.DelObj(it->second);
+    } else if (override_mode == 2) {
+      // TODO: throw exception
+      MLCTypeInfo *type_info = this->type_table->GetTypeInfo(type_index);
+      if (type_info && !name.empty()) {
+        MLC_THROW(KeyError) << "VTable `" << name << "` already registered for type: " << type_info->type_key;
+      } else if (type_info && name.empty()) {
+        MLC_THROW(KeyError) << "VTable already registered for type: " << type_info->type_key;
+      } else if (!type_info && !name.empty()) {
+        MLC_THROW(KeyError) << "VTable `" << name << "` already registered for type index: " << type_index;
+      } else {
+        MLC_THROW(KeyError) << "VTable already registered for type index: " << type_index;
+      }
+      MLC_UNREACHABLE();
     }
   }
-  dst[num_fields] = MLCTypeField{};
-  std::sort(dst, dst + num_fields, [](const MLCTypeField &a, const MLCTypeField &b) { return a.offset < b.offset; });
+  it->second = func;
+  this->type_table->pool.AddObj(func);
 }
 
-inline void TypeInfoWrapper::SetMethods(int64_t new_num_methods, MLCTypeMethod *methods) {
-  this->ResetMethods();
-  this->num_methods = new_num_methods;
-  int32_t type_index = this->info.type_index;
-  MLCTypeMethod *dst = this->info.methods = this->table->NewArray<MLCTypeMethod>(new_num_methods + 1);
-  for (int64_t i = 0; i < num_methods; i++) {
-    dst[i] = methods[i];
-    dst[i].name = this->table->NewArray(methods[i].name);
-    auto [it, success] = this->table->vtable[dst[i].name].try_emplace(type_index, nullptr);
-    (void)success; // Already registered
-    this->table->NewObjPtr(&it->second, reinterpret_cast<FuncObj *>(methods[i].func));
+inline FuncObj *VTable::GetFunc(int32_t type_index, bool allow_ancestor) const {
+  if (auto it = this->data.find(type_index); it != this->data.end()) {
+    return it->second;
   }
-  dst[num_methods] = MLCTypeMethod{};
-  std::sort(dst, dst + num_methods,
-            [](const MLCTypeMethod &a, const MLCTypeMethod &b) { return std::strcmp(a.name, b.name) < 0; });
-}
-
-inline void TypeInfoWrapper::SetStructure(int32_t structure_kind, int64_t num_sub_structures,
-                                          int32_t *sub_structure_indices, int32_t *sub_structure_kinds) {
-  this->ResetStructure();
-  this->info.structure_kind = structure_kind;
-  if (num_sub_structures > 0) {
-    this->info.sub_structure_indices = this->table->NewArray<int32_t>(num_sub_structures + 1);
-    this->info.sub_structure_kinds = this->table->NewArray<int32_t>(num_sub_structures + 1);
-    std::memcpy(this->info.sub_structure_indices, sub_structure_indices, num_sub_structures * sizeof(int32_t));
-    std::memcpy(this->info.sub_structure_kinds, sub_structure_kinds, num_sub_structures * sizeof(int32_t));
-    std::reverse(this->info.sub_structure_indices, this->info.sub_structure_indices + num_sub_structures);
-    std::reverse(this->info.sub_structure_kinds, this->info.sub_structure_kinds + num_sub_structures);
-    this->info.sub_structure_indices[num_sub_structures] = -1;
-    this->info.sub_structure_kinds[num_sub_structures] = -1;
-  } else {
-    this->info.sub_structure_indices = nullptr;
-    this->info.sub_structure_kinds = nullptr;
+  if (!allow_ancestor) {
+    return nullptr;
   }
+  MLCTypeInfo *info = this->type_table->GetTypeInfo(type_index);
+  for (int32_t i = info->type_depth - 1; i >= 0; i--) {
+    type_index = info->type_ancestors[i];
+    if (auto it = this->data.find(type_index); it != this->data.end()) {
+      return it->second;
+    }
+  }
+  return nullptr;
 }
 
 } // namespace registry

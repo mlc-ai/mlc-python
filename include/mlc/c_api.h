@@ -221,6 +221,7 @@ typedef struct MLCTypeInfo {
 } MLCTypeInfo;
 
 typedef void *MLCTypeTableHandle;
+typedef void *MLCVTableHandle;
 MLC_API MLCAny MLCGetLastError();
 MLC_API int32_t MLCAnyIncRef(MLCAny *any);
 MLC_API int32_t MLCAnyDecRef(MLCAny *any);
@@ -233,12 +234,15 @@ MLC_API int32_t MLCTypeIndex2Info(MLCTypeTableHandle self, int32_t type_index, M
 MLC_API int32_t MLCTypeKey2Info(MLCTypeTableHandle self, const char *type_key, MLCTypeInfo **out_type_info);
 MLC_API int32_t MLCTypeRegister(MLCTypeTableHandle self, int32_t parent_type_index, const char *type_key,
                                 int32_t type_index, MLCTypeInfo **out_type_info);
-MLC_API int32_t MLCTypeDefReflection(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields,
-                                     MLCTypeField *fields, int64_t num_methods, MLCTypeMethod *methods,
-                                     int32_t structure_kind, int64_t num_sub_structures, int32_t *sub_structure_indices,
-                                     int32_t *sub_structure_kinds);
-MLC_API int32_t MLCVTableSet(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value);
-MLC_API int32_t MLCVTableGet(MLCTypeTableHandle self, int32_t type_index, const char *key, MLCAny *value);
+MLC_API int32_t MLCTypeRegisterFields(MLCTypeTableHandle self, int32_t type_index, int64_t num_fields,
+                                      MLCTypeField *fields);
+MLC_API int32_t MLCTypeRegisterStructure(MLCTypeTableHandle self, int32_t type_index, int32_t structure_kind,
+                                         int64_t num_sub_structures, int32_t *sub_structure_indices,
+                                         int32_t *sub_structure_kinds);
+MLC_API int32_t MLCTypeAddMethod(MLCTypeTableHandle self, int32_t type_index, MLCTypeMethod method);
+MLC_API int32_t MLCVTableGetGlobal(MLCTypeTableHandle _self, const char *key, MLCVTableHandle *ret);
+MLC_API int32_t MLCVTableGetFunc(MLCVTableHandle vtable, int32_t type_index, int32_t allow_ancestor, MLCAny *ret);
+MLC_API int32_t MLCVTableSetFunc(MLCVTableHandle vtable, int32_t type_index, MLCFunc *func, int32_t override_mode);
 MLC_API int32_t MLCErrorCreate(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret);
 MLC_API int32_t MLCErrorGetInfo(MLCAny error, int32_t *num_strs, const char ***strs);
 MLC_API MLCByteArray MLCTraceback(const char *filename, const char *lineno, const char *func_name);

@@ -1,15 +1,14 @@
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from mlc._cython import func_call, func_get, func_init, func_register
-from mlc.dataclasses.c_class import c_class
+from mlc._cython import c_class_core, func_call, func_get, func_init, func_register
 
 from .object import Object
 
 _CallableType = TypeVar("_CallableType", bound=Callable)
 
 
-@c_class("object.Func", init=False)
+@c_class_core("object.Func")
 class Func(Object):
     def __init__(self, func: Callable) -> None:
         assert callable(func), "func must be callable"

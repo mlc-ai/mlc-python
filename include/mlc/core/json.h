@@ -5,8 +5,6 @@
 #include "./str.h"
 #include "./udict.h"
 #include "./ulist.h"
-#include "mlc/base/base_traits.h"
-#include "mlc/base/utils.h"
 #include <cstdint>
 #include <iomanip>
 #include <mlc/base/all.h>
@@ -181,6 +179,8 @@ inline mlc::Str Serialize(Any any) {
 }
 
 inline Any Deserialize(const char *json_str, int64_t json_str_len) {
+  MLCVTableHandle init_vtable;
+  MLCVTableGetGlobal(nullptr, "__init__", &init_vtable);
   // Step 0. Parse JSON string
   UDict json_obj = JSONLoads(json_str, json_str_len).operator UDict(); // TODO: impl "Any -> UDict"
   // Step 1. type_key => constructors
@@ -189,7 +189,8 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len) {
   constructors.reserve(type_keys.size());
   for (Str type_key : type_keys) {
     Any init_func;
-    MLCVTableGet(nullptr, ::mlc::base::TypeKey2TypeIndex(type_key->data()), "__init__", &init_func);
+    int32_t type_index = ::mlc::base::TypeKey2TypeIndex(type_key->data());
+    MLCVTableGetFunc(init_vtable, type_index, false, &init_func);
     if (!::mlc::base::IsTypeIndexNone(init_func.type_index)) {
       constructors.push_back(init_func.operator Func());
     } else {
