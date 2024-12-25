@@ -3,6 +3,7 @@
 
 #include "./error.h"
 #include "./str.h"
+#include <array>
 #include <type_traits>
 
 #define MLC_REGISTER_FUNC(name) [[maybe_unused]] static auto MLC_UNIQUE_ID() = ::mlc::core::FuncRegistryHelper(name)
@@ -22,12 +23,6 @@ struct FuncObj : public MLCFunc {
     return ret;
   }
 
-  static Ref<FuncObj> Get(const char *name) {
-    Any ret;
-    ::MLCFuncGetGlobal(nullptr, name, &ret);
-    return ret;
-  }
-
   static Ref<FuncObj> FromForeign(void *self, MLCDeleterType deleter, MLCFuncSafeCallType safe_call);
 
   static int32_t SafeCallImpl(const FuncObj *self, int32_t num_args, const AnyView *args, Any *ret) {
@@ -41,13 +36,12 @@ struct FuncObj : public MLCFunc {
     this->MLCFunc::safe_call = reinterpret_cast<MLCFuncSafeCallType>(FuncObj::SafeCallImpl);
   }
 
-  MLC_DEF_STATIC_TYPE(FuncObj, Object, MLCTypeIndex::kMLCFunc, "object.Func")
-      .StaticFn("__init__", ::mlc::core::ReflectionHelper::DefaultStrMethod);
+  MLC_DEF_STATIC_TYPE(FuncObj, Object, MLCTypeIndex::kMLCFunc, "object.Func");
 };
 
 struct FuncObj::Allocator {
 public:
-  template <typename FuncType, typename = std::enable_if_t<HasFuncTraits<FuncType>>>
+  template <typename FuncType, typename = std::enable_if_t<::mlc::base::HasFuncTraits<FuncType>>>
   MLC_INLINE static FuncObj *New(FuncType func);
 };
 
@@ -55,7 +49,15 @@ struct Func : public ObjectRef {
   template <typename... Args> MLC_INLINE Any operator()(Args &&...args) const {
     return get()->operator()(std::forward<Args>(args)...);
   }
-  MLC_DEF_OBJ_REF(Func, FuncObj, ObjectRef);
+  template <typename FuncType, typename = std::enable_if_t<::mlc::base::HasFuncTraits<FuncType>>>
+  Func(FuncType func) : Func(FuncObj::Allocator::New(std::move(func))) {}
+  static Any GetGlobal(const char *name) {
+    Any ret;
+    ::MLCFuncGetGlobal(nullptr, name, &ret);
+    return ret;
+  }
+  // A dummy function to trigger reflection - otherwise reflection registration will be skipped
+  MLC_DEF_OBJ_REF(Func, FuncObj, ObjectRef).StaticFn("__nothing__", []() {});
 };
 } // namespace mlc
 
@@ -79,17 +81,13 @@ struct FuncRegistryHelper {
 
 MLC_INLINE void HandleSafeCallError(int32_t err_code, MLCAny *ret) noexcept(false) {
   if (err_code == -1) { // string errors
-    MLC_THROW(InternalError) << "Error: " << Ref<StrObj>(static_cast<Any &>(*ret))->data();
+    MLC_THROW(InternalError) << "Error: " << *static_cast<Any *>(ret);
   } else if (err_code == -2) { // error objects
-    throw Exception(Ref<ErrorObj>(static_cast<Any &>(*ret))->AppendWith(MLC_TRACEBACK_HERE()));
+    throw Exception(static_cast<Any *>(ret)->operator Ref<ErrorObj>()->AppendWith(MLC_TRACEBACK_HERE()));
   } else { // error code
     MLC_THROW(InternalError) << "Error code: " << err_code;
   }
   MLC_UNREACHABLE();
-}
-
-template <typename Callable> inline Any CallableToAny(Callable &&callable) {
-  return Ref<FuncObj>::New(std::forward<Callable>(callable));
 }
 } // namespace core
 } // namespace mlc
@@ -103,6 +101,18 @@ MLC_INLINE void FuncCall(const void *self, int32_t num_args, const MLCAny *args,
   } else if (int32_t err_code = func->safe_call(func, num_args, args, ret)) {
     ::mlc::core::HandleSafeCallError(err_code, ret);
   }
+}
+template <int32_t num_args> inline auto GetGlobalFuncCall(const char *name) {
+  using ArrayType = std::array<AnyView, num_args>;
+  FuncObj *func = Func::GetGlobal(name);
+  return [func](ArrayType &&args) {
+    Any ret;
+    ::mlc::base::FuncCall(func, num_args, std::move(args).data(), &ret);
+    return ret;
+  };
+}
+template <typename Callable> inline Any CallableToAny(Callable &&callable) {
+  return Ref<FuncObj>::New(std::forward<Callable>(callable));
 }
 } // namespace base
 } // namespace mlc

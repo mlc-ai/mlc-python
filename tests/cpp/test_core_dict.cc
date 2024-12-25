@@ -1,12 +1,42 @@
 #include <algorithm>
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 #include <string>
 #include <vector>
 
 namespace {
 
 using namespace mlc;
+using mlc::base::TypeKind;
+using mlc::base::TypeKindOf;
+
+static_assert(TypeKindOf<int> == TypeKind::kPOD &&         //
+              TypeKindOf<const int> == TypeKind::kPOD &&   //
+              TypeKindOf<const int &> == TypeKind::kPOD && //
+              TypeKindOf<int &&> == TypeKind::kPOD);
+
+static_assert(TypeKindOf<Object> == TypeKind::kObj);
+
+static_assert(TypeKindOf<Object *> == TypeKind::kObjPtr && //
+              TypeKindOf<const Object *> == TypeKind::kObjPtr);
+
+static_assert(TypeKindOf<ObjectRef> == TypeKind::kObjRef &&         //
+              TypeKindOf<ObjectRef &> == TypeKind::kObjRef &&       //
+              TypeKindOf<ObjectRef &&> == TypeKind::kObjRef &&      //
+              TypeKindOf<const ObjectRef &> == TypeKind::kObjRef && //
+              TypeKindOf<const ObjectRef &&> == TypeKind::kObjRef);
+
+static_assert(TypeKindOf<Ref<Object>> == TypeKind::kRef &&         //
+              TypeKindOf<Ref<Object> &> == TypeKind::kRef &&       //
+              TypeKindOf<Ref<Object> &&> == TypeKind::kRef &&      //
+              TypeKindOf<const Ref<Object> &> == TypeKind::kRef && //
+              TypeKindOf<const Ref<Object> &&> == TypeKind::kRef);
+
+static_assert(TypeKindOf<Optional<int64_t>> == TypeKind::kOptional &&         //
+              TypeKindOf<Optional<int64_t> &> == TypeKind::kOptional &&       //
+              TypeKindOf<Optional<int64_t> &&> == TypeKind::kOptional &&      //
+              TypeKindOf<const Optional<int64_t> &> == TypeKind::kOptional && //
+              TypeKindOf<const Optional<int64_t> &&> == TypeKind::kOptional);
 
 TEST(DictKV, DefaultConstructor) {
   Dict<int, Str> dict;
@@ -89,12 +119,16 @@ TEST(DictKV, IteratorBasic) {
 TEST(DictKV, FindMethod) {
   Dict<int, Str> dict{{1, "one"}, {2, "two"}};
   auto it = dict.find(1);
-  EXPECT_NE(it, dict.end());
+  if (it == dict.end()) {
+    FAIL() << "Key not found";
+  }
   EXPECT_EQ((*it).first, 1);
   EXPECT_EQ((*it).second, "one");
 
   it = dict.find(3);
-  EXPECT_EQ(it, dict.end());
+  if (it != dict.end()) {
+    FAIL() << "Key found";
+  }
 }
 
 TEST(DictKV, Rehash) {
@@ -247,7 +281,7 @@ TEST(DictAnyTest, IteratorBasic) {
   std::unordered_map<std::string, int> actual;
 
   for (const auto &kv : *dict) {
-    actual[kv.first.operator std::string()] = kv.second.operator int();
+    actual[kv.first] = kv.second;
   }
 
   EXPECT_EQ(actual, expected);
@@ -256,12 +290,16 @@ TEST(DictAnyTest, IteratorBasic) {
 TEST(DictAnyTest, FindMethod) {
   Dict<Any, Any> dict{{Any("key1"), Any(1)}, {Any("key2"), Any(2)}};
   auto it = dict.find("key1");
-  EXPECT_NE(it, dict.end());
+  if (it == dict.end()) {
+    FAIL() << "Key not found";
+  }
   EXPECT_EQ((*it).first.operator std::string(), "key1");
   EXPECT_EQ((*it).second.operator int(), 1);
 
   it = dict.find("non_existent");
-  EXPECT_EQ(it, dict.end());
+  if (it != dict.end()) {
+    FAIL() << "Key found";
+  }
 }
 
 TEST(DictAnyTest, Rehash) {

@@ -6,3 +6,4 @@ from .error import Error
 from .func import Func
 from .list import List
 from .object import Object
+from .object_path import ObjectPath

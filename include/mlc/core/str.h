@@ -1,10 +1,12 @@
 #ifndef MLC_CORE_STR_H_
 #define MLC_CORE_STR_H_
 #include "./object.h"
+#include <array>
 #include <cctype>
 #include <cstring>
 #include <ostream>
 #include <sstream>
+#include <string_view>
 
 namespace mlc {
 namespace base {
@@ -41,8 +43,24 @@ struct StrObj : public MLCStr {
   MLC_INLINE StrObj() : MLCStr() {}
   MLC_INLINE const char *c_str() const { return this->MLCStr::data; }
   MLC_INLINE const char *data() const { return this->MLCStr::data; }
+  MLC_INLINE char *data() { return this->MLCStr::data; }
   MLC_INLINE int64_t length() const { return this->MLCStr::length; }
   MLC_INLINE int64_t size() const { return this->MLCStr::length; }
+  MLC_INLINE bool empty() const { return this->MLCStr::length == 0; }
+  MLC_INLINE const char *begin() const { return this->data(); }
+  MLC_INLINE const char *end() const { return this->data() + this->length(); }
+  MLC_INLINE char *begin() { return this->data(); }
+  MLC_INLINE char *end() { return this->data() + this->length(); }
+  MLC_INLINE char &back() { return this->data()[this->length() - 1]; }
+  MLC_INLINE char &front() { return this->data()[0]; }
+  MLC_INLINE const char &back() const { return this->data()[this->length() - 1]; }
+  MLC_INLINE const char &front() const { return this->data()[0]; }
+  MLC_INLINE void pop_back() {
+    if (this->length() > 0) {
+      this->back() = '\0';
+      this->MLCStr::length -= 1;
+    }
+  }
   MLC_INLINE bool StartsWith(const std::string &prefix) {
     int64_t N = static_cast<int64_t>(prefix.length());
     return N <= MLCStr::length && strncmp(MLCStr::data, prefix.data(), prefix.length()) == 0;
@@ -67,10 +85,20 @@ struct StrObj : public MLCStr {
   MLC_INLINE uint64_t Hash() const {
     return ::mlc::base::StrHash(this->MLCStr::data, this->MLCStr::length); //
   }
-  MLC_DEF_STATIC_TYPE(StrObj, Object, MLCTypeIndex::kMLCStr, "object.Str")
-      .FieldReadOnly("length", &MLCStr::length)
-      .FieldReadOnly("data", &MLCStr::data)
-      .MemFn("__str__", &StrObj::__str__);
+  inline std::vector<std::string_view> Split(char delim) const {
+    std::vector<std::string_view> ret;
+    const char *start = this->data();
+    const char *end = start + this->length();
+    for (const char *p = start; p < end; ++p) {
+      if (*p == delim) {
+        ret.emplace_back(start, p - start);
+        start = p + 1;
+      }
+    }
+    ret.emplace_back(start, end - start);
+    return ret;
+  }
+  MLC_DEF_STATIC_TYPE(StrObj, Object, MLCTypeIndex::kMLCStr, "object.Str");
 };
 } // namespace mlc
 
@@ -78,7 +106,6 @@ namespace mlc {
 namespace core {
 struct StrStd : public StrObj {
   using Allocator = ::mlc::DefaultObjectAllocator<StrStd>;
-  template <typename> friend struct ::mlc::DefaultObjectAllocator;
 
   MLC_INLINE StrStd(std::string &&str) : StrObj(), container(std::move(str)) {
     this->MLCStr::length = static_cast<int64_t>(container.length());
@@ -90,7 +117,6 @@ struct StrStd : public StrObj {
 
 struct StrPad : public StrObj {
   using Allocator = ::mlc::DefaultObjectAllocator<StrPad>;
-  template <typename> friend struct ::mlc::DefaultObjectAllocator;
 
   MLC_INLINE StrPad(const char *str, size_t N) : StrObj() {
     char *str_copy = reinterpret_cast<char *>(this) + sizeof(StrObj);
@@ -128,7 +154,9 @@ struct StrObj::Allocator {
 };
 
 struct Str : public ObjectRef {
-  MLC_INLINE Str(const char *str) : ObjectRef(StrObj::Allocator::New(str)) {}
+  MLC_INLINE Str(const char *str) : Str(StrObj::Allocator::New(str)) {}
+  MLC_INLINE Str(std::string &&str) : Str(StrObj::Allocator::New(std::move(str))) {}
+  MLC_INLINE Str(const std::string &str) : Str(StrObj::Allocator::New(str)) {}
   template <size_t N>
   MLC_INLINE Str(const ::mlc::base::CharArray<N> &str) : ObjectRef(StrObj::Allocator::New<N>(str)) {}
   MLC_INLINE Str FromEscaped(int64_t N, const char *str);
@@ -137,7 +165,19 @@ struct Str : public ObjectRef {
   MLC_INLINE int64_t length() const { return this->get()->length(); }
   MLC_INLINE int64_t size() const { return this->get()->size(); }
   MLC_INLINE uint64_t Hash() const { return this->get()->Hash(); }
-  MLC_DEF_OBJ_REF(Str, StrObj, ObjectRef);
+  MLC_INLINE const char *begin() const { return this->get()->data(); }
+  MLC_INLINE const char *end() const { return this->get()->data() + this->get()->length(); }
+  MLC_INLINE char *begin() { return this->get()->data(); }
+  MLC_INLINE char *end() { return this->get()->data() + this->get()->length(); }
+  MLC_INLINE char operator[](int64_t i) const { return this->get()->data()[i]; }
+  inline std::string ToStdString() const { return std::string(this->get()->data(), this->get()->length()); }
+  inline std::string_view ToStdStringView() const {
+    return std::string_view(this->get()->data(), this->get()->length());
+  }
+  MLC_DEF_OBJ_REF(Str, StrObj, ObjectRef)
+      .FieldReadOnly("length", &MLCStr::length)
+      .FieldReadOnly("data", &MLCStr::data)
+      .MemFn("__str__", &StrObj::__str__);
 };
 // Overload << operator
 inline std::ostream &operator<<(std::ostream &out, const Str &src) {
@@ -417,6 +457,14 @@ inline ::mlc::Str LibState::Str(AnyView obj) {
   ::mlc::base::FuncCall(func, 1, &obj, &ret);
   return ret;
 }
+
+inline Any LibState::IRPrint(AnyView obj, AnyView printer, AnyView path) {
+  FuncObj *func = base::LibState::VTableGetFunc(ir_print, obj.GetTypeIndex(), "__ir_print__");
+  Any ret;
+  ::mlc::base::FuncCall(func, 3, std::array<AnyView, 3>{obj, printer, path}.data(), &ret);
+  return ret;
+}
+
 } // namespace base
 } // namespace mlc
 

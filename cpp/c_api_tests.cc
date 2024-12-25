@@ -1,4 +1,4 @@
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 
 namespace mlc {
 namespace {

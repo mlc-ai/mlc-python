@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 #include <unordered_set>
 
 namespace {
 
 using namespace mlc;
+using mlc::base::AnyEqual;
 using mlc::base::DataTypeEqual;
-using mlc::core::AnyEqual;
 
 TEST(Legacy_UDict_Construtor, Default) {
   UDict dict;
@@ -28,13 +28,13 @@ TEST(Legacy_UDict_Construtor, InitializerList) {
 
   bool found[3] = {false, false, false};
   for (const auto &kv : *dict) {
-    if (AnyEqual()(kv.first, Any("key1"))) {
+    if (AnyEqual(kv.first, Any("key1"))) {
       found[0] = true;
       EXPECT_EQ(int(kv.second), 1);
-    } else if (AnyEqual()(kv.first, Any("key2"))) {
+    } else if (AnyEqual(kv.first, Any("key2"))) {
       found[1] = true;
       EXPECT_EQ(kv.second.operator std::string(), "value2");
-    } else if (AnyEqual()(kv.first, Any(3))) {
+    } else if (AnyEqual(kv.first, Any(3))) {
       found[2] = true;
       EXPECT_EQ(int(kv.second), 4);
     } else {

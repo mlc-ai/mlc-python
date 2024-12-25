@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 project(
   mlc
-  VERSION 0.0.12
+  VERSION 0.0.13
   DESCRIPTION "MLC-Python"
   LANGUAGES C CXX
 )
@@ -41,6 +41,9 @@ if (MLC_BUILD_REGISTRY)
   add_library(mlc_registry_objs OBJECT
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/c_api.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/c_api_tests.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cpp/printer.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cpp/json.cc"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cpp/structure.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/traceback.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/traceback_win.cc"
   )

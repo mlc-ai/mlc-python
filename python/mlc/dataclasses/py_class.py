@@ -23,6 +23,8 @@ from mlc.core import Object
 
 from .utils import (
     Structure,
+    add_vtable_methods_for_type_cls,
+    get_parent_type,
     inspect_dataclass_fields,
     method_init,
     structure_parse,
@@ -68,15 +70,26 @@ def py_class(
             type_key = f"{super_type_cls.__module__}.{super_type_cls.__qualname__}"
         assert isinstance(type_key, str)
 
+        if not issubclass(super_type_cls, PyClass):
+            raise TypeError(
+                "Not a subclass of `mlc.PyClass`: "
+                f"`{super_type_cls.__module__}.{super_type_cls.__qualname__}`"
+            )
+
         # Step 1. Create the type according to its parent type
-        parent_type_info: TypeInfo = _type_parent(super_type_cls)._mlc_type_info  # type: ignore[attr-defined]
+        parent_type_info: TypeInfo = get_parent_type(super_type_cls)._mlc_type_info  # type: ignore[attr-defined]
         type_info: TypeInfo = type_create(parent_type_info.type_index, type_key)
         type_index = type_info.type_index
 
         # Step 2. Reflect all the fields of the type
-        fields, d_fields = inspect_dataclass_fields(type_key, super_type_cls, parent_type_info)
+        fields, d_fields = inspect_dataclass_fields(
+            type_key,
+            super_type_cls,
+            parent_type_info,
+        )
         num_bytes = _add_field_properties(fields)
         type_info.fields = tuple(fields)
+        type_info.d_fields = tuple(d_fields)
         type_register_fields(type_index, fields)
         mlc_init = make_mlc_init(fields)
 
@@ -92,7 +105,6 @@ def py_class(
                 return type_create_instance(cls, type_index, num_bytes)
 
         type_info.type_cls = type_cls
-        setattr(type_cls, "_mlc_dataclass_fields", {})
         setattr(type_cls, "_mlc_type_info", type_info)
         for field in fields:
             attach_field(
@@ -140,28 +152,10 @@ def py_class(
             type_add_method(type_index, "__str__", fn, 1)  # static
             attach_method(super_type_cls, type_cls, "__repr__", fn, check_exists=True)
             attach_method(super_type_cls, type_cls, "__str__", fn, check_exists=True)
-        for name, func in vars(super_type_cls).items():
-            if (
-                callable(func)
-                and (is_static := getattr(func, "_mlc_is_static_func", None)) is not None
-            ):
-                type_add_method(type_index, name, func, int(is_static))
+        add_vtable_methods_for_type_cls(super_type_cls, type_index=type_index)
         return type_cls
 
     return decorator
-
-
-def _type_parent(type_cls: type) -> type:
-    if not issubclass(type_cls, PyClass):
-        raise TypeError(
-            f"Not a subclass of `mlc.PyClass`: `{type_cls.__module__}.{type_cls.__qualname__}`"
-        )
-    for base in type_cls.__bases__:
-        if hasattr(base, "_mlc_type_info"):
-            return base
-    raise ValueError(
-        f"No parent found for `{type_cls.__module__}.{type_cls.__qualname__}`. It must inherit from `mlc.PyClass`."
-    )
 
 
 def _add_field_properties(type_fields: list[TypeField]) -> int:

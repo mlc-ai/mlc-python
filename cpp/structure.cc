@@ -1,6 +1,3 @@
-#ifndef MLC_CORE_STRUCTURE_H_
-#define MLC_CORE_STRUCTURE_H_
-#include "./field_visitor.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -8,7 +5,7 @@
 #include <cstring>
 #include <functional>
 #include <memory>
-#include <mlc/base/all.h>
+#include <mlc/core/all.h>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -16,24 +13,15 @@
 
 namespace mlc {
 namespace core {
+namespace {
 
 uint64_t StructuralHash(Object *obj);
 bool StructuralEqual(Object *lhs, Object *rhs, bool bind_free_vars, bool assert_mode);
 void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars);
 
-struct SEqualPath {
-  std::shared_ptr<const SEqualPath> prev;
-  int32_t kind;
-  const char *field_name; // kind = 0
-  int64_t list_index;     // kind = 1
-  AnyView dict_key;       // kind = 2
-
-  void Print(std::ostream &) const;
-};
-
 struct SEqualError : public std::runtime_error {
-  std::shared_ptr<SEqualPath> path;
-  SEqualError(const char *msg, std::shared_ptr<SEqualPath> path) : std::runtime_error(msg), path(path) {}
+  ObjectPath path;
+  SEqualError(const char *msg, ObjectPath path) : std::runtime_error(msg), path(path) {}
 };
 
 inline bool StructuralEqual(Object *lhs, Object *rhs, bool bind_free_vars, bool assert_mode) {
@@ -42,49 +30,12 @@ inline bool StructuralEqual(Object *lhs, Object *rhs, bool bind_free_vars, bool 
     return true;
   } catch (SEqualError &e) {
     if (assert_mode) {
-      std::ostringstream err;
-      if (e.path) {
-        e.path->Print(err);
-      }
-      MLC_THROW(ValueError) << "Structural equality check failed at {root}" << err.str() << ": " << e.what();
+      std::ostringstream os;
+      os << "Structural equality check failed at " << e.path << ": " << e.what();
+      MLC_THROW(ValueError) << os.str();
     }
   }
   return false;
-}
-
-inline void SEqualPath::Print(std::ostream &os) const {
-  std::vector<const SEqualPath *> items;
-  for (const SEqualPath *p = this; p; p = p->prev.get()) {
-    items.push_back(p);
-  }
-  for (auto it = items.rbegin(); it != items.rend(); ++it) {
-    const SEqualPath *p = *it;
-    if (p->kind == 0) {
-      os << "." << p->field_name;
-    } else if (p->kind == 1) {
-      os << "[" << p->list_index << "]";
-    } else {
-      int32_t type_index = p->dict_key.type_index;
-      if (::mlc::base::IsTypeIndexPOD(type_index)) {
-        os << "[" << p->dict_key << "]";
-      } else if (type_index == kMLCStr) {
-        StrObj *str_obj = p->dict_key;
-        os << "[";
-        str_obj->PrintEscape(os);
-        os << "]";
-      } else {
-        const char *type_key = ::mlc::base::TypeIndex2TypeKey(type_index);
-        os << "[" << type_key << "@" << static_cast<const void *>(p->dict_key.v.v_obj) << "]";
-      }
-    }
-  }
-}
-
-inline std::ostream &operator<<(std::ostream &os, const std::shared_ptr<SEqualPath> &path) {
-  if (path) {
-    path->Print(os);
-  }
-  return os;
 }
 
 template <typename T> MLC_INLINE T *WithOffset(Object *obj, MLCTypeField *field) {
@@ -114,14 +65,14 @@ template <typename T> MLC_INLINE T *WithOffset(Object *obj, MLCTypeField *field)
     if ((lhs != nullptr || rhs != nullptr) && (lhs == nullptr || rhs == nullptr || !EQ(*lhs, *rhs))) {                 \
       AnyView LHS = lhs ? AnyView(*lhs) : AnyView(nullptr);                                                            \
       AnyView RHS = rhs ? AnyView(*rhs) : AnyView(nullptr);                                                            \
-      MLC_CORE_EQ_S_ERR(LHS, RHS, Append::Field(path, field->name));                                                   \
+      MLC_CORE_EQ_S_ERR(LHS, RHS, path->WithField(field->name));                                                       \
     }                                                                                                                  \
   }
 #define MLC_CORE_EQ_S_POD(Type, EQ)                                                                                    \
   MLC_INLINE void operator()(MLCTypeField *field, StructureFieldKind, Type *lhs) {                                     \
     const Type *rhs = WithOffset<Type>(obj_rhs, field);                                                                \
     if (!EQ(*lhs, *rhs)) {                                                                                             \
-      MLC_CORE_EQ_S_ERR(AnyView(*lhs), AnyView(*rhs), Append::Field(path, field->name));                               \
+      MLC_CORE_EQ_S_ERR(AnyView(*lhs), AnyView(*rhs), path->WithField(field->name));                                   \
     }                                                                                                                  \
   }
 
@@ -136,19 +87,8 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
     MLCTypeInfo *type_info;
     bool visited;
     bool bind_free_vars; // `map_free_vars` in TVM
-    std::shared_ptr<SEqualPath> path;
+    ObjectPath path;
     std::unique_ptr<std::ostringstream> err;
-  };
-  struct Append {
-    static std::shared_ptr<SEqualPath> Field(const std::shared_ptr<SEqualPath> &self, const char *new_field_name) {
-      return std::make_shared<SEqualPath>(SEqualPath{self, 0, new_field_name, 0, nullptr});
-    }
-    static std::shared_ptr<SEqualPath> ListIndex(const std::shared_ptr<SEqualPath> &self, int64_t new_list_index) {
-      return std::make_shared<SEqualPath>(SEqualPath{self, 1, nullptr, new_list_index, nullptr});
-    }
-    static std::shared_ptr<SEqualPath> DictKey(const std::shared_ptr<SEqualPath> &self, AnyView new_dict_key) {
-      return std::make_shared<SEqualPath>(SEqualPath{self, 2, nullptr, 0, new_dict_key});
-    }
   };
   struct Visitor {
     static bool CharArrayEqual(CharArray lhs, CharArray rhs) { return std::strcmp(lhs, rhs) == 0; }
@@ -172,22 +112,22 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
     MLC_INLINE void operator()(MLCTypeField *field, StructureFieldKind field_kind, const Any *lhs) {
       const Any *rhs = WithOffset<Any>(obj_rhs, field);
       bool bind_free_vars = this->obj_bind_free_vars || field_kind == StructureFieldKind::kBind;
-      EnqueueAny(tasks, bind_free_vars, lhs, rhs, Append::Field(path, field->name));
+      EnqueueAny(tasks, bind_free_vars, lhs, rhs, path->WithField(field->name));
     }
     MLC_INLINE void operator()(MLCTypeField *field, StructureFieldKind field_kind, ObjectRef *_lhs) {
       HandleObject(field, field_kind, _lhs->get(), WithOffset<ObjectRef>(obj_rhs, field)->get());
     }
-    MLC_INLINE void operator()(MLCTypeField *field, StructureFieldKind field_kind, Optional<Object> *_lhs) {
-      HandleObject(field, field_kind, _lhs->get(), WithOffset<Optional<Object>>(obj_rhs, field)->get());
+    MLC_INLINE void operator()(MLCTypeField *field, StructureFieldKind field_kind, Optional<ObjectRef> *_lhs) {
+      HandleObject(field, field_kind, _lhs->get(), WithOffset<Optional<ObjectRef>>(obj_rhs, field)->get());
     }
     inline void HandleObject(MLCTypeField *field, StructureFieldKind field_kind, Object *lhs, Object *rhs) {
       if (lhs || rhs) {
         bool bind_free_vars = this->obj_bind_free_vars || field_kind == StructureFieldKind::kBind;
-        EnqueueTask(tasks, bind_free_vars, lhs, rhs, Append::Field(path, field->name));
+        EnqueueTask(tasks, bind_free_vars, lhs, rhs, path->WithField(field->name));
       }
     }
     static void EnqueueAny(std::vector<Task> *tasks, bool bind_free_vars, const Any *lhs, const Any *rhs,
-                           std::shared_ptr<SEqualPath> new_path) {
+                           ObjectPath new_path) {
       int32_t type_index = lhs->GetTypeIndex();
       if (type_index != rhs->GetTypeIndex()) {
         MLC_CORE_EQ_S_ERR(lhs->GetTypeKey(), rhs->GetTypeKey(), new_path);
@@ -207,7 +147,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
       EnqueueTask(tasks, bind_free_vars, lhs->operator Object *(), rhs->operator Object *(), new_path);
     }
     static void EnqueueTask(std::vector<Task> *tasks, bool bind_free_vars, Object *lhs, Object *rhs,
-                            std::shared_ptr<SEqualPath> new_path) {
+                            ObjectPath new_path) {
       int32_t lhs_type_index = lhs ? lhs->GetTypeIndex() : kMLCNone;
       int32_t rhs_type_index = rhs ? rhs->GetTypeIndex() : kMLCNone;
       if (lhs_type_index != rhs_type_index) {
@@ -230,14 +170,13 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
     Object *obj_rhs;
     std::vector<Task> *tasks;
     bool obj_bind_free_vars;
-    const std::shared_ptr<SEqualPath> &path;
+    ObjectPath path;
   };
   std::vector<Task> tasks;
   std::unordered_map<Object *, Object *> eq_lhs_to_rhs;
   std::unordered_map<Object *, Object *> eq_rhs_to_lhs;
 
-  auto check_bind = [&eq_lhs_to_rhs, &eq_rhs_to_lhs](Object *lhs, Object *rhs,
-                                                     const std::shared_ptr<SEqualPath> &path) -> bool {
+  auto check_bind = [&eq_lhs_to_rhs, &eq_rhs_to_lhs](Object *lhs, Object *rhs, const ObjectPath &path) -> bool {
     // check binding consistency: lhs -> rhs, rhs -> lhs
     auto it_lhs_to_rhs = eq_lhs_to_rhs.find(lhs);
     auto it_rhs_to_lhs = eq_rhs_to_lhs.find(rhs);
@@ -260,10 +199,10 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
     return false;
   };
 
-  Visitor::EnqueueTask(&tasks, bind_free_vars, lhs, rhs, nullptr);
+  Visitor::EnqueueTask(&tasks, bind_free_vars, lhs, rhs, ObjectPath::Root());
   while (!tasks.empty()) {
     MLCTypeInfo *type_info;
-    std::shared_ptr<SEqualPath> path;
+    ObjectPath path{::mlc::Null};
     {
       Task &task = tasks.back();
       type_info = task.type_info;
@@ -298,7 +237,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
       int64_t lhs_size = lhs_list->size();
       int64_t rhs_size = rhs_list->size();
       for (int64_t i = (lhs_size < rhs_size ? lhs_size : rhs_size) - 1; i >= 0; --i) {
-        Visitor::EnqueueAny(&tasks, bind_free_vars, &lhs_list->at(i), &rhs_list->at(i), Append::ListIndex(path, i));
+        Visitor::EnqueueAny(&tasks, bind_free_vars, &lhs_list->at(i), &rhs_list->at(i), path->WithListIndex(i));
       }
       if (lhs_size != rhs_size) {
         auto &err = tasks[task_index].err = std::make_unique<std::ostringstream>();
@@ -311,7 +250,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
       for (auto &kv : *lhs_dict) {
         AnyView lhs_key = kv.first;
         int32_t type_index = lhs_key.type_index;
-        UDictObj::Iterator rhs_it;
+        UDictObj::iterator rhs_it;
         if (type_index < kMLCStaticObjectBegin || type_index == kMLCStr) {
           rhs_it = rhs_dict->find(lhs_key);
         } else if (auto it = eq_lhs_to_rhs.find(lhs_key.operator Object *()); it != eq_lhs_to_rhs.end()) {
@@ -324,7 +263,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
           not_found_lhs_keys.push_back(lhs_key);
           continue;
         }
-        Visitor::EnqueueAny(&tasks, bind_free_vars, &kv.second, &rhs_it->second, Append::DictKey(path, lhs_key));
+        Visitor::EnqueueAny(&tasks, bind_free_vars, &kv.second, &rhs_it->second, path->WithDictKey(lhs_key));
       }
       auto &err = tasks[task_index].err;
       if (!not_found_lhs_keys.empty()) {
@@ -427,7 +366,7 @@ inline uint64_t StructuralHash(Object *obj) {
     MLC_INLINE void operator()(MLCTypeField *field, StructureFieldKind field_kind, ObjectRef *_v) {
       HandleObject(field, field_kind, _v->get());
     }
-    MLC_INLINE void operator()(MLCTypeField *field, StructureFieldKind field_kind, Optional<Object> *_v) {
+    MLC_INLINE void operator()(MLCTypeField *field, StructureFieldKind field_kind, Optional<ObjectRef> *_v) {
       HandleObject(field, field_kind, _v->get());
     }
     inline void HandleObject(MLCTypeField *, StructureFieldKind field_kind, Object *v) {
@@ -457,7 +396,7 @@ inline uint64_t StructuralHash(Object *obj) {
         hash_value = HashTyped(HashCache::kStrObj, hash_value);
         EnqueuePOD(tasks, hash_value);
       } else if (type_index == kMLCFunc || type_index == kMLCError) {
-        throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", nullptr);
+        throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", ObjectPath::Root());
       } else {
         MLCTypeInfo *type_info = ::mlc::base::TypeIndex2TypeInfo(type_index);
         tasks->emplace_back(Task{obj, type_info, false, bind_free_vars, type_info->type_key_hash});
@@ -593,7 +532,11 @@ inline uint64_t StructuralHash(Object *obj) {
 #undef MLC_CORE_HASH_S_POD
 #undef MLC_CORE_HASH_S_ANY
 
+MLC_REGISTER_FUNC("mlc.core.StructuralEqual").set_body(::mlc::core::StructuralEqual);
+MLC_REGISTER_FUNC("mlc.core.StructuralHash").set_body([](::mlc::Object *obj) -> int64_t {
+  uint64_t ret = ::mlc::core::StructuralHash(obj);
+  return static_cast<int64_t>(ret);
+});
+} // namespace
 } // namespace core
 } // namespace mlc
-
-#endif // MLC_CORE_STRUCTURE_H_

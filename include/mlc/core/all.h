@@ -5,21 +5,17 @@
 #include "./field_visitor.h" // IWYU pragma: export
 #include "./func.h"          // IWYU pragma: export
 #include "./func_details.h"  // IWYU pragma: export
-#include "./func_traits.h"   // IWYU pragma: export
-#include "./json.h"          // IWYU pragma: export
 #include "./list.h"          // IWYU pragma: export
 #include "./object.h"        // IWYU pragma: export
+#include "./object_path.h"   // IWYU pragma: export
 #include "./str.h"           // IWYU pragma: export
-#include "./structure.h"     // IWYU pragma: export
 #include "./typing.h"        // IWYU pragma: export
-#include "./udict.h"         // IWYU pragma: export
-#include "./ulist.h"         // IWYU pragma: export
 
 namespace mlc {
 namespace core {
 template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<T>::Run(const MLCAny &any) {
   try {
-    static_cast<const AnyView &>(any).Cast<T>();
+    static_cast<const AnyView &>(any).operator T();
   } catch (const Exception &e) {
     throw NestedTypeError(e.what()).NewFrame(base::Type2Str<T>::Run());
   }
@@ -27,7 +23,7 @@ template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<T>::Run(const MLCA
 
 template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<List<T>>::Run(const MLCAny &any) {
   try {
-    UList(static_cast<const AnyView &>(any));
+    [[maybe_unused]] UList ret(static_cast<const AnyView *>(&any));
   } catch (const Exception &e) {
     throw NestedTypeError(e.what()).NewFrame(::mlc::base::Type2Str<UList>::Run());
   }
@@ -46,7 +42,7 @@ template <typename T> MLC_INLINE_NO_MSVC void NestedTypeCheck<List<T>>::Run(cons
 
 template <typename K, typename V> MLC_INLINE_NO_MSVC void NestedTypeCheck<Dict<K, V>>::Run(const MLCAny &any) {
   try {
-    UDict(static_cast<const AnyView &>(any));
+    [[maybe_unused]] UDict ret(static_cast<const AnyView *>(&any));
   } catch (const Exception &e) {
     throw NestedTypeError(e.what()).NewFrame(::mlc::base::Type2Str<UDict>::Run());
   }
@@ -85,7 +81,7 @@ MLC_INLINE void DeleteExternObject(Object *objptr) {
     struct ExternObjDeleter {
       MLC_INLINE void operator()(MLCTypeField *, Any *any) { any->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { obj->Reset(); }
-      MLC_INLINE void operator()(MLCTypeField *, Optional<Object> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) { opt->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { opt->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { opt->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { opt->Reset(); }
@@ -110,6 +106,20 @@ MLC_INLINE void DeleteExternObject(Object *objptr) {
 }
 
 } // namespace core
+} // namespace mlc
+
+namespace mlc {
+namespace base {
+
+template <typename K, typename V>
+MLC_INLINE DictObj<K, V> *TypeTraits<DictObj<K, V> *>::AnyToTypeUnowned(const MLCAny *v) {
+  return ObjPtrTraitsDefault<UDictObj>::AnyToTypeUnowned(v)->AsTyped<K, V>();
+}
+template <typename E> MLC_INLINE ListObj<E> *TypeTraits<ListObj<E> *>::AnyToTypeUnowned(const MLCAny *v) {
+  return ObjPtrTraitsDefault<UListObj>::AnyToTypeUnowned(v)->AsTyped<E>();
+}
+
+} // namespace base
 } // namespace mlc
 
 #endif // MLC_CORE_ALL_H_

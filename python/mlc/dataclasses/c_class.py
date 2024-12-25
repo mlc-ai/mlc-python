@@ -11,8 +11,15 @@ from mlc._cython import (
     type_index2type_methods,
     type_key2py_type_info,
 )
+from mlc.core import typing as mlc_typing
 
-from .utils import inspect_dataclass_fields, method_init, prototype_py
+from .utils import (
+    add_vtable_methods_for_type_cls,
+    get_parent_type,
+    inspect_dataclass_fields,
+    method_init,
+    prototype_py,
+)
 
 ClsType = typing.TypeVar("ClsType")
 
@@ -26,19 +33,21 @@ def c_class(
         class type_cls(super_type_cls):  # type: ignore[valid-type,misc]
             __slots__ = ()
 
-        # Step 1. Retrieve `type_info` and set `_mlc_type_info`
+        # Step 1. Retrieve `type_info` from registry
         type_info: TypeInfo = type_key2py_type_info(type_key)
+        parent_type_info: TypeInfo = get_parent_type(super_type_cls)._mlc_type_info  # type: ignore[attr-defined]
+
         if type_info.type_cls is not None:
             raise ValueError(f"Type is already registered: {type_key}")
+        _, d_fields = inspect_dataclass_fields(type_key, type_cls, parent_type_info)
         type_info.type_cls = type_cls
-        setattr(type_cls, "_mlc_type_info", type_info)
+        type_info.d_fields = tuple(d_fields)
 
         # Step 2. Check if all fields are exposed as type annotations
-        if not type_key.startswith("mlc.core.typing."):
-            _check_c_class(type_key, super_type_cls, type_info)
+        _check_c_class(super_type_cls, type_info)
 
         # Step 3. Attach fields
-        setattr(type_cls, "_mlc_dataclass_fields", {})
+        setattr(type_cls, "_mlc_type_info", type_info)
         for field in type_info.fields:
             attach_field(
                 cls=type_cls,
@@ -49,18 +58,7 @@ def c_class(
             )
 
         # Step 4. Attach methods
-        method: TypeMethod
-        for method in type_index2type_methods(type_info.type_index):
-            if not method.name.startswith("_"):
-                attach_method(
-                    parent_cls=super_type_cls,
-                    cls=type_cls,
-                    name=method.name,
-                    method=method.as_callable(),
-                    check_exists=False,
-                )
         if init:
-            _, d_fields = inspect_dataclass_fields(type_key, type_cls, type_info)
             attach_method(
                 parent_cls=super_type_cls,
                 cls=type_cls,
@@ -68,23 +66,23 @@ def c_class(
                 method=method_init(super_type_cls, d_fields),
                 check_exists=True,
             )
+        add_vtable_methods_for_type_cls(super_type_cls, type_index=type_info.type_index)
         return type_cls
 
     return decorator
 
 
 def _check_c_class(
-    type_key: str,
     type_cls: type[ClsType],
     type_info: TypeInfo,
 ) -> None:
-    fields, _ = inspect_dataclass_fields(type_key, type_cls, type_info)
-    type_hints = {field.name: field.ty for field in fields}
+    type_hints = typing.get_type_hints(type_cls)
     warned: bool = False
     for field in type_info.fields:
         if field.name in type_hints:
             c_ty_str = field.ty.__str__()
-            py_ty_str = type_hints.pop(field.name).__str__()
+            py_ty = type_hints.pop(field.name)
+            py_ty_str = mlc_typing.from_py(py_ty).__str__()
             if c_ty_str != py_ty_str and not (c_ty_str == "char*" and py_ty_str == "str"):
                 warnings.warn(
                     f"Type mismatch on `{type_cls.__module__}.{type_cls.__qualname__}.{field.name}`: "

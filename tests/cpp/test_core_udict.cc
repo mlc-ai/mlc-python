@@ -1,6 +1,6 @@
 #include <algorithm>
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 
 namespace {
 
@@ -82,12 +82,16 @@ TEST(UDict, IteratorBasic) {
 TEST(UDict, FindMethod) {
   UDict dict{{"key1", 1}, {"key2", 2}};
   auto it = dict->find("key1");
-  EXPECT_NE(it, dict->end());
+  if (it == dict->end()) {
+    FAIL() << "Expected to find `key1`";
+  }
   EXPECT_EQ(it->first.operator std::string(), "key1");
   EXPECT_EQ(it->second.operator int(), 1);
 
   it = dict->find("non_existent");
-  EXPECT_EQ(it, dict->end());
+  if (it != dict->end()) {
+    FAIL() << "Expected not to find `non_existent`";
+  }
 }
 
 TEST(UDict, Rehash) {
@@ -145,25 +149,25 @@ TEST(UDict, ComplexValues) {
   dict["dtype"] = dtype;
   dict["object"] = obj;
 
-  if (Optional<int64_t> v = dict["Null"]) {
+  if (Optional<int64_t> v = dict["Null"]; v.defined()) {
     FAIL() << "Expected to return nullptr, but got: " << *v.get();
   } else {
     EXPECT_EQ(v.get(), nullptr);
   }
-  if (Optional<DLDevice> v = dict["device"]) {
+  if (Optional<DLDevice> v = dict["device"]; v.defined()) {
     EXPECT_EQ(v->device_type, kDLCPU);
     EXPECT_EQ(v->device_id, 0);
   } else {
     FAIL() << "Expected DLDevice value not found";
   }
-  if (Optional<DLDataType> v = dict["dtype"]) {
+  if (Optional<DLDataType> v = dict["dtype"]; v.defined()) {
     EXPECT_EQ(v->code, kDLFloat);
     EXPECT_EQ(v->bits, 32);
     EXPECT_EQ(v->lanes, 1);
   } else {
     FAIL() << "Expected DLDataType value not found";
   }
-  if (Optional<ObjectRef> v = dict["object"]) {
+  if (Optional<ObjectRef> v = dict["object"]; v.defined()) {
     EXPECT_EQ(v.get(), obj.get());
   } else {
     FAIL() << "Expected Object value not found";
@@ -250,7 +254,9 @@ TEST(UDict, ReverseIteratorBasic) {
 
 TEST(UDict, ReverseIteratorEmpty) {
   UDict dict;
-  EXPECT_EQ(dict->rbegin(), dict->rend());
+  if (dict->rbegin() != dict->rend()) {
+    FAIL() << "Expected empty range";
+  }
 }
 
 TEST(UDict, ReverseIteratorSingleElement) {
@@ -259,7 +265,9 @@ TEST(UDict, ReverseIteratorSingleElement) {
   EXPECT_EQ(it->first.operator std::string(), "key");
   EXPECT_EQ(it->second.operator std::string(), "value");
   ++it;
-  EXPECT_EQ(it, dict->rend());
+  if (it != dict->rend()) {
+    FAIL() << "Expected end of range";
+  }
 }
 
 TEST(UDict, ReverseIteratorModification) {

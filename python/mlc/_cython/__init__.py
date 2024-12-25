@@ -10,6 +10,7 @@ from .base import (
     DeviceType,
     DLDataType,
     DLDevice,
+    Field,
     MetaNoSlots,
     MLCAny,
     MLCHeader,

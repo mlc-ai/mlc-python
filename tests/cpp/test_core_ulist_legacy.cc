@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 
 namespace {
 
@@ -335,7 +335,9 @@ TEST(Legacy_UList_PopBack, Heterogeneous) {
   EXPECT_EQ(list->size(), 0);
   EXPECT_EQ(list->capacity(), n);
   EXPECT_EQ(list->empty(), true);
-  EXPECT_EQ(list->begin(), list->end());
+  if (list->begin() != list->end()) {
+    FAIL() << "List is not empty";
+  }
   try {
     list->pop_back();
     FAIL() << "No exception thrown";

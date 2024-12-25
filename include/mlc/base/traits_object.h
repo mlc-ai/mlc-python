@@ -35,6 +35,19 @@ template <typename T> struct TypeTraits<T *, std::enable_if_t<IsObj<T> && !IsTem
   MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) { return ObjPtrTraitsDefault<T>::AnyToTypeOwned(v); }
 };
 
+template <typename E> struct TypeTraits<ListObj<E> *> {
+  using T = ListObj<E>;
+  MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) { ObjPtrTraitsDefault<UListObj>::TypeToAny(src, ret); }
+  MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) { return AnyToTypeUnowned(v); }
+  MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v);
+};
+template <typename K, typename V> struct TypeTraits<DictObj<K, V> *> {
+  using T = DictObj<K, V>;
+  MLC_INLINE static void TypeToAny(T *src, MLCAny *ret) { ObjPtrTraitsDefault<UDictObj>::TypeToAny(src, ret); }
+  MLC_INLINE static T *AnyToTypeOwned(const MLCAny *v) { return AnyToTypeUnowned(v); }
+  MLC_INLINE static T *AnyToTypeUnowned(const MLCAny *v);
+};
+
 template <typename DerivedType, typename SelfType> MLC_INLINE bool IsInstanceOf(const MLCAny *self) {
   if constexpr (std::is_same_v<DerivedType, Object> || std::is_base_of_v</*base=*/DerivedType, /*derived=*/SelfType>) {
     return true;

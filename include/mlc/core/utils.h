@@ -1,8 +1,6 @@
 #ifndef MLC_CORE_UTILS_H_
 #define MLC_CORE_UTILS_H_
 
-#include "./func_traits.h" // IWYU pragma: export
-#include <iomanip>
 #include <mlc/base/all.h>
 #include <type_traits>
 #include <vector>
@@ -25,16 +23,6 @@
   MLC_UNREACHABLE()
 
 namespace mlc {
-enum class StructureKind : int32_t {
-  kNone = 0,
-  kNoBind = 1,
-  kBind = 2,
-  kVar = 3,
-};
-enum class StructureFieldKind : int32_t {
-  kNoBind = 0,
-  kBind = 1,
-};
 namespace core {
 namespace typing {
 struct Type;
@@ -43,35 +31,10 @@ template <typename T> typing::Type ParseType();
 } // namespace core
 } // namespace mlc
 
-/********** Section 1. Exception *********/
-
-namespace mlc {
-struct Exception : public std::exception {
-  Exception(Ref<ErrorObj> data);
-  Exception(const Exception &other) : data_(other.data_) {}
-  Exception(Exception &&other) : data_(std::move(other.data_)) {}
-  Exception &operator=(const Exception &other) {
-    this->data_ = other.data_;
-    return *this;
-  }
-  Exception &operator=(Exception &&other) {
-    this->data_ = std::move(other.data_);
-    return *this;
-  }
-  const ErrorObj *Obj() const { return reinterpret_cast<const ErrorObj *>(data_.get()); }
-  const char *what() const noexcept(true) override;
-  void FormatExc(std::ostream &os) const;
-
-  Ref<Object> data_;
-};
-} // namespace mlc
-
 namespace mlc {
 namespace core {
 
-template <typename Callable> Any CallableToAny(Callable &&callable); // TODO: move to mlc/base?
-
-/********** Section 2. Nested type checking *********/
+/********** Section 1. Nested type checking *********/
 
 struct NestedTypeError : public std::runtime_error {
   explicit NestedTypeError(const char *msg) : std::runtime_error(msg) {}
@@ -137,7 +100,7 @@ template <typename K, typename V> struct NestedTypeCheck<Dict<K, V>> {
   MLC_INLINE_NO_MSVC static void Run(const MLCAny &any);
 };
 
-/********** Section 3. Reflection *********/
+/********** Section 2. Reflection *********/
 
 struct ReflectionHelper {
   static constexpr int32_t kMemFn = 0;
@@ -146,7 +109,7 @@ struct ReflectionHelper {
   explicit ReflectionHelper(int32_t type_index) : type_index(type_index) {}
 
   template <typename Cls> inline ReflectionHelper &Init() {
-    this->func_any_to_ref = CallableToAny(AnyToRef<Cls>);
+    this->func_any_to_ref = ::mlc::base::CallableToAny(AnyToRef<Cls>);
     return *this;
   }
 
@@ -220,9 +183,6 @@ struct ReflectionHelper {
         }
         return false;
       };
-      if (!has_method("__str__")) {
-        this->MemFn("__str__", &ReflectionHelper::DefaultStrMethod);
-      }
       if (!has_method("__any_to_ref__") && func_any_to_ref.defined()) {
         this->methods.emplace_back(MLCTypeMethod{"__any_to_ref__",                                     //
                                                  reinterpret_cast<MLCFunc *>(func_any_to_ref.v.v_obj), //
@@ -239,19 +199,12 @@ struct ReflectionHelper {
     return 0;
   }
 
-  static inline std::string DefaultStrMethod(AnyView any) { // TODO: maybe move to private?
-    std::ostringstream os;
-    os << ::mlc::base::TypeIndex2TypeKey(any.type_index) << "@0x" << std::setfill('0') << std::setw(12) << std::hex
-       << (uintptr_t)(any.v.v_ptr);
-    return os.str();
-  }
-
 private:
   template <typename Cls, typename FieldType> constexpr std::ptrdiff_t ReflectOffset(FieldType Cls::*member) {
     return reinterpret_cast<std::ptrdiff_t>(&((Cls *)(nullptr)->*member));
   }
 
-  template <typename TObj> static Ref<TObj> AnyToRef(AnyView src) { return Ref<TObj>(src); }
+  template <typename TObj> static Ref<TObj> AnyToRef(AnyView src) { return src.operator Ref<TObj>(); }
 
   template <typename Cls, typename FieldType>
   inline MLCTypeField PrepareField(const char *name, FieldType Cls::*field) {
@@ -268,7 +221,7 @@ private:
   }
 
   template <typename Callable> inline MLCTypeMethod PrepareMethod(const char *name, Callable &&method) {
-    Any func = CallableToAny(std::forward<Callable>(method));
+    Any func = ::mlc::base::CallableToAny(std::forward<Callable>(method));
     this->any_pool.push_back(func);
     return MLCTypeMethod{name, reinterpret_cast<MLCFunc *>(func.v.v_obj), -1};
   }

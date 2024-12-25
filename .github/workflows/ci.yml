@@ -4,7 +4,7 @@ on: [push, pull_request]
 env:
   CIBW_BUILD_VERBOSITY: 3
   CIBW_TEST_REQUIRES: "pytest"
-  CIBW_TEST_COMMAND: "pytest -svv {project}/tests/python/"
+  CIBW_TEST_COMMAND: "pytest -svv --durations=20 {project}/tests/python/"
   MLC_CIBW_VERSION: "2.20.0"
   MLC_PYTHON_VERSION: "3.9"
   MLC_CIBW_WIN_BUILD: "cp39-win_amd64"

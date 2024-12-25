@@ -9,9 +9,8 @@ namespace mlc {
 
 template <typename T> struct DefaultObjectAllocator {
   using Storage = typename std::aligned_storage<sizeof(T), alignof(T)>::type;
-  template <typename... Args> static constexpr bool CanConstruct = std::is_constructible_v<T, Args...>;
 
-  template <typename... Args, typename = std::enable_if_t<CanConstruct<Args...>>>
+  template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
   MLC_INLINE_NO_MSVC static T *New(Args &&...args) {
     Storage *data = new Storage;
     try {
@@ -27,7 +26,7 @@ template <typename T> struct DefaultObjectAllocator {
     return ret;
   }
 
-  template <typename PadType, typename... Args, typename = std::enable_if_t<CanConstruct<Args...>>>
+  template <typename PadType, typename... Args, typename = std::enable_if_t<std::is_constructible_v<T, Args...>>>
   MLC_INLINE_NO_MSVC static T *NewWithPad(size_t pad_size, Args &&...args) {
     size_t num_storages = (sizeof(T) + pad_size * sizeof(PadType) + sizeof(Storage) - 1) / sizeof(Storage);
     Storage *data = new Storage[num_storages];

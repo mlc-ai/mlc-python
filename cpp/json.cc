@@ -1,31 +1,19 @@
-#ifndef MLC_CORE_JSON_H_
-#define MLC_CORE_JSON_H_
-#include "./field_visitor.h"
-#include "./func.h"
-#include "./str.h"
-#include "./udict.h"
-#include "./ulist.h"
 #include <cstdint>
 #include <iomanip>
-#include <mlc/base/all.h>
+#include <mlc/core/all.h>
 #include <sstream>
 
 namespace mlc {
 namespace core {
+namespace {
 
 mlc::Str Serialize(Any any);
 Any Deserialize(const char *json_str, int64_t json_str_len);
 Any JSONLoads(const char *json_str, int64_t json_str_len);
 MLC_INLINE Any Deserialize(const char *json_str) { return Deserialize(json_str, -1); }
 MLC_INLINE Any Deserialize(const Str &json_str) { return Deserialize(json_str->data(), json_str->size()); }
-MLC_INLINE Any Deserialize(const std::string &json_str) {
-  return Deserialize(json_str.data(), static_cast<int64_t>(json_str.size()));
-}
 MLC_INLINE Any JSONLoads(const char *json_str) { return JSONLoads(json_str, -1); }
 MLC_INLINE Any JSONLoads(const Str &json_str) { return JSONLoads(json_str->data(), json_str->size()); }
-MLC_INLINE Any JSONLoads(const std::string &json_str) {
-  return JSONLoads(json_str.data(), static_cast<int64_t>(json_str.size()));
-}
 
 inline mlc::Str Serialize(Any any) {
   using mlc::base::TypeTraits;
@@ -46,7 +34,7 @@ inline mlc::Str Serialize(Any any) {
     // clang-format off
       MLC_INLINE void operator()(MLCTypeField *, const Any *any) { EmitAny(any); }
       MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { if (Object *v = obj->get()) EmitObject(v); else EmitNil(); }
-      MLC_INLINE void operator()(MLCTypeField *, Optional<Object> *opt) { if (Object *v = opt->get()) EmitObject(v); else EmitNil(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) { if (Object *v = opt->get()) EmitObject(v); else EmitNil(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { if (const int64_t *v = opt->get()) EmitInt(*v); else EmitNil(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { if (const double *v = opt->get())  EmitFloat(*v); else EmitNil(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { if (const DLDevice *v = opt->get()) EmitDevice(*v); else EmitNil(); }
@@ -119,25 +107,21 @@ inline mlc::Str Serialize(Any any) {
     } else {
       os->put(',');
     }
-    int32_t type_index = type_info->type_index;
-    if (type_index == kMLCStr) {
-      StrObj *str = reinterpret_cast<StrObj *>(object);
+    if (StrObj *str = object->TryCast<StrObj>()) {
       str->PrintEscape(*os);
       return;
     }
     (*os) << '[' << (*get_json_type_index)(type_info->type_key);
-    if (type_index == kMLCList) {
-      UListObj *list = reinterpret_cast<UListObj *>(object); // TODO: support Downcast
+    if (UListObj *list = object->TryCast<UListObj>()) {
       for (Any &any : *list) {
         emitter(nullptr, &any);
       }
-    } else if (type_index == kMLCDict) {
-      UDictObj *dict = reinterpret_cast<UDictObj *>(object); // TODO: support Downcast
+    } else if (UDictObj *dict = object->TryCast<UDictObj>()) {
       for (auto &kv : *dict) {
         emitter(nullptr, &kv.first);
         emitter(nullptr, &kv.second);
       }
-    } else if (type_index == kMLCFunc || type_index == kMLCError) {
+    } else if (object->IsInstance<FuncObj>() || object->IsInstance<ErrorObj>()) {
       MLC_THROW(TypeError) << "Unserializable type: " << object->GetTypeKey();
     } else {
       VisitFields(object, type_info, emitter);
@@ -182,9 +166,9 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len) {
   MLCVTableHandle init_vtable;
   MLCVTableGetGlobal(nullptr, "__init__", &init_vtable);
   // Step 0. Parse JSON string
-  UDict json_obj = JSONLoads(json_str, json_str_len).operator UDict(); // TODO: impl "Any -> UDict"
+  UDict json_obj = JSONLoads(json_str, json_str_len);
   // Step 1. type_key => constructors
-  UList type_keys = json_obj->at(Str("type_keys")).operator UList(); // TODO: impl `UDict::at(Str)`
+  UList type_keys = json_obj->at("type_keys");
   std::vector<Func> constructors;
   constructors.reserve(type_keys.size());
   for (Str type_key : type_keys) {
@@ -205,7 +189,7 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len) {
     return ret;
   };
   // Step 2. Translate JSON object to objects
-  UList values = json_obj->at(Str("values")).operator UList(); // TODO: impl `UDict::at(Str)`
+  UList values = json_obj->at("values");
   for (int64_t i = 0; i < values->size(); ++i) {
     Any obj = values[i];
     if (obj.type_index == kMLCList) {
@@ -492,7 +476,22 @@ inline Any JSONLoads(const char *json_str, int64_t json_str_len) {
   return JSONParser{0, json_str_len, json_str}.Parse();
 }
 
+MLC_REGISTER_FUNC("mlc.core.JSONLoads").set_body([](AnyView json_str) {
+  if (json_str.type_index == kMLCRawStr) {
+    return ::mlc::core::JSONLoads(json_str.operator const char *());
+  } else {
+    ::mlc::Str str = json_str;
+    return ::mlc::core::JSONLoads(str);
+  }
+});
+MLC_REGISTER_FUNC("mlc.core.JSONSerialize").set_body(::mlc::core::Serialize);
+MLC_REGISTER_FUNC("mlc.core.JSONDeserialize").set_body([](AnyView json_str) {
+  if (json_str.type_index == kMLCRawStr) {
+    return ::mlc::core::Deserialize(json_str.operator const char *());
+  } else {
+    return ::mlc::core::Deserialize(json_str.operator ::mlc::Str());
+  }
+});
+} // namespace
 } // namespace core
 } // namespace mlc
-
-#endif // MLC_CORE_JSON_H_

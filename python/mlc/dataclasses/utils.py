@@ -10,6 +10,7 @@ from typing import Any, Literal, TypeVar, get_type_hints
 
 from mlc._cython import (
     MISSING,
+    Field,
     TypeField,
     TypeInfo,
     TypeMethod,
@@ -20,20 +21,6 @@ from mlc.core import typing as mlc_typing
 
 KIND_MAP = {None: 0, "nobind": 1, "bind": 2, "var": 3}
 SUB_STRUCTURES = {"nobind": 0, "bind": 1}
-
-
-@dataclasses.dataclass
-class Field:
-    structure: Literal["bind", "nobind"] | None
-    default_factory: Callable[[], Any]
-    name: str | None
-
-    def __post_init__(self) -> None:
-        if self.structure not in (None, "bind", "nobind"):
-            raise ValueError(
-                "Invalid `field.structure`. Expected `bind` or `nobind`, "
-                f"but got: {self.structure}"
-            )
 
 
 class DefaultFactory(typing.NamedTuple):
@@ -127,7 +114,7 @@ def field(
     )
 
 
-def inspect_dataclass_fields(
+def inspect_dataclass_fields(  # noqa: PLR0912
     type_key: str,
     type_cls: type,
     parent_type_info: TypeInfo,
@@ -178,7 +165,10 @@ def inspect_dataclass_fields(
             continue
         rhs = getattr(type_cls, lhs, MISSING)
         if isinstance(rhs, property):
-            rhs = type_cls._mlc_dataclass_fields.get(lhs, MISSING)  # type: ignore[attr-defined]
+            for parent_d_field in parent_type_info.d_fields:
+                if parent_d_field.name == lhs:
+                    rhs = parent_d_field
+                    break
         if rhs is MISSING:
             d_field = field()
         elif isinstance(rhs, (int, float, str, bool, type(None))):
@@ -186,7 +176,7 @@ def inspect_dataclass_fields(
         elif isinstance(rhs, Field):
             d_field = rhs
         else:
-            raise ValueError(f"Cannot recognize field: {type_field.name}")
+            raise ValueError(f"Cannot recognize field: {type_field.name}: {rhs}")
         d_field.name = type_field.name
         d_fields.append(d_field)
     return type_fields, d_fields
@@ -282,6 +272,16 @@ def structure_parse(
     )
 
 
+def get_parent_type(type_cls: type) -> type:
+    for base in type_cls.__bases__:
+        if hasattr(base, "_mlc_type_info"):
+            return base
+    raise ValueError(
+        f"No parent type found for `{type_cls.__module__}.{type_cls.__qualname__}`. "
+        f"The type must inherit from `mlc.Object`."
+    )
+
+
 def add_vtable_method(
     type_cls: type,
     name: str,
@@ -308,6 +308,18 @@ def vtable_method(is_static: bool) -> Callable[[FuncType], FuncType]:
         return method
 
     return decorator
+
+
+def add_vtable_methods_for_type_cls(type_cls: type, type_index: int) -> None:
+    for name, func in vars(type_cls).items():
+        if not callable(func):
+            continue
+        # kind: 0  =>  member method
+        # kind: 1  =>  static method
+        if (is_static := getattr(func, "_mlc_is_static_func", None)) is not None:
+            type_add_method(type_index, name, func, kind=int(is_static))
+        elif name in ("__ir_print__",):
+            type_add_method(type_index, name, func, kind=0)
 
 
 def prototype_py(type_info: type | TypeInfo) -> str:

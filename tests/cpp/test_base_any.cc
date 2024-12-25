@@ -1,13 +1,15 @@
+#include "mlc/base/base_traits.h"
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 #include <type_traits>
 
 namespace {
 using namespace mlc;
 using mlc::base::DataTypeEqual;
 using mlc::base::DeviceEqual;
+using mlc::base::FuncCanonicalize;
 
-using MyFuncTraits = FuncTraits<void(int32_t num_args, const AnyView *args, Any *ret)>;
+using MyFuncTraits = FuncCanonicalize<void(int32_t num_args, const AnyView *args, Any *ret)>;
 static_assert(MyFuncTraits::packed);
 static_assert(!MyFuncTraits::unpacked);
 
@@ -511,6 +513,32 @@ TEST(Any, Constructor_Any_ObjPtr) {
     CheckObjPtr(v, MLCTypeIndex::kMLCStr, v_obj, 1);
     CheckAnyPOD(src, MLCTypeIndex::kMLCNone, 0);
   }
+}
+
+TEST(AnyView, RTTI_POD) {
+  AnyView v(1);
+  EXPECT_FALSE(v.IsInstance<Object>());
+  EXPECT_EQ(v.TryCast<Object>(), nullptr);
+}
+
+TEST(AnyView, RTTI_Object) {
+  ObjectRef obj;
+  AnyView v(obj);
+  EXPECT_TRUE(v.IsInstance<Object>());
+  EXPECT_EQ(v.TryCast<Object>(), obj.get());
+}
+
+TEST(Any, RTTI_POD) {
+  Any v(1);
+  EXPECT_FALSE(v.IsInstance<Object>());
+  EXPECT_EQ(v.TryCast<Object>(), nullptr);
+}
+
+TEST(Any, RTTI_Object) {
+  ObjectRef obj;
+  Any v(obj);
+  EXPECT_TRUE(v.IsInstance<Object>());
+  EXPECT_EQ(v.TryCast<Object>(), obj.get());
 }
 
 } // namespace

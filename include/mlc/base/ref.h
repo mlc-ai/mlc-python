@@ -2,77 +2,55 @@
 #define MLC_BASE_REF_H_
 
 #include "./alloc.h"
-#include "./any.h"
 #include "./utils.h"
 #include <type_traits>
 
-#define MLC_DEF_OBJ_PTR_METHODS_(SelfType, ObjType, ParentType)                                                        \
-private:                                                                                                               \
-  template <typename> friend struct ::mlc::Ref;                                                                        \
-  template <typename> friend struct ::mlc::base::Type2Str;                                                             \
-  template <typename> friend struct ::mlc::base::ObjPtrHelper;                                                         \
-  using TBase = ::mlc::base::PtrBase;                                                                                  \
-  using TSelf = SelfType;                                                                                              \
-  using THelper = ::mlc::base::ObjPtrHelper<SelfType>;                                                                 \
-  template <typename U> using Derived = std::enable_if_t<::mlc::base::IsDerivedFrom<U, ObjType>>;                      \
-  template <typename U> using DerivedObjRef = std::enable_if_t<::mlc::base::IsObjRefDerivedFrom<U, ObjType>>;          \
-                                                                                                                       \
-public:                                                                                                                \
-  using TObj = ObjType;                                                                                                \
-  MLC_INLINE ~SelfType() = default;                                                                                    \
-  MLC_INLINE SelfType(::mlc::NullType) : ParentType(::mlc::Null) {}                                                    \
-  MLC_INLINE SelfType &operator=(::mlc::NullType) { return this->Reset(); }                                            \
-  MLC_INLINE const ObjType *operator->() const { return get(); }                                                       \
-  MLC_INLINE ObjType *operator->() { return get(); }                                                                   \
-  MLC_INLINE const ObjType &operator*() const {                                                                        \
-    if (const ObjType *ret = get()) {                                                                                  \
-      return *ret;                                                                                                     \
+#define MLC_DEF_RTTI_METHODS(CheckNulll, ObjPtrMut, ObjPtrConst)                                                       \
+  template <typename DerivedObj> MLC_INLINE bool IsInstance() const {                                                  \
+    if constexpr (CheckNulll) {                                                                                        \
+      if ((ObjPtrConst) == nullptr) {                                                                                  \
+        return false;                                                                                                  \
+      }                                                                                                                \
     }                                                                                                                  \
-    MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                  \
+    return ::mlc::base::IsInstanceOf<DerivedObj, TObj>(ObjPtrConst);                                                   \
   }                                                                                                                    \
-  MLC_INLINE ObjType &operator*() {                                                                                    \
-    if (ObjType *ret = get()) {                                                                                        \
-      return *ret;                                                                                                     \
+  template <typename DerivedObj> MLC_INLINE DerivedObj *TryCast() {                                                    \
+    return this->IsInstance<DerivedObj>() ? reinterpret_cast<DerivedObj *>(ObjPtrMut) : nullptr;                       \
+  }                                                                                                                    \
+  template <typename DerivedObj> MLC_INLINE const DerivedObj *TryCast() const {                                        \
+    return this->IsInstance<DerivedObj>() ? reinterpret_cast<const DerivedObj *>(ObjPtrConst) : nullptr;               \
+  }                                                                                                                    \
+  template <typename DerivedObj> inline DerivedObj *Cast() {                                                           \
+    if constexpr (CheckNulll) {                                                                                        \
+      if ((ObjPtrConst) == nullptr) {                                                                                  \
+        return nullptr;                                                                                                \
+      }                                                                                                                \
     }                                                                                                                  \
-    MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                  \
+    if (::mlc::base::IsInstanceOf<DerivedObj, TObj>(ObjPtrMut)) {                                                      \
+      return reinterpret_cast<DerivedObj *>(ObjPtrMut);                                                                \
+    }                                                                                                                  \
+    MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::base::TypeIndex2TypeKey(ObjPtrMut) << "` to type `"    \
+                         << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";                                           \
     MLC_UNREACHABLE();                                                                                                 \
   }                                                                                                                    \
-  MLC_INLINE SelfType &Reset() {                                                                                       \
-    ParentType::Reset();                                                                                               \
-    return *this;                                                                                                      \
+  template <typename DerivedObj> MLC_INLINE const DerivedObj *Cast() const {                                           \
+    if constexpr (CheckNulll) {                                                                                        \
+      if ((ObjPtrConst) == nullptr) {                                                                                  \
+        return nullptr;                                                                                                \
+      }                                                                                                                \
+    }                                                                                                                  \
+    if (::mlc::base::IsInstanceOf<DerivedObj, TObj>(ObjPtrConst)) {                                                    \
+      return reinterpret_cast<const DerivedObj *>(ObjPtrConst);                                                        \
+    }                                                                                                                  \
+    MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::base::TypeIndex2TypeKey(ObjPtrConst) << "` to type `"  \
+                         << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";                                           \
+    MLC_UNREACHABLE();                                                                                                 \
   }                                                                                                                    \
-  MLC_INLINE SelfType(const SelfType &src) : ParentType(::mlc::Null) {                                                 \
-    this->_SetObjPtr(src.ptr);                                                                                         \
-    this->IncRef();                                                                                                    \
-  }                                                                                                                    \
-  MLC_INLINE SelfType(SelfType &&src) : ParentType(::mlc::Null) {                                                      \
-    this->_SetObjPtr(src.ptr);                                                                                         \
-    src.ptr = nullptr;                                                                                                 \
-  }                                                                                                                    \
-  MLC_INLINE TSelf &operator=(const SelfType &other) {                                                                 \
-    TSelf(other).Swap(*this);                                                                                          \
-    return *this;                                                                                                      \
-  }                                                                                                                    \
-  MLC_INLINE TSelf &operator=(SelfType &&other) {                                                                      \
-    TSelf(std::move(other)).Swap(*this);                                                                               \
-    return *this;                                                                                                      \
-  }                                                                                                                    \
-  using ::mlc::base::PtrBase::operator==;                                                                              \
-  using ::mlc::base::PtrBase::operator!=;                                                                              \
-  using ::mlc::base::PtrBase::defined
+  MLC_INLINE const char *GetTypeKey() const { return ::mlc::base::TypeIndex2TypeKey(ObjPtrConst); }                    \
+  MLC_INLINE int32_t GetTypeIndex() const { return ::mlc::base::TypeIndexOf(ObjPtrConst); }
 
 namespace mlc {
 namespace base {
-
-template <typename TRef> struct ObjPtrHelper {
-  using TObj = typename TRef::TObj;
-  template <typename ObjPtrType> MLC_INLINE static MLCAny *GetPtr(const ObjPtrType *self) { return self->ptr; }
-  template <typename ObjPtrType> MLC_INLINE static MLCAny *MovePtr(ObjPtrType *self) {
-    MLCAny *ptr = self->ptr;
-    self->ptr = nullptr;
-    return ptr;
-  }
-};
 
 struct PtrBase : public MLCObjPtr {
 protected:
@@ -80,141 +58,197 @@ protected:
   MLC_INLINE PtrBase() : MLCObjPtr{nullptr} {}
   MLC_INLINE PtrBase(::mlc::NullType) : MLCObjPtr{nullptr} {}
   MLC_INLINE PtrBase(MLCAny *v) : MLCObjPtr{v} {}
-  MLC_INLINE void _SetObjPtr(MLCAny *v) { this->ptr = v; }
-  MLC_INLINE void Reset() {
-    this->DecRef();
-    this->ptr = nullptr;
+  MLC_INLINE PtrBase(const MLCAny *v) : MLCObjPtr{const_cast<MLCAny *>(v)} {}
+  MLC_INLINE void _Set(MLCAny *v) { this->ptr = v; }
+  MLC_INLINE void _Set(const MLCAny *v) { this->ptr = const_cast<MLCAny *>(v); }
+  MLC_INLINE void _Set(MLCObjPtr &v) { this->ptr = v.ptr; }
+  MLC_INLINE void _Set(const MLCObjPtr &v) { this->ptr = const_cast<MLCAny *>(v.ptr); }
+  MLC_INLINE void _Move(MLCObjPtr &&v) {
+    this->ptr = v.ptr;
+    v.ptr = nullptr;
   }
   MLC_INLINE void IncRef() { ::mlc::base::IncRef(this->ptr); }
   MLC_INLINE void DecRef() { ::mlc::base::DecRef(this->ptr); }
   MLC_INLINE void Swap(PtrBase &other) { std::swap(this->ptr, other.ptr); }
-  MLC_INLINE bool defined() const { return this->ptr != nullptr; }
-  MLC_INLINE bool operator==(std::nullptr_t) const { return this->ptr == nullptr; }
-  MLC_INLINE bool operator!=(std::nullptr_t) const { return this->ptr != nullptr; }
-  template <typename T> MLC_INLINE void _Init(const MLCAny &v) {
-    T *ret = [&v]() -> T * {
-      MLC_TRY_CONVERT(TypeTraits<T *>::AnyToTypeOwned(&v), v.type_index, Type2Str<T *>::Run());
+  template <typename T> inline void _Init(const MLCAny *v) {
+    if (::mlc::base::IsTypeIndexNone(v->type_index)) {
+      this->ptr = nullptr;
+      return;
+    }
+    T *ret = [v]() -> T * {
+      MLC_TRY_CONVERT(TypeTraits<T *>::AnyToTypeOwned(v), v->type_index, Type2Str<T *>::Run());
     }();
     this->ptr = reinterpret_cast<MLCAny *>(ret);
     this->IncRef();
   }
   template <typename T> MLC_INLINE void _InitPOD(T v) {
-    using Alloc = ::mlc::PODAllocator<T>;
-    this->ptr = Alloc::New(v);
+    this->ptr = ::mlc::PODAllocator<T>::New(v);
     this->IncRef();
+  }
+  MLC_INLINE void Reset() {
+    this->DecRef();
+    this->ptr = nullptr;
+  }
+  template <typename T> MLC_INLINE void CheckNull() {
+    if (this->ptr == nullptr) {
+      MLC_THROW(TypeError) << "Cannot convert from type `None` to non-nullable `" << ::mlc::base::Type2Str<T>::Run()
+                           << "`";
+    }
   }
 };
 
-struct ObjectRefDummyRoot : protected PtrBase {
-  ObjectRefDummyRoot() : PtrBase() {}
-  ObjectRefDummyRoot(NullType) : PtrBase() {}
-};
 } // namespace base
 } // namespace mlc
 
 namespace mlc {
-template <typename T> struct Ref : protected ::mlc::base::PtrBase {
-  MLC_DEF_OBJ_PTR_METHODS_(Ref<T>, T, ::mlc::base::PtrBase);
+template <typename _TObj> struct Ref : protected ::mlc::base::PtrBase {
+public:
+  using TObj = _TObj;
+  using TSelf = Ref<TObj>;
+  [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kRef;
+
+private:
+  using TBase = ::mlc::base::PtrBase;
+  template <typename U> using DObj = std::enable_if_t<::mlc::base::IsDerivedFrom<U, TObj>>;
+  template <typename U> using DObjRef = std::enable_if_t<::mlc::base::IsDerivedFromObjRef<U, TObj>>;
+  template <typename U> using DOpt = std::enable_if_t<::mlc::base::IsDerivedFromOpt<U, TObj>>;
+
+public:
   /***** Section 1. Default constructor/destructors *****/
   MLC_INLINE Ref() : TBase() {}
   MLC_INLINE Ref(std::nullptr_t) : Ref(::mlc::Null) {}
+  MLC_INLINE Ref(::mlc::NullType) : TBase(::mlc::Null) {}
   MLC_INLINE Ref &operator=(std::nullptr_t) { return (*this = ::mlc::Null); }
-  /***** Section 2. From `U * / Ref<U> / ObjRef::U` where `U` is derived from `T` *****/
-  template <typename U, typename = Derived<U>> /**/
-  MLC_INLINE Ref(U *src) : TBase(reinterpret_cast<MLCAny *>(src)) {
-    this->IncRef();
-  }
-  template <typename U, typename = Derived<U>> /**/
-  MLC_INLINE Ref(const Ref<U> &src) : TBase(src.ptr) {
-    this->IncRef();
-  }
-  template <typename U, typename = Derived<U>> /**/
-  MLC_INLINE Ref(Ref<U> &&src) : TBase(src.ptr) {
-    src.ptr = nullptr;
-  }
-  template <typename U, typename = Derived<U>> /**/
-  MLC_INLINE TSelf &operator=(const Ref<U> &other) {
-    TSelf(other).Swap(*this);
-    return *this;
-  }
-  template <typename U, typename = Derived<U>> /**/
-  MLC_INLINE TSelf &operator=(Ref<U> &&other) {
-    TSelf(std::move(other)).Swap(*this);
-    return *this;
-  }
-  template <typename U, typename = DerivedObjRef<U>> /**/
-  MLC_INLINE Ref(const U &src) : TBase(src.ptr) {
-    this->IncRef();
-  }
-  template <typename U, typename = DerivedObjRef<U>> /**/
-  MLC_INLINE Ref(U &&src) : TBase(src.ptr) {
-    src.ptr = nullptr;
-  }
-  template <typename U, typename = DerivedObjRef<U>> /**/
-  MLC_INLINE TSelf &operator=(const U &other) {
-    TSelf(other).Swap(*this);
-    return *this;
-  }
-  template <typename U, typename = DerivedObjRef<U>> /**/
-  MLC_INLINE TSelf &operator=(U &&other) {
-    TSelf(std::move(other)).Swap(*this);
-    return *this;
-  }
-  /***** Section 3. The `new` operator *****/
-  template <typename... Args, typename = std::enable_if_t<::mlc::base::Newable<T, Args...>>>
+  MLC_INLINE TSelf &operator=(::mlc::NullType) { return this->Reset(); }
+  MLC_INLINE ~Ref() = default;
+  // clang-format off
+  MLC_INLINE Ref(const TSelf &src) : TBase(::mlc::Null) { this->_Set(src.ptr); this->IncRef(); }
+  MLC_INLINE Ref(TSelf &&src) : TBase(::mlc::Null) { this->_Set(src.ptr); src.ptr = nullptr; }
+  MLC_INLINE TSelf &operator=(const TSelf &other) { TSelf(other).Swap(*this); return *this; }
+  MLC_INLINE TSelf &operator=(TSelf &&other) { TSelf(std ::move(other)).Swap(*this); return *this; }
+  MLC_INLINE TSelf &Reset() { TBase::Reset(); return *this; }
+  // clang-format on
+  /***** Section 2. The `new` operator *****/
+  template <typename... Args, typename = std::enable_if_t<::mlc::base::Allocatable<TObj, Args...>>>
   MLC_INLINE static TSelf New(Args &&...args) {
-    return TSelf(::mlc::base::AllocatorOf<T>::New(std::forward<Args>(args)...));
+    return TSelf(::mlc::base::AllocatorOf<TObj>::New(std::forward<Args>(args)...));
   }
   template <size_t N> MLC_INLINE static TSelf New(const ::mlc::base::CharArray<N> &arg) {
-    return TSelf(::mlc::base::AllocatorOf<T>::template New<N>(arg));
+    return TSelf(::mlc::base::AllocatorOf<TObj>::template New<N>(arg));
   }
-  /***** Section 4. Conversion between AnyView/Any *****/
-  MLC_INLINE Ref(const AnyView &src) : TBase() { TBase::_Init<T>(src); }
-  MLC_INLINE Ref(const Any &src) : TBase() { TBase::_Init<T>(src); }
-  MLC_INLINE operator AnyView() const { return AnyView(this->get()); }
-  MLC_INLINE operator Any() const { return Any(this->get()); }
-  /***** Section 5. Misc *****/
+  /***** Section 3. From derived *****/
+  // clang-format off
+  template <typename U, typename = DObj<U>> MLC_INLINE explicit Ref(const U *src) : TBase() { TBase::_Set(reinterpret_cast<const MLCAny *>(src)); this->IncRef(); }
+  template <typename U, typename = DObj<U>> MLC_INLINE Ref(const Ref<U> &src) : TBase() { TBase::_Set(reinterpret_cast<const MLCObjPtr&>(src)); this->IncRef(); }
+  template <typename U, typename = DObj<U>> MLC_INLINE Ref(Ref<U> &&src) : TBase() { TBase::_Move(reinterpret_cast<MLCObjPtr&&>(src)); }
+  template <typename U, typename = DObjRef<U>> MLC_INLINE Ref(const U &src) : TBase() { TBase::_Set(reinterpret_cast<const MLCObjPtr&>(src)); this->IncRef(); }
+  template <typename U, typename = DObjRef<U>> MLC_INLINE Ref(U &&src) : TBase() { TBase::_Move(reinterpret_cast<MLCObjPtr&&>(src)); }
+  template <typename U, typename = DOpt<U>> MLC_INLINE Ref(const Optional<U> &src) : TBase() { TBase::_Set(reinterpret_cast<const MLCObjPtr&>(src)); this->IncRef(); }
+  template <typename U, typename = DOpt<U>> MLC_INLINE Ref(Optional<U> &&src) : TBase() { TBase::_Move(reinterpret_cast<MLCObjPtr&&>(src)); }
+  // Defining "operator="
+  template <typename U, typename = DObj<U>> MLC_INLINE TSelf &operator=(const U *other) { TSelf(other).Swap(*this); return *this; }
+  template <typename U, typename = DObj<U>> MLC_INLINE TSelf &operator=(const Ref<U> &other) { TSelf(other).Swap(*this); return *this; }
+  template <typename U, typename = DObj<U>> MLC_INLINE TSelf &operator=(Ref<U> &&other) { TSelf(std::move(other)).Swap(*this); return *this; }
+  template <typename U, typename = DObjRef<U>> MLC_INLINE TSelf &operator=(const U &other) { TSelf(other).Swap(*this); return *this; }
+  template <typename U, typename = DObjRef<U>> MLC_INLINE TSelf &operator=(U &&other) { TSelf(std::move(other)).Swap(*this); return *this; }
+  template <typename U, typename = DOpt<U>> MLC_INLINE TSelf &operator=(const Optional<U> &other) { TSelf(other).Swap(*this); return *this; }
+  template <typename U, typename = DOpt<U>> MLC_INLINE TSelf &operator=(Optional<U> &&other) { TSelf(std::move(other)).Swap(*this); return *this; }
+  // clang-format on
+  /***** Section 4. Accessor, comparators and stringify *****/
+  MLC_INLINE const TObj *get() const { return reinterpret_cast<const TObj *>(TBase::ptr); }
+  MLC_INLINE TObj *get() { return reinterpret_cast<TObj *>(TBase::ptr); }
+  MLC_INLINE const TObj *operator->() const { return get(); }
+  MLC_INLINE TObj *operator->() { return get(); }
+  MLC_INLINE const TObj &operator*() const {
+    if (const TObj *ret = get()) {
+      return *ret;
+    }
+    MLC_THROW(ValueError) << "Attempt to dereference a null pointer";
+    MLC_UNREACHABLE();
+  }
+  MLC_INLINE TObj &operator*() {
+    if (TObj *ret = get()) {
+      return *ret;
+    }
+    MLC_THROW(ValueError) << "Attempt to dereference a null pointer";
+    MLC_UNREACHABLE();
+  }
+  MLC_INLINE bool defined() const { return TBase::ptr != nullptr; }
+  MLC_INLINE bool has_value() const { return TBase::ptr != nullptr; }
+  MLC_INLINE bool operator==(std::nullptr_t) const { return TBase::ptr == nullptr; }
+  MLC_INLINE bool operator!=(std::nullptr_t) const { return TBase::ptr != nullptr; }
+  MLC_INLINE bool operator==(const TSelf &rhs) const { return TBase::ptr == rhs.TBase::ptr; }
+  MLC_INLINE bool operator!=(const TSelf &rhs) const { return TBase::ptr != rhs.TBase::ptr; }
   Str str() const;
-  MLC_INLINE bool operator==(const TSelf &rhs) const { return this->ptr == rhs.ptr; }
-  MLC_INLINE bool operator!=(const TSelf &rhs) const { return this->ptr != rhs.ptr; }
-  MLC_INLINE const T *get() const { return reinterpret_cast<const T *>(this->ptr); }
-  MLC_INLINE T *get() { return reinterpret_cast<T *>(ptr); }
+  /***** Section 5. Runtime-type information *****/
+  MLC_DEF_RTTI_METHODS(true, this->ptr, this->ptr)
 };
 
-#define MLC_DEFINE_POD_REF(Type, Field)                                                                                \
-  template <> struct Ref<Type> : protected ::mlc::base::PtrBase {                                                      \
-    MLC_DEF_OBJ_PTR_METHODS_(Ref<Type>, Type, ::mlc::base::PtrBase);                                                   \
+#define MLC_DEFINE_POD_REF(T, Field)                                                                                   \
+  template <> struct Ref<T> : protected ::mlc::base::PtrBase {                                                         \
+  private:                                                                                                             \
+    using TBase = ::mlc::base::PtrBase;                                                                                \
                                                                                                                        \
   public:                                                                                                              \
+    using TSelf = Ref<T>;                                                                                              \
+    using TObj = T;                                                                                                    \
+    [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kRef;                  \
     /***** Section 1. Default constructor/destructors *****/                                                           \
     MLC_INLINE Ref() : TBase() {}                                                                                      \
     MLC_INLINE Ref(std::nullptr_t) : TBase() {}                                                                        \
-    MLC_INLINE Ref &operator=(std::nullptr_t) { return this->Reset(); }                                                \
+    MLC_INLINE Ref(::mlc::NullType) : TBase(::mlc::Null) {}                                                            \
+    MLC_INLINE TSelf &operator=(std::nullptr_t) { return this->Reset(); }                                              \
+    MLC_INLINE TSelf &operator=(::mlc::NullType) { return this->Reset(); }                                             \
+    MLC_INLINE ~Ref() = default;                                                                                       \
+    /* clang-format off */                                                                                    \
+    MLC_INLINE Ref(const TSelf &src) : TBase(::mlc::Null) { this->_Set(src.ptr); this->IncRef(); }            \
+    MLC_INLINE Ref(TSelf &&src) : TBase(::mlc::Null) { this->_Set(src.ptr); src.ptr = nullptr; }              \
+    MLC_INLINE TSelf &operator=(const TSelf &other) { TSelf(other).Swap(*this); return *this; }               \
+    MLC_INLINE TSelf &operator=(TSelf &&other) { TSelf(std::move(other)).Swap(*this); return *this; }         \
+    MLC_INLINE TSelf &Reset() { TBase::Reset(); return *this; }        \
+    /* clang-format on */                                                                                              \
     /***** Section 2. The `new` operator *****/                                                                        \
-    MLC_INLINE Ref(TObj arg) { TBase::_InitPOD<TObj>(arg); }                                                           \
-    MLC_INLINE Ref &operator=(TObj arg) {                                                                              \
-      this->Reset();                                                                                                   \
-      this->_InitPOD<TObj>(arg);                                                                                       \
+    MLC_INLINE_NO_MSVC static TSelf New(T arg) { return TSelf(arg); }                                                  \
+    /***** Section 3. From derived pointers *****/                                                                     \
+    MLC_INLINE Ref(T src) { TBase::_InitPOD<T>(src); }                                                                 \
+    MLC_INLINE Ref &operator=(T other) {                                                                               \
+      TSelf(other).Swap(*this);                                                                                        \
       return *this;                                                                                                    \
     }                                                                                                                  \
-    MLC_INLINE_NO_MSVC static TSelf New(TObj arg) {                                                                    \
-      TSelf ret;                                                                                                       \
-      ret._InitPOD<TObj>(arg);                                                                                         \
-      return ret;                                                                                                      \
+    MLC_INLINE Ref(const Optional<TObj> &src);                                                                         \
+    MLC_INLINE TSelf &operator=(const Optional<TObj> &other);                                                          \
+    /***** Section 4. Accessor, comparators and stringify *****/                                                       \
+    MLC_INLINE const T *get() const {                                                                                  \
+      return TBase::ptr ? &reinterpret_cast<const MLCBoxedPOD *>(TBase::ptr)->data.Field : nullptr;                    \
     }                                                                                                                  \
-    /***** Section 3. Conversion between AnyView/Any *****/                                                            \
-    MLC_INLINE Ref(const AnyView &src) { TBase::_InitPOD<TObj>(src.operator TObj()); }                                 \
-    MLC_INLINE Ref(const Any &src) { TBase::_InitPOD<TObj>(src.operator TObj()); }                                     \
-    MLC_INLINE operator AnyView() const { return ::mlc::base::AnyViewFromPODPtr<TObj>(get()); }                        \
-    MLC_INLINE operator Any() const { return ::mlc::base::AnyFromPODPtr<TObj>(get()); }                                \
-    /***** Section 4. Misc *****/                                                                                      \
+    MLC_INLINE T *get() { /**/                                                                                         \
+      return TBase::ptr ? &reinterpret_cast<MLCBoxedPOD *>(TBase::ptr)->data.Field : nullptr;                          \
+    }                                                                                                                  \
+    MLC_INLINE const T *operator->() const { return get(); }                                                           \
+    MLC_INLINE T *operator->() { return get(); }                                                                       \
+    MLC_INLINE const T &operator*() const {                                                                            \
+      if (const T *ret = get()) {                                                                                      \
+        return *ret;                                                                                                   \
+      }                                                                                                                \
+      MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                \
+      MLC_UNREACHABLE();                                                                                               \
+    }                                                                                                                  \
+    MLC_INLINE T &operator*() {                                                                                        \
+      if (T *ret = get()) {                                                                                            \
+        return *ret;                                                                                                   \
+      }                                                                                                                \
+      MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                \
+      MLC_UNREACHABLE();                                                                                               \
+    }                                                                                                                  \
+    MLC_INLINE bool defined() const { return TBase::ptr != nullptr; }                                                  \
+    MLC_INLINE bool has_value() const { return TBase::ptr != nullptr; }                                                \
+    MLC_INLINE T &value() { return operator*(); }                                                                      \
+    MLC_INLINE const T &value() const { return operator*(); }                                                          \
+    MLC_INLINE bool operator==(std::nullptr_t) const { return TBase::ptr == nullptr; }                                 \
+    MLC_INLINE bool operator!=(std::nullptr_t) const { return TBase::ptr != nullptr; }                                 \
+    MLC_INLINE bool operator==(const TSelf &rhs) const { return TBase::ptr == rhs.TBase::ptr; }                        \
+    MLC_INLINE bool operator!=(const TSelf &rhs) const { return TBase::ptr != rhs.TBase::ptr; }                        \
     Str str() const;                                                                                                   \
-    MLC_INLINE bool operator==(const TSelf &rhs) const { return this->ptr == rhs.ptr; }                                \
-    MLC_INLINE bool operator!=(const TSelf &rhs) const { return this->ptr != rhs.ptr; }                                \
-    MLC_INLINE const TObj *get() const {                                                                               \
-      return this->ptr ? &reinterpret_cast<const MLCBoxedPOD *>(this->ptr)->data.Field : nullptr;                      \
-    }                                                                                                                  \
-    MLC_INLINE TObj *get() { return this->ptr ? &reinterpret_cast<MLCBoxedPOD *>(this->ptr)->data.Field : nullptr; }   \
   }
 
 MLC_DEFINE_POD_REF(int64_t, v_int64);

@@ -168,6 +168,20 @@ class TypeMethod:
         return fn
 
 
+@dataclasses.dataclass
+class Field:
+    structure: typing.Literal["bind", "nobind"] | None
+    default_factory: Callable[[], typing.Any]
+    name: str | None
+
+    def __post_init__(self) -> None:
+        if self.structure not in (None, "bind", "nobind"):
+            raise ValueError(
+                "Invalid `field.structure`. Expected `bind` or `nobind`, "
+                f"but got: {self.structure}"
+            )
+
+
 @dataclasses.dataclass(eq=False, **_DATACLASS_SLOTS)
 class TypeInfo:
     type_cls: type | None
@@ -176,6 +190,7 @@ class TypeInfo:
     type_depth: int
     type_ancestors: tuple[int, ...]
     fields: tuple[TypeField, ...]
+    d_fields: tuple[Field, ...] = ()
 
     def get_parent(self) -> TypeInfo:
         from .core import type_index2cached_py_type_info  # type: ignore[import-not-found]
@@ -295,9 +310,7 @@ def attach_field(
         fset=fset if (not frozen) and setter else None,
         doc=f"{cls.__module__}.{cls.__qualname__}.{name}",
     )
-    old_field = getattr(cls, name, MISSING)
     setattr(cls, name, prop)
-    cls._mlc_dataclass_fields[name] = old_field  # type: ignore[attr-defined]
 
 
 def attach_method(
@@ -309,9 +322,15 @@ def attach_method(
 ) -> None:
     if check_exists:
         if name in vars(parent_cls):
-            raise ValueError(
-                f"Cannot add `{name}` method in `{parent_cls}` because it's already defined"
-            )
+            msg = f"Cannot add `{name}` method in `{parent_cls}` because it's already defined"
+            translation = {
+                "__init__": "init",
+                "__str__": "repr",
+                "__repr__": "repr",
+            }
+            if name in translation:
+                msg += f". Use `{translation[name]}=False` in dataclass declaration"
+            raise ValueError(msg)
     method.__module__ = cls.__module__
     method.__name__ = name
     method.__qualname__ = f"{cls.__qualname__}.{name}"  # type: ignore[attr-defined]
@@ -335,10 +354,18 @@ def c_class_core(type_key: str) -> Callable[[type[ClsType]], type[ClsType]]:
         if type_info.type_cls is not None:
             raise ValueError(f"Type is already registered: {type_key}")
         type_info.type_cls = type_cls
-        setattr(type_cls, "_mlc_type_info", type_info)
+        type_info.d_fields = tuple(
+            Field(
+                structure=None,
+                default_factory=MISSING,
+                name=f.name,
+            )
+            for f in type_info.fields
+        )
+        # TODO: support `d_fields` for `c_class_core`
 
         # Step 2. Attach fields
-        setattr(type_cls, "_mlc_dataclass_fields", {})
+        setattr(type_cls, "_mlc_type_info", type_info)
         for field in type_info.fields:
             attach_field(
                 cls=type_cls,

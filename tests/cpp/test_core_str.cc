@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 
 namespace {
 using namespace mlc;

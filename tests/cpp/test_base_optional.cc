@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 
 namespace {
 
@@ -146,43 +146,43 @@ TEST(OptionalAccessors, ObjectRefType) {
 // Boolean Conversion Tests
 TEST(OptionalBoolConversion, IntType) {
   Optional<int64_t> opt_int1;
-  EXPECT_FALSE(opt_int1);
+  EXPECT_FALSE(opt_int1.defined());
 
   Optional<int64_t> opt_int2(42);
-  EXPECT_TRUE(opt_int2);
+  EXPECT_TRUE(opt_int2.defined());
 }
 
 TEST(OptionalBoolConversion, ObjectRefType) {
   Optional<TestObjRef> opt_obj1;
-  EXPECT_FALSE(opt_obj1);
+  EXPECT_FALSE(opt_obj1.defined());
 
   TestObjRef obj(Ref<TestObj>::New(10));
   Optional<TestObjRef> opt_obj2(obj);
-  EXPECT_TRUE(opt_obj2);
+  EXPECT_TRUE(opt_obj2.defined());
 }
 
 // Boolean Conversion in If Statement Tests
 TEST(OptionalBoolConversionInIf, IntType) {
   Optional<int64_t> opt_int1;
-  if (opt_int1) {
+  if (opt_int1.defined()) {
     FAIL() << "Expected false for undefined Optional<int64_t>";
   }
 
   Optional<int64_t> opt_int2(42);
-  if (!opt_int2) {
+  if (!opt_int2.defined()) {
     FAIL() << "Expected true for defined Optional<int64_t>";
   }
 }
 
 TEST(OptionalBoolConversionInIf, ObjectRefType) {
   Optional<TestObjRef> opt_obj1;
-  if (opt_obj1) {
+  if (opt_obj1.defined()) {
     FAIL() << "Expected false for undefined Optional<TestObjRef>";
   }
 
   TestObjRef obj(Ref<TestObj>::New(10));
   Optional<TestObjRef> opt_obj2(obj);
-  if (!opt_obj2) {
+  if (!opt_obj2.defined()) {
     FAIL() << "Expected true for defined Optional<TestObjRef>";
   }
 }
@@ -239,6 +239,24 @@ TEST(OptionalAnyViewConversion, ObjectRefType) {
   EXPECT_EQ(obj_view.operator TestObjRef()->value, 10);
 }
 
+TEST(OptionalAnyViewConversion, FromAnyViewNone) {
+  AnyView any_view_none;
+  try {
+    any_view_none.operator Optional<int64_t>();
+  } catch (Exception &e) {
+    EXPECT_STREQ(e.what(), "Cannot convert from type `None` to `int`");
+  }
+}
+
+TEST(OptionalAnyViewConversion, FromAnyNone) {
+  Any any_none;
+  try {
+    any_none.operator Optional<int64_t>();
+  } catch (Exception &e) {
+    EXPECT_STREQ(e.what(), "Cannot convert from type `None` to `int`");
+  }
+}
+
 // Any Conversion Tests
 TEST(OptionalAnyConversion, IntType) {
   Optional<int64_t> opt_int(42);
@@ -289,7 +307,7 @@ TEST(OptionalConstructFromAny, ObjectRefType) {
 TEST(OptionalAssignFromAnyView, IntType) {
   Optional<int64_t> opt_int;
   AnyView view(42);
-  opt_int = view;
+  opt_int = view.operator Optional<int64_t>(); // TODO: recover implicit casting
   EXPECT_TRUE(opt_int.defined());
   EXPECT_EQ(*opt_int, 42);
 }
@@ -298,7 +316,7 @@ TEST(OptionalAssignFromAnyView, ObjectRefType) {
   Optional<TestObjRef> opt_obj;
   TestObjRef obj(Ref<TestObj>::New(10));
   AnyView obj_view(obj);
-  opt_obj = obj_view;
+  opt_obj = obj_view.operator Optional<TestObjRef>(); // TODO: recover implicit casting
   EXPECT_TRUE(opt_obj.defined());
   EXPECT_EQ(opt_obj->value, 10);
 }
@@ -307,7 +325,7 @@ TEST(OptionalAssignFromAnyView, ObjectRefType) {
 TEST(OptionalAssignFromAny, IntType) {
   Optional<int64_t> opt_int;
   Any any(42);
-  opt_int = any;
+  opt_int = any.operator Optional<int64_t>(); // TODO: recover implicit casting
   EXPECT_TRUE(opt_int.defined());
   EXPECT_EQ(*opt_int, 42);
 }
@@ -316,7 +334,7 @@ TEST(OptionalAssignFromAny, ObjectRefType) {
   Optional<TestObjRef> opt_obj;
   TestObjRef obj(Ref<TestObj>::New(10));
   Any obj_any(obj);
-  opt_obj = obj_any;
+  opt_obj = obj_any.operator Optional<TestObjRef>(); // TODO: recover implicit casting
   EXPECT_TRUE(opt_obj.defined());
   EXPECT_EQ(opt_obj->value, 10);
 }

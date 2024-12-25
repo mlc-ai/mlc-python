@@ -47,7 +47,8 @@ class CClassForTest(mlc.Object):
     opt_dict_any_str: Optional[dict[Any, str]]
     opt_dict_str_list_int: Optional[dict[str, list[int]]]
 
-    def i64_plus_one(self) -> int: ...  # type: ignore[empty-body]
+    def i64_plus_one(self) -> int:
+        return type(self)._C(b"i64_plus_one", self)
 
 
 @mlc.py_class("mlc.testing.py_class")

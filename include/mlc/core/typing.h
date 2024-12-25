@@ -95,12 +95,16 @@ struct AtomicTypeObj : protected MLCTypingAtomic {
     }
     const char *type_key = ::mlc::base::TypeIndex2TypeInfo(this->type_index)->type_key;
     std::ostringstream oss;
-    for (size_t i = 0, j = 0; type_key[i] != '\0'; ++i) {
-      // [j, i) is the current segment
-      if (type_key[i] == '.') {
+    for (size_t i = 0, j = 0;; ++i) {
+      char c = type_key[i];
+      if (c == '.' || c == '\0') {
+        // [j, i) is the current segment
         std::string_view segment(type_key + j, i - j);
         oss << "::" << segment;
         j = i + 1;
+        if (c == '\0') {
+          break;
+        }
       }
     }
     return oss.str();
@@ -249,7 +253,7 @@ template <typename T> struct TypeAnnParser {
       return typing::AnyType();
     } else if constexpr (IsPOD<T>) {
       return typing::AtomicType(TypeTraits<T>::type_index);
-    } else if constexpr (IsRawObjPtr<T>) {
+    } else if constexpr (IsObjPtr<T>) {
       using U = std::remove_pointer_t<T>;
       return typing::PtrType(ParseType<U>());
     } else if constexpr (IsRef<T> || IsOptional<T>) {

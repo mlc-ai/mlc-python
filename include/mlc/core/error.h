@@ -59,9 +59,7 @@ struct ErrorObj : public MLCError {
     os << this->kind() << ": " << info[0] << std::endl;
   }
 
-  MLC_DEF_STATIC_TYPE(ErrorObj, Object, MLCTypeIndex::kMLCError, "object.Error")
-      .FieldReadOnly("kind", &MLCError::kind)
-      .MemFn("__str__", &ErrorObj::__str__);
+  MLC_DEF_STATIC_TYPE(ErrorObj, Object, MLCTypeIndex::kMLCError, "object.Error");
 };
 
 struct ErrorObj::Allocator {
@@ -75,7 +73,9 @@ struct ErrorObj::Allocator {
 };
 
 struct Error : public ObjectRef {
-  MLC_DEF_OBJ_REF(Error, ErrorObj, ObjectRef);
+  MLC_DEF_OBJ_REF(Error, ErrorObj, ObjectRef)
+      .FieldReadOnly("kind", &MLCError::kind)
+      .MemFn("__str__", &ErrorObj::__str__);
 };
 
 inline Ref<ErrorObj> ErrorObj::AppendWith(MLCByteArray traceback) const {
@@ -107,7 +107,6 @@ inline void Exception::FormatExc(std::ostream &os) const {
     os << "mlc.Exception: Unspecified";
   }
 }
-
 } // namespace mlc
 
 namespace mlc {

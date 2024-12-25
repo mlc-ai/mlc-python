@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 
 namespace {
 using namespace mlc;
@@ -15,6 +15,7 @@ struct SubType : public Object {
       throw std::runtime_error("New Error");
     }
   }
+  MLC_DEF_DYN_TYPE(SubType, Object, "test.SubType");
 };
 
 struct TestObj : public Object {

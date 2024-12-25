@@ -53,6 +53,6 @@ def test_throw_exception_from_ffi_in_c() -> None:
             # TODO: fix macOS libbacktrace integration on macOS
             idx_c_api_tests = next(i for i, line in enumerate(msg) if "c_api_tests.cc" in line)
             idx_handle_error = next(
-                i for i, line in enumerate(msg) if "HandleSafeCallError" in line
+                i for i, line in enumerate(msg) if "_func_safe_call_impl" in line
             )
             assert idx_c_api_tests < idx_handle_error

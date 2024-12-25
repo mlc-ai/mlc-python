@@ -9,29 +9,9 @@
 namespace mlc {
 namespace core {
 
-/********** Section 1. Function signature and FuncTraits *********/
+using mlc::base::FuncCanonicalize;
 
-template <typename R, typename... Args> struct Func2Str {
-  template <size_t i> static void Apply(std::ostream &os) {
-    using Arg = std::tuple_element_t<i, std::tuple<Args...>>;
-    if constexpr (i != 0) {
-      os << ", ";
-    }
-    os << i << ": " << ::mlc::base::Type2Str<Arg>::Run();
-  }
-  template <size_t... I> static std::string Run(std::index_sequence<I...>) {
-    std::ostringstream ss;
-    ss << "(";
-    {
-      using TExpander = int[];
-      (void)TExpander{0, (Apply<I>(ss), 0)...};
-    }
-    ss << ") -> " << ::mlc::base::Type2Str<R>::Run();
-    return ss.str();
-  }
-};
-
-/********** Section 2. UnpackCall and index sequence-related *********/
+/********** Section 1. UnpackCall and index sequence-related *********/
 
 template <int32_t i, typename> struct PrependIntegerSeq;
 template <int32_t i, int32_t... Is> struct PrependIntegerSeq<i, std::integer_sequence<int32_t, Is...>> {
@@ -74,20 +54,21 @@ template <typename Function, typename StorageInfo> struct UnpackCallArgConverter
       using Type = std::decay_t<_Type>;
       try {
         if constexpr (MayUseStorage<Type>::value == 0) {
-          return v.template Cast<Type>();
+          return v.operator Type();
         } else {
           constexpr int32_t storage_index = IndexIntSeq<i, typename StorageInfo::indices>::value;
           static_assert(storage_index >= 0, "Invalid storage index");
-          return v.CastWithStorage<Type>(storage + storage_index);
+          return v._CastWithStorage<Type>(storage + storage_index);
         }
       } catch (const Exception &e) {
         if (strcmp(e.Obj()->kind(), "TypeError") == 0) {
           MLC_THROW(TypeError) << "Mismatched type on argument #" << i << " when calling: `"
-                               << FuncTraits<Function>::Sig() << "`. Expected `" << ::mlc::base::Type2Str<Type>::Run()
-                               << "` but got `" << ::mlc::base::TypeIndex2TypeKey(v.type_index) << "`";
+                               << FuncCanonicalize<Function>::Sig() << "`. Expected `"
+                               << ::mlc::base::Type2Str<Type>::Run() << "` but got `"
+                               << ::mlc::base::TypeIndex2TypeKey(v.type_index) << "`";
         } else if (strcmp(e.Obj()->kind(), "NestedTypeError") == 0) {
           MLC_THROW(TypeError) << "Mismatched type on argument #" << i << " when calling: `"
-                               << FuncTraits<Function>::Sig() << "`. " << e.what();
+                               << FuncCanonicalize<Function>::Sig() << "`. " << e.what();
         } else {
           // This is used in the case where the error message is customized to something else.
           // For example, when parsing a string to DLDevice, it could be ValueError when the string is invalid
@@ -102,7 +83,21 @@ template <typename Function, typename StorageInfo> struct UnpackCallArgConverter
     MLC_INLINE static AnyView Run(const AnyView &v, Any *) { return v; }
   };
 
+  template <size_t i> struct AsType<const AnyView &, i> {
+    MLC_INLINE static AnyView Run(const AnyView &v, Any *) { return v; }
+  };
+
+  template <size_t i> struct AsType<AnyView &&, i> {
+    MLC_INLINE static AnyView Run(const AnyView &v, Any *) { return v; }
+  };
+
   template <size_t i> struct AsType<Any, i> {
+    MLC_INLINE static Any Run(const AnyView &v, Any *) { return v; }
+  };
+  template <size_t i> struct AsType<const Any &, i> {
+    MLC_INLINE static Any Run(const AnyView &v, Any *) { return v; }
+  };
+  template <size_t i> struct AsType<Any &&, i> {
     MLC_INLINE static Any Run(const AnyView &v, Any *) { return v; }
   };
 };
@@ -130,7 +125,7 @@ template <typename RetType, typename... Args> struct UnpackCall<RetType, std::tu
   }
 };
 
-/********** Section 3. Func::Allocator *********/
+/********** Section 2. Func::Allocator *********/
 
 template <typename FuncType>
 inline void FuncCallPacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
@@ -139,27 +134,26 @@ inline void FuncCallPacked(const FuncObj *obj, int32_t num_args, const AnyView *
 
 template <typename FuncType>
 inline void FuncCallUnpacked(const FuncObj *obj, int32_t num_args, const AnyView *args, Any *ret) {
-  using ArgType = typename FuncTraits<FuncType>::ArgType;
-  constexpr int32_t N = std::tuple_size_v<ArgType>;
+  using Traits = FuncCanonicalize<FuncType>;
+  constexpr int32_t N = Traits::N;
   if (num_args != N) {
-    MLC_THROW(TypeError) << "Mismatched number of arguments when calling: `" << FuncTraits<FuncType>::Sig()
+    MLC_THROW(TypeError) << "Mismatched number of arguments when calling: `" << FuncCanonicalize<FuncType>::Sig()
                          << "`. Expected " << N << " but got " << num_args << " arguments";
   }
   using IdxSeq = std::make_index_sequence<N>;
-  using RetType = typename FuncTraits<FuncType>::RetType;
-  UnpackCall<RetType, ArgType>::template Run<FuncType>(&static_cast<const FuncImpl<FuncType> *>(obj)->func_, args, ret,
-                                                       IdxSeq{});
+  using RetType = typename FuncCanonicalize<FuncType>::RetType;
+  UnpackCall<RetType, typename Traits::ArgType>::template Run<FuncType>(
+      &static_cast<const FuncImpl<FuncType> *>(obj)->func_, args, ret, IdxSeq{});
 }
 
 template <typename FuncType, typename = void> struct FuncAllocatorImpl {
   MLC_INLINE static FuncObj *Run(FuncType func) {
-    FuncTraits<FuncType>::CheckIsUnpacked();
     using Allocator = typename FuncImpl<FuncType>::Allocator;
     return Allocator::New(std::forward<FuncType>(func), FuncCallUnpacked<FuncType>);
   }
 };
 
-template <typename FuncType> struct FuncAllocatorImpl<FuncType, std::enable_if_t<FuncTraits<FuncType>::packed>> {
+template <typename FuncType> struct FuncAllocatorImpl<FuncType, std::enable_if_t<FuncCanonicalize<FuncType>::packed>> {
   MLC_INLINE static FuncObj *Run(FuncType func) {
     using Allocator = typename FuncImpl<FuncType>::Allocator;
     return Allocator::New(std::forward<FuncType>(func), FuncCallPacked<FuncType>);
@@ -167,20 +161,20 @@ template <typename FuncType> struct FuncAllocatorImpl<FuncType, std::enable_if_t
 };
 
 template <typename Obj, typename R, typename... Args>
-struct FuncAllocatorImpl<R (Obj::*)(Args...) const, std::enable_if_t<FuncTraits<R(const Obj *, Args...)>::unpacked>> {
+struct FuncAllocatorImpl<R (Obj::*)(Args...) const,
+                         std::enable_if_t<FuncCanonicalize<R(const Obj *, Args...)>::unpacked>> {
   using FuncType = R (Obj::*)(Args...) const;
   MLC_INLINE static FuncObj *Run(FuncType func) {
-    FuncTraits<R(const Obj *, Args...)>::CheckIsUnpacked();
     auto wrapped = [func](const Obj *self, Args... args) { return ((*self).*func)(std::forward<Args>(args)...); };
     return FuncAllocatorImpl<decltype(wrapped)>::Run(wrapped);
   }
 };
 
 template <typename Obj, typename R, typename... Args>
-struct FuncAllocatorImpl<R (Obj::*)(Args...), std::enable_if_t<FuncTraits<R(Obj *, Args...)>::unpacked>> {
+struct FuncAllocatorImpl<R (Obj::*)(Args...), //
+                         std::enable_if_t<FuncCanonicalize<R(Obj *, Args...)>::unpacked>> {
   using FuncType = R (Obj::*)(Args...);
   MLC_INLINE static FuncObj *Run(FuncType func) {
-    FuncTraits<R(Obj *, Args...)>::CheckIsUnpacked();
     auto wrapped = [func](Obj *self, Args... args) { return ((*self).*func)(std::forward<Args>(args)...); };
     return FuncAllocatorImpl<decltype(wrapped)>::Run(wrapped);
   }
@@ -190,9 +184,6 @@ struct FuncAllocatorImpl<R (Obj::*)(Args...), std::enable_if_t<FuncTraits<R(Obj 
 } // namespace mlc
 
 namespace mlc {
-template <typename R, typename... Args> MLC_INLINE std::string FuncTraitsImpl<R, Args...>::Sig() {
-  return ::mlc::core::Func2Str<R, Args...>::Run(std::index_sequence_for<Args...>{});
-}
 template <typename FuncType, typename> MLC_INLINE FuncObj *FuncObj::Allocator::New(FuncType func) {
   return ::mlc::core::FuncAllocatorImpl<::mlc::base::RemoveCR<FuncType>>::Run(std::forward<FuncType>(func));
 }

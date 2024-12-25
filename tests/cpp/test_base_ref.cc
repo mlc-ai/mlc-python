@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 #include <type_traits>
 
 namespace {
@@ -556,6 +556,24 @@ TEST(RefPOD, ConversionFromAnyViewContainingPODToIncompatibleRef) {
     FAIL() << "Expected exception not thrown";
   } catch (Exception &e) {
     EXPECT_STREQ(e.what(), "Cannot convert from type `float` to `int`");
+  }
+}
+
+TEST(RefPOD, FromAnyViewNone) {
+  AnyView any_view_none;
+  try {
+    any_view_none.operator Ref<int64_t>();
+  } catch (Exception &e) {
+    EXPECT_STREQ(e.what(), "Cannot convert from type `None` to `int`");
+  }
+}
+
+TEST(RefPOD, FromAnyNone) {
+  Any any_none;
+  try {
+    any_none.operator Ref<int64_t>();
+  } catch (Exception &e) {
+    EXPECT_STREQ(e.what(), "Cannot convert from type `None` to `int`");
   }
 }
 

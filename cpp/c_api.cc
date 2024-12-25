@@ -1,5 +1,5 @@
 #include "./registry.h"
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 
 namespace mlc {
 namespace registry {
@@ -20,27 +20,6 @@ using ::mlc::registry::TypeTable;
 namespace {
 thread_local Any last_error;
 MLC_REGISTER_FUNC("mlc.ffi.LoadDSO").set_body([](std::string name) { TypeTable::Get(nullptr)->LoadDSO(name); });
-MLC_REGISTER_FUNC("mlc.core.JSONLoads").set_body([](AnyView json_str) {
-  if (json_str.type_index == kMLCRawStr) {
-    return ::mlc::core::JSONLoads(json_str.operator const char *());
-  } else {
-    ::mlc::Str str = json_str;
-    return ::mlc::core::JSONLoads(str);
-  }
-});
-MLC_REGISTER_FUNC("mlc.core.JSONSerialize").set_body(::mlc::core::Serialize); // TODO: `AnyView` as function argument
-MLC_REGISTER_FUNC("mlc.core.JSONDeserialize").set_body([](AnyView json_str) {
-  if (json_str.type_index == kMLCRawStr) {
-    return ::mlc::core::Deserialize(json_str.operator const char *());
-  } else {
-    return ::mlc::core::Deserialize(json_str.operator ::mlc::Str());
-  }
-});
-MLC_REGISTER_FUNC("mlc.core.StructuralEqual").set_body(::mlc::core::StructuralEqual);
-MLC_REGISTER_FUNC("mlc.core.StructuralHash").set_body([](::mlc::Object *obj) -> int64_t {
-  uint64_t ret = ::mlc::core::StructuralHash(obj);
-  return static_cast<int64_t>(ret);
-});
 } // namespace
 
 MLC_API MLCAny MLCGetLastError() {

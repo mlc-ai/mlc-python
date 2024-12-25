@@ -1,9 +1,9 @@
 #ifndef MLC_CORE_FIELD_VISITOR_H_
 #define MLC_CORE_FIELD_VISITOR_H_
 
+#include "./dict.h"
+#include "./list.h"
 #include "./object.h"
-#include "./udict.h"
-#include "./ulist.h"
 #include <functional>
 #include <mlc/base/all.h>
 #include <unordered_map>
@@ -56,7 +56,7 @@ template <typename Visitor> inline void VisitFields(Object *root, MLCTypeInfo *i
       MLCTypingAtomic *ty_atomic = reinterpret_cast<MLCTypingAtomic *>(ty);
       if (ty->type_index == kMLCTypingAtomic) {
         if (ty_atomic->type_index >= kMLCStaticObjectBegin) {
-          visitor(field, static_cast<Optional<Object> *>(field_addr));
+          visitor(field, static_cast<Optional<ObjectRef> *>(field_addr));
         } else if (ty_atomic->type_index == kMLCInt) {
           visitor(field, static_cast<Optional<int64_t> *>(field_addr));
         } else if (ty_atomic->type_index == kMLCFloat) {
@@ -71,7 +71,7 @@ template <typename Visitor> inline void VisitFields(Object *root, MLCTypeInfo *i
           ReportTypeFieldError(info->type_key, field);
         }
       } else if (ty->type_index == kMLCTypingList || ty->type_index == kMLCTypingDict) {
-        visitor(field, static_cast<Optional<Object> *>(field_addr));
+        visitor(field, static_cast<Optional<ObjectRef> *>(field_addr));
       } else {
         ReportTypeFieldError(info->type_key, field);
       }
@@ -134,7 +134,7 @@ template <typename Visitor> inline void VisitStructure(Object *root, MLCTypeInfo
       MLCTypingAtomic *ty_atomic = reinterpret_cast<MLCTypingAtomic *>(ty);
       if (ty->type_index == kMLCTypingAtomic) {
         if (ty_atomic->type_index >= kMLCStaticObjectBegin) {
-          visitor(field, field_kind, static_cast<Optional<Object> *>(field_addr));
+          visitor(field, field_kind, static_cast<Optional<ObjectRef> *>(field_addr));
         } else if (ty_atomic->type_index == kMLCInt) {
           visitor(field, field_kind, static_cast<Optional<int64_t> *>(field_addr));
         } else if (ty_atomic->type_index == kMLCFloat) {
@@ -149,7 +149,7 @@ template <typename Visitor> inline void VisitStructure(Object *root, MLCTypeInfo
           ReportTypeFieldError(info->type_key, field);
         }
       } else if (ty->type_index == kMLCTypingList || ty->type_index == kMLCTypingDict) {
-        visitor(field, field_kind, static_cast<Optional<Object> *>(field_addr));
+        visitor(field, field_kind, static_cast<Optional<ObjectRef> *>(field_addr));
       } else {
         ReportTypeFieldError(info->type_key, field);
       }
@@ -209,7 +209,7 @@ inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeIn
         state->TrackObject(current, v);
       }
     }
-    MLC_INLINE void operator()(MLCTypeField *, Optional<Object> *opt) {
+    MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) {
       if (Object *v = opt->get()) {
         state->TrackObject(current, v);
       }
@@ -242,19 +242,17 @@ inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeIn
     if (pre_visit) {
       pre_visit(current->obj, current->type_info);
     }
-    int32_t type_index = current->type_info->type_index;
-    if (type_index == kMLCList) {
-      UListObj *list = reinterpret_cast<UListObj *>(current->obj); // TODO: support Downcast
+    if (UListObj *list = current->obj->TryCast<UListObj>()) {
       for (Any any : *list) {
         FieldExtractor{&state, current}(nullptr, &any);
       }
-    } else if (type_index == kMLCDict) {
-      UDictObj *dict = reinterpret_cast<UDictObj *>(current->obj); // TODO: support Downcast
+    } else if (UDictObj *dict = current->obj->TryCast<UDictObj>()) {
       for (auto &kv : *dict) {
         FieldExtractor{&state, current}(nullptr, &kv.first);
         FieldExtractor{&state, current}(nullptr, &kv.second);
       }
-    } else if (type_index == kMLCStr || type_index == kMLCFunc || type_index == kMLCError) {
+    } else if (int32_t type_index = current->type_info->type_index;
+               type_index == kMLCStr || type_index == kMLCFunc || type_index == kMLCError) {
     } else {
       VisitFields(current->obj, current->type_info, FieldExtractor{&state, current});
     }

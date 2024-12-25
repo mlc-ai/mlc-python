@@ -37,6 +37,11 @@ class DerivedWithDefault(BaseWithDefault):
     derived_b: Optional[str] = "1234"
 
 
+@mlcd.py_class("mlc.testing.DerivedDerived")
+class DerivedDerived(DerivedWithDefault):
+    derived_derived_a: str
+
+
 @mlcd.py_class("mlc.testing.py_class_derived_with_default_interleaved")
 class DerivedWithDefaultInterleaved(BaseWithDefault):
     derived_a: int
@@ -113,3 +118,18 @@ def test_post_init() -> None:
     assert post_init.b == "A"
     assert str(post_init) == "mlc.testing.py_class_post_init(a=1, b='A')"
     assert repr(post_init) == "mlc.testing.py_class_post_init(a=1, b='A')"
+
+
+def test_derived_derived() -> None:
+    # __init__(base_a, derived_derived_a, base_b, derived_a, derived_b)
+    obj = DerivedDerived(1, "a", [1, 2], 2, "b")
+    assert obj.base_a == 1
+    assert obj.derived_derived_a == "a"
+    assert isinstance(obj.base_b, mlc.List) and len(obj.base_b) == 2
+    assert obj.base_b[0] == 1
+    assert obj.base_b[1] == 2
+    assert obj.derived_a == 2
+    assert obj.derived_b == "b"
+    assert str(obj) == (
+        "mlc.testing.DerivedDerived(base_a=1, base_b=[1, 2], derived_a=2, derived_b='b', derived_derived_a='a')"
+    )

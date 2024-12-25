@@ -9,7 +9,7 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 #include <string>
 #include <unordered_map>
 #include <vector>

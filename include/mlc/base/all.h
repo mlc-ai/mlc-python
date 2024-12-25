@@ -12,91 +12,227 @@
 #include "./traits_scalar.h" // IWYU pragma: export
 #include "./traits_str.h"    // IWYU pragma: export
 #include <mlc/c_api.h>       // IWYU pragma: export
+#include <type_traits>
 
 namespace mlc {
 
-/*********** Section 1. Any <=> Any View ***********/
+/*********** New stuff ***********/
+
 MLC_INLINE AnyView::AnyView(const Any &src) : MLCAny(static_cast<const MLCAny &>(src)) {}
 MLC_INLINE AnyView::AnyView(Any &&src) : MLCAny(static_cast<const MLCAny &>(src)) {}
-MLC_INLINE Any::Any(const Any &src) : MLCAny(static_cast<const MLCAny &>(src)) { this->IncRef(); }
-MLC_INLINE Any::Any(Any &&src) : MLCAny(static_cast<const MLCAny &>(src)) { *static_cast<MLCAny *>(&src) = MLCAny(); }
-MLC_INLINE Any::Any(const AnyView &src) : MLCAny(static_cast<const MLCAny &>(src)) {
-  this->SwitchFromRawStr();
-  this->IncRef();
+
+template <typename _T, typename> AnyView::AnyView(_T &&src) : MLCAny() {
+  using namespace ::mlc::base;
+  constexpr TypeKind kind = TypeKindOf<_T>;
+  if constexpr (kind == TypeKind::kObjRef) {
+    using TObjRef = RemoveCR<_T>;
+    using TObj = typename TObjRef::TObj;
+    TypeTraits<TObj *>::TypeToAny(const_cast<TObj *>(src.get()), this);
+  } else if constexpr (kind == TypeKind::kObjPtr) {
+    using TObjPtr = RemoveCR<_T>;
+    using TObj = std::remove_pointer_t<TObjPtr>;
+    TypeTraits<TObj *>::TypeToAny(src, this);
+  } else { // POD
+    using TPOD = RemoveCR<_T>;
+    TypeTraits<TPOD>::TypeToAny(src, this);
+  }
 }
-MLC_INLINE Any::Any(AnyView &&src) : MLCAny(static_cast<const MLCAny &>(src)) {
-  *static_cast<MLCAny *>(&src) = MLCAny();
-  this->SwitchFromRawStr();
-  this->IncRef();
+
+template <typename T, typename> MLC_INLINE AnyView::AnyView(const T *src) : MLCAny() {
+  ::mlc::base::TypeTraits<T *>::TypeToAny(const_cast<T *>(src), this);
 }
-MLC_INLINE Any &Any::operator=(const Any &src) {
-  Any(src).Swap(*this);
+
+template <typename T> MLC_INLINE AnyView::AnyView(const Ref<T> &src) : MLCAny() {
+  if (const auto *value = src.get()) {
+    if constexpr (::mlc::base::IsPOD<T>) {
+      using TPOD = T;
+      ::mlc::base::TypeTraits<TPOD>::TypeToAny(*value, this);
+    } else {
+      using TObj = T;
+      ::mlc::base::TypeTraits<TObj *>::TypeToAny(const_cast<TObj *>(value), this);
+    }
+  }
+}
+
+template <typename T> MLC_INLINE AnyView::AnyView(Ref<T> &&src) : AnyView(static_cast<const Ref<T> &>(src)) {
+  // `src` is not reset here because `AnyView` does not take ownership of the object
+}
+
+template <typename T> MLC_INLINE AnyView::AnyView(const Optional<T> &src) {
+  if (const auto *value = src.get()) {
+    if constexpr (::mlc::base::IsPOD<T>) {
+      using TPOD = T;
+      ::mlc::base::TypeTraits<TPOD>::TypeToAny(*value, this);
+    } else {
+      using TObj = typename T::TObj;
+      ::mlc::base::TypeTraits<TObj *>::TypeToAny(const_cast<TObj *>(value), this);
+    }
+  }
+}
+
+template <typename T> MLC_INLINE AnyView::AnyView(Optional<T> &&src) : AnyView(static_cast<const Optional<T> &>(src)) {
+  // `src` is not reset here because `AnyView` does not take ownership of the object
+}
+
+template <typename T, typename> MLC_INLINE AnyView &AnyView::operator=(T &&src) {
+  AnyView(std::forward<T>(src)).Swap(*this);
   return *this;
 }
-MLC_INLINE Any &Any::operator=(Any &&src) {
-  Any(std::move(src)).Swap(*this);
+
+MLC_INLINE AnyView &AnyView::operator=(const Any &src) {
+  AnyView(src).Swap(*this);
   return *this;
+}
+
+MLC_INLINE AnyView &AnyView::operator=(Any &&src) {
+  AnyView(std::move(src)).Swap(*this);
+  return *this;
+}
+
+template <typename T, typename> MLC_INLINE AnyView &AnyView::operator=(const T *src) {
+  AnyView(src).Swap(*this);
+  return *this;
+}
+
+template <typename T> MLC_INLINE AnyView &AnyView::operator=(const Ref<T> &src) {
+  AnyView(src).Swap(*this);
+  return *this;
+}
+
+template <typename T> MLC_INLINE AnyView &AnyView::operator=(Ref<T> &&src) {
+  AnyView(std::move(src)).Swap(*this);
+  return *this;
+}
+
+template <typename T> MLC_INLINE AnyView &AnyView::operator=(const Optional<T> &src) {
+  AnyView(src).Swap(*this);
+  return *this;
+}
+
+template <typename T> MLC_INLINE AnyView &AnyView::operator=(Optional<T> &&src) {
+  AnyView(std::move(src)).Swap(*this);
+  return *this;
+}
+
+template <typename T, typename> inline AnyView::operator T() const {
+  using namespace ::mlc::base;
+  if constexpr (IsObjRef<T>) {
+    using TObjRef = T;
+    using TObj = typename TObjRef::TObj;
+    TObj *value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TObj *>::AnyToTypeOwned(this), this->type_index, Type2Str<TObj *>::Run());
+    }();
+    return TObjRef(value);
+  } else {
+    // POD or ObjPtr
+    MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeUnowned(this), this->type_index, Type2Str<T>::Run());
+  }
+}
+
+template <typename T, typename> inline Any::operator T() const {
+  using namespace ::mlc::base;
+  if constexpr (IsObjRef<T>) {
+    using TObjRef = T;
+    using TObj = typename TObjRef::TObj;
+    TObj *value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TObj *>::AnyToTypeOwned(this), this->type_index, Type2Str<TObj *>::Run());
+    }();
+    return TObjRef(value);
+  } else {
+    // POD or ObjPtr
+    MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeUnowned(this), this->type_index, Type2Str<T>::Run());
+  }
+}
+
+template <typename T> inline AnyView::operator Ref<T>() const {
+  using namespace ::mlc::base;
+  if (IsTypeIndexNone(this->type_index)) {
+    return Ref<T>(nullptr);
+  }
+  if constexpr (IsPOD<T>) {
+    using TPOD = T;
+    TPOD value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TPOD>::AnyToTypeUnowned(this), this->type_index, Type2Str<TPOD>::Run());
+    }();
+    return Ref<T>(value);
+  } else {
+    static_assert(IsObj<T>, "Unsupported type. Expect `Ref<POD>` or `Ref<Obj>`");
+    using TObj = T;
+    TObj *value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TObj *>::AnyToTypeOwned(this), this->type_index, Type2Str<TObj *>::Run());
+    }();
+    return Ref<T>(value);
+  }
+}
+
+template <typename T> inline Any::operator Ref<T>() const {
+  using namespace ::mlc::base;
+  if (IsTypeIndexNone(this->type_index)) {
+    return Ref<T>(nullptr);
+  }
+  if constexpr (IsPOD<T>) {
+    using TPOD = T;
+    TPOD value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TPOD>::AnyToTypeUnowned(this), this->type_index, Type2Str<TPOD>::Run());
+    }();
+    return Ref<T>(value);
+  } else {
+    static_assert(IsObj<T>, "Unsupported type. Expect `Ref<POD>` or `Ref<Obj>`");
+    using TObj = T;
+    TObj *value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TObj *>::AnyToTypeOwned(this), this->type_index, Type2Str<TObj *>::Run());
+    }();
+    return Ref<T>(value);
+  }
+}
+
+template <typename T> inline AnyView::operator Optional<T>() const {
+  using namespace ::mlc::base;
+  if (IsTypeIndexNone(this->type_index)) {
+    return Optional<T>(Null);
+  }
+  if constexpr (IsPOD<T>) {
+    using TPOD = T;
+    TPOD value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TPOD>::AnyToTypeUnowned(this), this->type_index, Type2Str<TPOD>::Run());
+    }();
+    return Optional<T>(value);
+  } else {
+    static_assert(IsObjRef<T>, "Unsupported type. Expect `Optional<POD>` or `Optional<ObjRef>`");
+    using TObj = typename T::TObj;
+    TObj *value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TObj *>::AnyToTypeOwned(this), this->type_index, Type2Str<TObj *>::Run());
+    }();
+    return Optional<T>(value);
+  }
+}
+
+template <typename T> inline Any::operator Optional<T>() const {
+  using namespace ::mlc::base;
+  if (IsTypeIndexNone(this->type_index)) {
+    return Optional<T>(Null);
+  }
+  if constexpr (IsPOD<T>) {
+    using TPOD = T;
+    TPOD value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TPOD>::AnyToTypeUnowned(this), this->type_index, Type2Str<TPOD>::Run());
+    }();
+    return Optional<T>(value);
+  } else {
+    static_assert(IsObjRef<T>, "Unsupported type. Expect `Optional<POD>` or `Optional<ObjRef>`");
+    using TObj = typename T::TObj;
+    TObj *value = [this]() {
+      MLC_TRY_CONVERT(TypeTraits<TObj *>::AnyToTypeOwned(this), this->type_index, Type2Str<TObj *>::Run());
+    }();
+    return Optional<T>(value);
+  }
 }
 
 /*********** Section 2. Conversion between Any/AnyView <=> POD ***********/
 
-template <typename _T> MLC_INLINE AnyView::AnyView(const _T &src) : MLCAny() {
+template <typename _T, typename> MLC_INLINE_NO_MSVC _T AnyView::_CastWithStorage(Any *storage) const {
   using namespace ::mlc::base;
   using T = RemoveCR<_T>;
-  static_assert(Anyable<T>);
-  if constexpr (IsPOD<T> || IsRawObjPtr<T>) {
-    TypeTraits<T>::TypeToAny(src, this);
-  } else {
-    (src.operator AnyView()).Swap(*this);
-  }
-}
-
-template <typename _T> MLC_INLINE Any::Any(const _T &src) : MLCAny() {
-  using namespace ::mlc::base;
-  using T = RemoveCR<_T>;
-  static_assert(Anyable<T>);
-  if constexpr (IsPOD<T> || IsRawObjPtr<T>) {
-    TypeTraits<RemoveCR<T>>::TypeToAny(src, this);
-    this->SwitchFromRawStr();
-    this->IncRef();
-  } else {
-    (src.operator Any()).Swap(*this);
-  }
-}
-
-template <typename _T> MLC_INLINE_NO_MSVC _T AnyView::Cast() const {
-  using namespace ::mlc::base;
-  using T = RemoveCR<_T>;
-  static_assert(Anyable<T>);
-  if constexpr (IsPOD<T> || IsRawObjPtr<T>) {
-    MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeUnowned(this), this->type_index, Type2Str<T>::Run());
-  } else {
-    return T(*this);
-  }
-}
-
-template <typename _T> MLC_INLINE_NO_MSVC _T Any::Cast() const {
-  using namespace ::mlc::base;
-  using T = RemoveCR<_T>;
-  static_assert(Anyable<T>);
-  if constexpr (IsPOD<T> || IsRawObjPtr<T>) {
-    MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeUnowned(this), this->type_index, Type2Str<T>::Run());
-  } else {
-    return T(*this);
-  }
-}
-
-template <typename _T> MLC_INLINE_NO_MSVC _T AnyView::CastWithStorage(Any *storage) const {
-  using namespace ::mlc::base;
-  using T = RemoveCR<_T>;
-  static_assert(Anyable<T>);
-  MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeWithStorage(this, storage), this->type_index, Type2Str<T>::Run());
-}
-
-template <typename _T> MLC_INLINE_NO_MSVC _T Any::CastWithStorage(Any *storage) const {
-  using namespace ::mlc::base;
-  using T = RemoveCR<_T>;
-  static_assert(Anyable<T>);
   MLC_TRY_CONVERT(TypeTraits<T>::AnyToTypeWithStorage(this, storage), this->type_index, Type2Str<T>::Run());
 }
 

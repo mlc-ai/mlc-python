@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <mlc/all.h>
+#include <mlc/core/all.h>
 
 namespace {
 using namespace mlc;
@@ -110,7 +110,7 @@ TEST(Func, FunctionReturningRef) {
 }
 
 template <typename Callable> void CheckSignature(Callable callable, const char *expected) {
-  using Traits = FuncTraits<Callable>;
+  using Traits = ::mlc::base::FuncCanonicalize<Callable>;
   EXPECT_STREQ(Traits::Sig().c_str(), expected);
   Func func(std::move(callable));
   EXPECT_NE(func.get(), nullptr);
@@ -175,6 +175,7 @@ TEST(Func, ArgumentRawStrToStrObj) {
   Func f1([](StrObj *str) { EXPECT_EQ(reinterpret_cast<MLCStr *>(str)->_mlc_header.ref_cnt, 1); });
   Func f2([](Ref<StrObj> str) { EXPECT_EQ(reinterpret_cast<MLCStr *>(str.get())->_mlc_header.ref_cnt, 1); });
   Func f3([](Str str) { EXPECT_EQ(reinterpret_cast<MLCStr *>(str.get())->_mlc_header.ref_cnt, 1); });
+  Func f4([](Optional<Str> str) { EXPECT_EQ(reinterpret_cast<MLCStr *>(str.get())->_mlc_header.ref_cnt, 1); });
   std::string long_str(1000, 'a');
   const char *c_str = long_str.c_str();
   char c_array[] = "Hello world";
@@ -187,6 +188,9 @@ TEST(Func, ArgumentRawStrToStrObj) {
   f3(long_str);
   f3(c_str);
   f3(c_array);
+  f4(long_str);
+  f4(c_str);
+  f4(c_array);
 }
 
 TEST(Func, TypeMismatch_0) {
