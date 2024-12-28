@@ -1360,12 +1360,16 @@ def make_mlc_init(list fields):
         cdef tuple setters = _setters
         cdef int32_t num_args = len(args)
         cdef int32_t i = 0
+        cdef object e = None
         assert num_args == len(setters)
         while i < num_args:
             try:
                 setters[i](self, args[i])
-            except Exception as e:  # no-cython-lint
-                raise ValueError(f"Failed to set field `{fields[i].name}`: {str(e)}. Got: {args[i]}")
+            except Exception as _e:  # no-cython-lint
+                e = ValueError(f"Failed to set field `{fields[i].name}`: {str(_e)}. Got: {args[i]}")
+                e = e.with_traceback(_e.__traceback__)
+            if e is not None:
+                raise e
             i += 1
 
     return _mlc_init

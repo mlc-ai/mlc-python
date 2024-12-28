@@ -303,7 +303,7 @@ TEST(RefPOD, ConversionToAny) {
   Any any = ref;
   ref.Reset();
   EXPECT_EQ(any.operator int64_t(), 42);
-  ref = Ref<int64_t>(any);
+  ref = any.operator Ref<int64_t>();
   EXPECT_EQ(*ref, 42);
   EXPECT_EQ(GetRefCount(ref), 1);
 }
@@ -319,7 +319,7 @@ TEST(RefPOD, ConversionToAnyView) {
   AnyView any_view = ref;
   ref.Reset();
   EXPECT_EQ(any_view.operator int64_t(), 42);
-  ref = Ref<int64_t>(any_view);
+  ref = any_view.operator Ref<int64_t>();
   EXPECT_EQ(*ref, 42);
   EXPECT_EQ(GetRefCount(ref), 1);
 }

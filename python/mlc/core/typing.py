@@ -63,9 +63,10 @@ class AtomicType(Type):
 
 @c_class_core("mlc.core.typing.PtrType")
 class PtrType(Type):
-    @property
-    def ty(self) -> Type:
-        return self._C(b"_ty", self)
+    ty: Type
+
+    def __init__(self, ty: Type) -> None:
+        self._mlc_init(ty)
 
     def args(self) -> tuple:
         return (self.ty,)
@@ -76,12 +77,10 @@ class PtrType(Type):
 
 @c_class_core("mlc.core.typing.Optional")
 class Optional(Type):
+    ty: Type
+
     def __init__(self, ty: Type) -> None:
         self._mlc_init(ty)
-
-    @property
-    def ty(self) -> Type:
-        return self._C(b"_ty", self)
 
     def args(self) -> tuple:
         return (self.ty,)
@@ -92,12 +91,10 @@ class Optional(Type):
 
 @c_class_core("mlc.core.typing.List")
 class List(Type):
+    ty: Type
+
     def __init__(self, ty: Type) -> None:
         self._mlc_init(ty)
-
-    @property
-    def ty(self) -> Type:
-        return self._C(b"_ty", self)
 
     def args(self) -> tuple:
         return (self.ty,)
@@ -108,19 +105,14 @@ class List(Type):
 
 @c_class_core("mlc.core.typing.Dict")
 class Dict(Type):
-    def __init__(self, key_ty: Type, value_ty: Type) -> None:
-        self._mlc_init(key_ty, value_ty)
+    ty_k: Type
+    ty_v: Type
 
-    @property
-    def key(self) -> Type:
-        return self._C(b"_key", self)
-
-    @property
-    def value(self) -> Type:
-        return self._C(b"_value", self)
+    def __init__(self, ty_k: Type, ty_v: Type) -> None:
+        self._mlc_init(ty_k, ty_v)
 
     def args(self) -> tuple:
-        return (self.key, self.value)
+        return (self.ty_k, self.ty_v)
 
     def _ctype(self) -> typing.Any:
         return MLCObjPtr

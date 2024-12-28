@@ -5,7 +5,7 @@ from typing import Any, Optional, TypeVar
 import mlc.dataclasses as mlcd
 from mlc.core import Func, Object, ObjectPath
 
-from .ast import Id, Node, PrinterConfig, Stmt
+from .ast import Expr, Node, PrinterConfig, Stmt
 from .cprint import cprint
 
 
@@ -44,16 +44,26 @@ class IRPrinter(Object):
     def var_is_defined(self, obj: Any) -> bool:
         return bool(IRPrinter._C(b"var_is_defined", self, obj))
 
-    def var_def(self, obj: Any, frame: Any, name: str) -> Id:
-        return IRPrinter._C(b"var_def", self, obj, frame, name)
+    def var_def(
+        self,
+        name: str,
+        obj: Any,
+        frame: Optional[Any] = None,
+    ) -> None:
+        return IRPrinter._C(b"var_def", self, name, obj, frame)
 
-    def var_def_no_name(self, obj: Any, creator: Func) -> None:
-        IRPrinter._C(b"var_def_no_name", self, obj, creator)
+    def var_def_no_name(
+        self,
+        creator: Func,
+        obj: Any,
+        frame: Optional[Any] = None,
+    ) -> None:
+        IRPrinter._C(b"var_def_no_name", self, creator, obj, frame)
 
     def var_remove(self, obj: Any) -> None:
         IRPrinter._C(b"var_remove", self, obj)
 
-    def var_get(self, obj: Any) -> Optional[Id]:
+    def var_get(self, obj: Any) -> Optional[Expr]:
         return IRPrinter._C(b"var_get", self, obj)
 
     def frame_push(self, frame: Any) -> None:

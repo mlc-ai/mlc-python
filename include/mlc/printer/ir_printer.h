@@ -49,7 +49,7 @@ struct IRPrinterObj : public Object {
 
   bool VarIsDefined(const ObjectRef &obj) { return obj2info->count(obj) > 0; }
 
-  Id VarDef(const ObjectRef &obj, const ObjectRef &frame, Str name_hint) {
+  Id VarDef(Str name_hint, const ObjectRef &obj, const Optional<ObjectRef> &frame) {
     if (auto it = obj2info.find(obj); it != obj2info.end()) {
       Optional<Str> name = (*it).second->name;
       return Id(name.value());
@@ -66,18 +66,19 @@ struct IRPrinterObj : public Object {
       name = name_hint.ToStdString() + '_' + std::to_string(i);
     }
     defined_names->Set(name, 1);
-    this->_VarDef(obj, frame, VarInfo(name, Func([name]() { return Id(name); })));
+    this->_VarDef(VarInfo(name, Func([name]() { return Id(name); })), obj, frame);
     return Id(name);
   }
 
-  void VarDefNoName(const ObjectRef &obj, const ObjectRef &frame, const Func &creator) {
+  void VarDefNoName(const Func &creator, const ObjectRef &obj, const Optional<ObjectRef> &frame) {
     if (obj2info.count(obj) > 0) {
       MLC_THROW(KeyError) << "Variable already defined: " << obj;
     }
-    this->_VarDef(obj, frame, VarInfo(mlc::Null, creator));
+    this->_VarDef(VarInfo(mlc::Null, creator), obj, frame);
   }
 
-  void _VarDef(const ObjectRef &obj, const ObjectRef &frame, VarInfo var_info) {
+  void _VarDef(VarInfo var_info, const ObjectRef &obj, const Optional<ObjectRef> &_frame) {
+    ObjectRef frame = _frame.defined() ? _frame.value() : this->frames.back().operator ObjectRef();
     obj2info->Set(obj, var_info);
     auto it = frame_vars.find(frame);
     if (it == frame_vars.end()) {
@@ -99,7 +100,7 @@ struct IRPrinterObj : public Object {
     obj2info.erase(it);
   }
 
-  Optional<Id> VarGet(const ObjectRef &obj) {
+  Optional<Expr> VarGet(const ObjectRef &obj) {
     auto it = obj2info.find(obj);
     if (it == obj2info.end()) {
       return Null;
