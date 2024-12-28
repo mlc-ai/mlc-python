@@ -1,10 +1,11 @@
 [project]
 name = "mlc-python"
-version = "0.0.13"
+version = "0.0.14"
 dependencies = [
     'numpy >= 1.22',
-    "ml-dtypes >= 0.1",
+    'ml-dtypes >= 0.1',
     'Pygments>=2.4.0',
+    'colorama',
     'setuptools ; platform_system == "Windows"',
 ]
 description = ""

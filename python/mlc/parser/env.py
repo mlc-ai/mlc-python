@@ -4,14 +4,17 @@ import contextlib
 import dataclasses
 import inspect
 from collections.abc import Callable, Generator
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import ast
 
 PY_GETFILE = inspect.getfile
 PY_FINDSOURCE = inspect.findsource
 
 
-@dataclasses.dataclass(init=False)
-class InspectResult:
+@dataclasses.dataclass
+class Env:
     source_name: str
     source_start_line: int
     source_start_column: int
@@ -20,65 +23,89 @@ class InspectResult:
     captured: dict[str, Any]
     annotations: dict[str, dict[str, Any]]
 
-    def is_defined_in_class(
-        self,
-        frames: list[inspect.FrameInfo],  # obtained via `inspect.stack()`
-        *,
-        frame_offset: int = 2,
-        is_decorator: Callable[[str], bool] = lambda line: line.startswith("@"),
-    ) -> bool:
-        # Step 1. Inspect `frames[frame_offset]`
-        try:
-            lineno = frames[frame_offset].lineno
-            line = frames[frame_offset].code_context[0].strip()  # type: ignore
-        except:
-            return False
-        # Step 2. Determine by the line itself
-        if is_decorator(line):
-            return True
-        if not line.startswith("class"):
-            return False
-        # Step 3. Determine by its decorators
-        source_lines = self.source_full.splitlines(keepends=True)
-        lineno_offset = 2
-        try:
-            source_line = source_lines[lineno - lineno_offset]
-        except IndexError:
-            return False
-        return is_decorator(source_line.strip())
+    @staticmethod
+    def from_class(program: type) -> Env:
+        return Env(
+            **_inspect_source(program),  # type: ignore[arg-type]
+            captured=_inspect_capture_class(program),
+            annotations=_inspect_annotations_class(program),
+        )
+
+    @staticmethod
+    def from_function(program: Callable) -> Env:
+        return Env(
+            **_inspect_source(program),  # type: ignore[arg-type]
+            captured=_inspect_capture_function(program),
+            annotations=_inspect_annotations_function(program),
+        )
 
 
-def inspect_program(program: Callable | type) -> InspectResult:
-    ret = InspectResult()
-    source = inspect_source(program)
-    ret.source_name, ret.source_start_line, ret.source_start_column, ret.source, ret.source_full = (
-        source.source_name,
-        source.source_start_line,
-        source.source_start_column,
-        source.source,
-        source.source_full,
-    )
-    if inspect.isfunction(program):
-        ret.captured = inspect_capture_function(program)
-        ret.annotations = inspect_annotations_function(program)
-    elif inspect.isclass(program):
-        ret.captured = inspect_capture_class(program)
-        ret.annotations = inspect_annotations_class(program)
-    else:
-        raise TypeError(f"{program!r} is not a function or class")
-    return ret
+@dataclasses.dataclass
+class Span:
+    row_st: int
+    row_ed: int
+    col_st: int
+    col_ed: int
+
+    @staticmethod
+    def from_ast(node: ast.AST, env: Env | None = None) -> Span:
+        row_st: int = getattr(node, "lineno", None) or 1
+        row_ed: int = getattr(node, "end_lineno", None) or row_st
+        col_st: int = getattr(node, "col_offset", None) or 1
+        col_ed: int = getattr(node, "end_col_offset", None) or col_st
+        if env is not None:
+            row_st += env.source_start_line - 1
+            row_ed += env.source_start_line - 1
+            col_st += env.source_start_column
+            col_ed += env.source_start_column
+        return Span(
+            row_st=row_st,
+            row_ed=row_ed,
+            col_st=col_st,
+            col_ed=col_ed,
+        )
+
+
+def check_decorator(
+    frames: list[inspect.FrameInfo],  # obtained via `inspect.stack()`
+    *,
+    source_full: str | None = None,
+    frame_offset: int = 2,
+    checker: Callable[[str], bool] = lambda line: line.startswith("@"),
+) -> bool:
+    # Step 1. Inspect `frames[frame_offset]`
+    try:
+        lineno = frames[frame_offset].lineno
+        line = frames[frame_offset].code_context[0]  # type: ignore
+    except:
+        return False
+    # Step 2. Determine by the line itself
+    if checker(line):
+        return True
+    if not line.startswith("class"):
+        return False
+    # Step 3. Determine by its decorators
+    if source_full is None:
+        return False
+    source_lines = source_full.splitlines(keepends=True)
+    lineno_offset = 2
+    try:
+        source_line = source_lines[lineno - lineno_offset]
+    except IndexError:
+        return False
+    return checker(source_line)
 
 
 @contextlib.contextmanager
-def override_getfile() -> Generator[None, Any, None]:
+def _override_getfile() -> Generator[None, Any, None]:
     try:
-        inspect.getfile = getfile  # type: ignore[assignment]
+        inspect.getfile = _getfile  # type: ignore[assignment]
         yield
     finally:
         inspect.getfile = PY_GETFILE  # type: ignore[assignment]
 
 
-def getfile(obj: Any) -> str:
+def _getfile(obj: Any) -> str:
     if not inspect.isclass(obj):
         return PY_GETFILE(obj)
     mod = getattr(obj, "__module__", None)
@@ -92,16 +119,16 @@ def getfile(obj: Any) -> str:
         if inspect.isfunction(member):
             if obj.__qualname__ + "." + member.__name__ == member.__qualname__:
                 return inspect.getfile(member)
-    raise TypeError(f"Source for {obj:!r} not found")
+    raise TypeError(f"Source for {obj} not found")
 
 
-def getsourcelines(obj: Any) -> tuple[list[str], int]:
+def _getsourcelines(obj: Any) -> tuple[list[str], int]:
     obj = inspect.unwrap(obj)
-    lines, l_num = findsource(obj)
+    lines, l_num = _findsource(obj)
     return inspect.getblock(lines[l_num:]), l_num + 1
 
 
-def findsource(obj: Any) -> tuple[list[str], int]:  # noqa: PLR0912
+def _findsource(obj: Any) -> tuple[list[str], int]:  # noqa: PLR0912
     if not inspect.isclass(obj):
         return PY_FINDSOURCE(obj)
 
@@ -154,19 +181,10 @@ def findsource(obj: Any) -> tuple[list[str], int]:  # noqa: PLR0912
     raise OSError("could not find class definition")
 
 
-@dataclasses.dataclass
-class Source:
-    source_name: str
-    source_start_line: int
-    source_start_column: int
-    source: str
-    source_full: str
-
-
-def inspect_source(program: Callable | type) -> Source:
-    with override_getfile():
+def _inspect_source(program: Callable | type) -> dict[str, int | str]:
+    with _override_getfile():
         source_name: str = inspect.getsourcefile(program)  # type: ignore
-        lines, source_start_line = getsourcelines(program)  # type: ignore
+        lines, source_start_line = _getsourcelines(program)  # type: ignore
         if lines:
             source_start_column = len(lines[0]) - len(lines[0].lstrip())
         else:
@@ -190,20 +208,20 @@ def inspect_source(program: Callable | type) -> Source:
             # as a fallback method.
             src, _ = inspect.findsource(program)  # type: ignore
             source_full = "".join(src)
-        return Source(
-            source_name=source_name,
-            source_start_line=source_start_line,
-            source_start_column=source_start_column,
-            source=source,
-            source_full=source_full,
-        )
+    return dict(
+        source_name=source_name,
+        source_start_line=source_start_line,
+        source_start_column=source_start_column,
+        source=source,
+        source_full=source_full,
+    )
 
 
-def inspect_annotations_function(program: Callable | type) -> dict[str, dict[str, Any]]:
+def _inspect_annotations_function(program: Callable | type) -> dict[str, dict[str, Any]]:
     return {program.__name__: program.__annotations__}
 
 
-def inspect_annotations_class(program: Callable | type) -> dict[str, dict[str, Any]]:
+def _inspect_annotations_class(program: Callable | type) -> dict[str, dict[str, Any]]:
     annotations = {}
     for name, func in program.__dict__.items():
         if inspect.isfunction(func):
@@ -211,13 +229,13 @@ def inspect_annotations_class(program: Callable | type) -> dict[str, dict[str, A
     return annotations
 
 
-def inspect_capture_function(func: Callable) -> dict[str, Any]:
+def _inspect_capture_function(func: Callable) -> dict[str, Any]:
     def _getclosurevars(func: Callable) -> dict[str, Any]:
         # Mofiied from `inspect.getclosurevars`
         if inspect.ismethod(func):
             func = func.__func__
         if not inspect.isfunction(func):
-            raise TypeError(f"{func!r} is not a Python function")
+            raise TypeError(f"Not a Python function: {func}")
         code = func.__code__
         # Nonlocal references are named in co_freevars and resolved
         # by looking them up in __closure__ by positional index
@@ -238,10 +256,10 @@ def inspect_capture_function(func: Callable) -> dict[str, Any]:
     }
 
 
-def inspect_capture_class(cls: type) -> dict[str, Any]:
+def _inspect_capture_class(cls: type) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for _, v in cls.__dict__.items():
         if inspect.isfunction(v):
-            func_vars = inspect_capture_function(v)
+            func_vars = _inspect_capture_function(v)
             result.update(**func_vars)
     return result

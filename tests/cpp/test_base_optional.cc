@@ -274,7 +274,7 @@ TEST(OptionalAnyConversion, ObjectRefType) {
 // Construct from AnyView Tests
 TEST(OptionalConstructFromAnyView, IntType) {
   AnyView view(42);
-  Optional<int64_t> opt_int(view);
+  Optional<int64_t> opt_int = view.operator Optional<int64_t>(); // TODO: recover implicit casting
   EXPECT_TRUE(opt_int.defined());
   EXPECT_EQ(*opt_int, 42);
 }
@@ -282,7 +282,7 @@ TEST(OptionalConstructFromAnyView, IntType) {
 TEST(OptionalConstructFromAnyView, ObjectRefType) {
   TestObjRef obj(Ref<TestObj>::New(10));
   AnyView obj_view(obj);
-  Optional<TestObjRef> opt_obj(obj_view);
+  Optional<TestObjRef> opt_obj = obj_view.operator Optional<TestObjRef>(); // TODO: recover implicit casting
   EXPECT_TRUE(opt_obj.defined());
   EXPECT_EQ(opt_obj->value, 10);
 }
@@ -290,7 +290,7 @@ TEST(OptionalConstructFromAnyView, ObjectRefType) {
 // Construct from Any Tests
 TEST(OptionalConstructFromAny, IntType) {
   Any any(42);
-  Optional<int64_t> opt_int(any);
+  Optional<int64_t> opt_int = any.operator Optional<int64_t>(); // TODO: recover implicit casting
   EXPECT_TRUE(opt_int.defined());
   EXPECT_EQ(*opt_int, 42);
 }
@@ -298,7 +298,7 @@ TEST(OptionalConstructFromAny, IntType) {
 TEST(OptionalConstructFromAny, ObjectRefType) {
   TestObjRef obj(Ref<TestObj>::New(10));
   Any obj_any(obj);
-  Optional<TestObjRef> opt_obj(obj_any);
+  Optional<TestObjRef> opt_obj = obj_any.operator Optional<TestObjRef>(); // TODO: recover implicit casting
   EXPECT_TRUE(opt_obj.defined());
   EXPECT_EQ(opt_obj->value, 10);
 }

@@ -128,6 +128,13 @@ struct ReflectionHelper {
     return *this;
   }
 
+  inline ReflectionHelper &_Field(const char *name, int64_t field_offset, int32_t num_bytes, bool frozen, Any ty) {
+    this->any_pool.push_back(ty);
+    int32_t index = static_cast<int32_t>(this->fields.size());
+    this->fields.emplace_back(MLCTypeField{name, index, field_offset, num_bytes, frozen, ty.v.v_obj});
+    return *this;
+  }
+
   template <typename Callable> inline ReflectionHelper &MemFn(const char *name, Callable &&method) {
     MLCTypeMethod m = this->PrepareMethod(name, std::forward<Callable>(method));
     m.kind = kMemFn;

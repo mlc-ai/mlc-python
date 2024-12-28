@@ -78,13 +78,16 @@ def method_init(
         return bound
 
     def method(self: type, *args: typing.Any, **kwargs: typing.Any) -> None:
+        e = None
         try:
             args = bind_args(*args, **kwargs).args
             args = tuple(arg.fn() if isinstance(arg, DefaultFactory) else arg for arg in args)
             args = tuple(args[order] for order in ordering)
             self._mlc_init(*args)  # type: ignore[attr-defined]
-        except Exception as e:
-            raise TypeError(f"Error in `{signature_str}`: {e}")  # type: ignore[attr-defined]
+        except Exception as _e:
+            e = TypeError(f"Error in `{signature_str}`: {_e}").with_traceback(_e.__traceback__)
+        if e is not None:
+            raise e
         try:
             post_init = self.__post_init__  # type: ignore[attr-defined]
         except AttributeError:

@@ -121,87 +121,21 @@ ValueError: Structural equality check failed at {root}.rhs.b: Inconsistent bindi
 
 ### :snake: Text Formats in Python
 
-**IR Printer.** By defining an `__ir_print__` method, which converts an IR node to MLC's Python-style AST, MLC's `IRPrinter` handles variable scoping, renaming and syntax highlighting automatically for a text format based on Python syntax.
+**Printer.** MLC converts an IR node to Python AST by looking up the `__ir_print__` method.
 
-<details><summary>Defining Python-based text format on a toy IR using `__ir_print__`.</summary>
+**[[Example](https://github.com/mlc-ai/mlc-python/blob/main/python/mlc/testing/toy_ir/ir.py)]**. Copy the toy IR definition to REPL and then create a `Func` node below:
 
 ```python
-import mlc.dataclasses as mlcd
-import mlc.printer as mlcp
-from mlc.printer import ast as mlt
-
-@mlcd.py_class
-class Expr(mlcd.PyClass): ...
-
-@mlcd.py_class
-class Stmt(mlcd.PyClass): ...
-
-@mlcd.py_class
-class Var(Expr):
-  name: str
-  def __ir_print__(self, printer: mlcp.IRPrinter, path: mlcp.ObjectPath) -> mlt.Node:
-    if not printer.var_is_defined(obj=self):
-      printer.var_def(obj=self, frame=printer.frames[-1], name=self.name)
-    return printer.var_get(obj=self)
-
-@mlcd.py_class
-class Add(Expr):
-  lhs: Expr
-  rhs: Expr
-  def __ir_print__(self, printer: mlcp.IRPrinter, path: mlcp.ObjectPath) -> mlt.Node:
-    lhs: mlt.Expr = printer(obj=self.lhs, path=path["a"])
-    rhs: mlt.Expr = printer(obj=self.rhs, path=path["b"])
-    return lhs + rhs
-
-@mlcd.py_class
-class Assign(Stmt):
-  lhs: Var
-  rhs: Expr
-  def __ir_print__(self, printer: mlcp.IRPrinter, path: mlcp.ObjectPath) -> mlt.Node:
-    rhs: mlt.Expr = printer(obj=self.rhs, path=path["b"])
-    printer.var_def(obj=self.lhs, frame=printer.frames[-1], name=self.lhs.name)
-    lhs: mlt.Expr = printer(obj=self.lhs, path=path["a"])
-    return mlt.Assign(lhs=lhs, rhs=rhs)
-
-@mlcd.py_class
-class Func(mlcd.PyClass):
-  name: str
-  args: list[Var]
-  stmts: list[Stmt]
-  ret: Var
-  def __ir_print__(self, printer: mlcp.IRPrinter, path: mlcp.ObjectPath) -> mlt.Node:
-    with printer.with_frame(mlcp.DefaultFrame()):
-      for arg in self.args:
-        printer.var_def(obj=arg, frame=printer.frames[-1], name=arg.name)
-      args: list[mlt.Expr] = [printer(obj=arg, path=path["args"][i]) for i, arg in enumerate(self.args)]
-      stmts: list[mlt.Expr] = [printer(obj=stmt, path=path["stmts"][i]) for i, stmt in enumerate(self.stmts)]
-      ret_stmt = mlt.Return(printer(obj=self.ret, path=path["ret"]))
-      return mlt.Function(
-        name=mlt.Id(self.name),
-        args=[mlt.Assign(lhs=arg, rhs=None) for arg in args],
-        decorators=[],
-        return_type=None,
-        body=[*stmts, ret_stmt],
-      )
-
-# An example IR:
-a, b, c, d, e = Var("a"), Var("b"), Var("c"), Var("d"), Var("e")
-f = Func(
-  name="f",
-  args=[a, b, c],
+>>> a, b, c, d, e = Var("a"), Var("b"), Var("c"), Var("d"), Var("e")
+>>> f = Func("f", [a, b, c],
   stmts=[
     Assign(lhs=d, rhs=Add(a, b)),  # d = a + b
     Assign(lhs=e, rhs=Add(d, c)),  # e = d + c
   ],
-  ret=e,
-)
+  ret=e)
 ```
 
-</details>
-
-Two printer APIs are provided for Python-based text format:
-- `mlc.printer.to_python` that converts an IR fragment to Python text, and
-- `mlc.printer.print_python` that further renders the text with proper syntax highlighting.
+- Method `mlc.printer.to_python` converts an IR node to Python-based text;
 
 ```python
 >>> print(mlcp.to_python(f))  # Stringify to Python
@@ -209,12 +143,25 @@ def f(a, b, c):
   d = a + b
   e = d + c
   return e
+```
+
+- Method `mlc.printer.print_python` further renders the text with proper syntax highlighting. [[Screenshot](https://raw.githubusercontent.com/gist/potatomashed/5a9b20edbdde1b9a91a360baa6bce9ff/raw/3c68031eaba0620a93add270f8ad7ed2c8724a78/mlc-python-printer.svg)]
+
+```python
 >>> mlcp.print_python(f)  # Syntax highlighting
 ```
 
+**AST Parser.** MLC has a concise set of APIs for implementing parser with Python's AST module, including:
+- Inspection API that obtains source code of a Python class or function and the variables they capture;
+- Variable management APIs that help with proper scoping;
+- AST fragment evaluation APIs;
+- Error rendering APIs.
+
+**[[Example](https://github.com/mlc-ai/mlc-python/blob/main/python/mlc/testing/toy_ir/parser.py)]**. With MLC APIs, a parser can be implemented with 100 lines of code for the Python text format above defined by `__ir_printer__`.
+
 ### :zap: Zero-Copy Interoperability with C++ Plugins
 
-TBD
+🚧 Under construction.
 
 ## :fuelpump: Development
 

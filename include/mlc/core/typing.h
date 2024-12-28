@@ -122,8 +122,7 @@ struct AtomicType : public Type {
 };
 
 struct PtrTypeObj : protected MLCTypingPtr {
-  explicit PtrTypeObj(Type ty) : MLCTypingPtr{} { this->TyMutable() = ty; }
-  Type Ty() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->MLCTypingPtr::ty)); }
+  explicit PtrTypeObj(Type ty) : MLCTypingPtr{} { this->TyMut() = ty; }
   ::mlc::Str __str__() const {
     std::ostringstream os;
     os << "Ptr[" << this->Ty() << "]";
@@ -138,20 +137,20 @@ struct PtrTypeObj : protected MLCTypingPtr {
   MLC_DEF_STATIC_TYPE(PtrTypeObj, TypeObj, MLCTypeIndex::kMLCTypingPtr, "mlc.core.typing.PtrType");
 
 private:
-  Type &TyMutable() { return reinterpret_cast<Type &>(this->MLCTypingPtr::ty); }
+  Type &TyMut() { return reinterpret_cast<Type &>(this->MLCTypingPtr::ty); }
+  Type Ty() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->MLCTypingPtr::ty)); }
 };
 
 struct PtrType : public Type {
   MLC_DEF_OBJ_REF(PtrType, PtrTypeObj, Type)
       .StaticFn("__init__", InitOf<PtrTypeObj, Type>)
-      .MemFn("_ty", &PtrTypeObj::Ty)
+      ._Field("ty", offsetof(MLCTypingPtr, ty), sizeof(MLCTypingPtr::ty), false, ParseType<Type>())
       .MemFn("__str__", &PtrTypeObj::__str__)
       .MemFn("__cxx_str__", &PtrTypeObj::__cxx_str__);
 };
 
 struct OptionalObj : protected MLCTypingOptional {
   explicit OptionalObj(Type ty) : MLCTypingOptional{} { this->TyMutable() = ty; }
-  Type Ty() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->MLCTypingOptional::ty)); }
   ::mlc::Str __str__() const {
     std::ostringstream os;
     os << this->Ty() << " | None";
@@ -167,19 +166,19 @@ struct OptionalObj : protected MLCTypingOptional {
 
 private:
   Type &TyMutable() { return reinterpret_cast<Type &>(this->MLCTypingOptional::ty); }
+  Type Ty() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->MLCTypingOptional::ty)); }
 };
 
 struct Optional : public Type {
   MLC_DEF_OBJ_REF(Optional, OptionalObj, Type)
       .StaticFn("__init__", InitOf<OptionalObj, Type>)
-      .MemFn("_ty", &OptionalObj::Ty)
+      ._Field("ty", offsetof(MLCTypingOptional, ty), sizeof(MLCTypingOptional::ty), false, ParseType<Type>())
       .MemFn("__str__", &OptionalObj::__str__)
       .MemFn("__cxx_str__", &OptionalObj::__cxx_str__);
 };
 
 struct ListObj : protected MLCTypingList {
   explicit ListObj(Type ty) : MLCTypingList{} { this->TyMutable() = ty; }
-  Type Ty() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->MLCTypingList::ty)); }
   ::mlc::Str __str__() const {
     std::ostringstream os;
     os << "list[" << this->Ty() << "]";
@@ -195,31 +194,30 @@ struct ListObj : protected MLCTypingList {
 
 protected:
   Type &TyMutable() { return reinterpret_cast<Type &>(this->MLCTypingList::ty); }
+  Type Ty() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->MLCTypingList::ty)); }
 };
 
 struct List : public Type {
   MLC_DEF_OBJ_REF(List, ListObj, Type)
       .StaticFn("__init__", InitOf<ListObj, Type>)
-      .MemFn("_ty", &ListObj::Ty)
+      ._Field("ty", offsetof(MLCTypingList, ty), sizeof(MLCTypingList::ty), false, ParseType<Type>())
       .MemFn("__str__", &ListObj::__str__)
       .MemFn("__cxx_str__", &ListObj::__cxx_str__);
 };
 
 struct DictObj : protected MLCTypingDict {
   explicit DictObj(Type ty_k, Type ty_v) : MLCTypingDict{} {
-    this->TyMutableK() = ty_k;
-    this->TyMutableV() = ty_v;
+    this->TyKMut() = ty_k;
+    this->TyVMut() = ty_v;
   }
-  Type key() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->ty_k)); }
-  Type value() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->ty_v)); }
   ::mlc::Str __str__() const {
     std::ostringstream os;
-    os << "dict[" << this->key() << ", " << this->value() << "]";
+    os << "dict[" << this->TyK() << ", " << this->TyV() << "]";
     return os.str();
   }
   ::mlc::Str __cxx_str__() const {
-    ::mlc::Str k_str = ::mlc::base::LibState::CxxStr(this->key());
-    ::mlc::Str v_str = ::mlc::base::LibState::CxxStr(this->value());
+    ::mlc::Str k_str = ::mlc::base::LibState::CxxStr(this->TyK());
+    ::mlc::Str v_str = ::mlc::base::LibState::CxxStr(this->TyV());
     std::ostringstream os;
     os << "::mlc::Dict<" << k_str->data() << ", " << v_str->data() << ">";
     return os.str();
@@ -227,15 +225,17 @@ struct DictObj : protected MLCTypingDict {
   MLC_DEF_STATIC_TYPE(DictObj, TypeObj, MLCTypeIndex::kMLCTypingDict, "mlc.core.typing.Dict");
 
 protected:
-  Type &TyMutableK() { return reinterpret_cast<Type &>(this->ty_k); }
-  Type &TyMutableV() { return reinterpret_cast<Type &>(this->ty_v); }
+  Type &TyKMut() { return reinterpret_cast<Type &>(this->ty_k); }
+  Type &TyVMut() { return reinterpret_cast<Type &>(this->ty_v); }
+  Type TyK() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->ty_k)); }
+  Type TyV() const { return Type(reinterpret_cast<const Ref<TypeObj> &>(this->ty_v)); }
 };
 
 struct Dict : public Type {
   MLC_DEF_OBJ_REF(Dict, DictObj, Type)
       .StaticFn("__init__", InitOf<DictObj, Type, Type>)
-      .MemFn("_key", &DictObj::key)
-      .MemFn("_value", &DictObj::value)
+      ._Field("ty_k", offsetof(MLCTypingDict, ty_k), sizeof(MLCTypingDict::ty_k), false, ParseType<Type>())
+      ._Field("ty_v", offsetof(MLCTypingDict, ty_v), sizeof(MLCTypingDict::ty_v), false, ParseType<Type>())
       .MemFn("__str__", &DictObj::__str__)
       .MemFn("__cxx_str__", &DictObj::__cxx_str__);
 };
