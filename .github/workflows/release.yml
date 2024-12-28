@@ -7,8 +7,7 @@ on:
 env:
   CIBW_BUILD_VERBOSITY: 3
   CIBW_TEST_COMMAND: "python -c \"import mlc\""
-  CIBW_SKIP: "cp313-win_amd64"  # Python 3.13 is not quite ready yet
-  MLC_CIBW_VERSION: "2.20.0"
+  MLC_CIBW_VERSION: "2.22.0"
   MLC_PYTHON_VERSION: "3.9"
   MLC_CIBW_WIN_BUILD: "cp3*-win_amd64"
   MLC_CIBW_MAC_BUILD: "cp3*-macosx_arm64"

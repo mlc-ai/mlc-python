@@ -1,8 +1,13 @@
 import mlc
 import mlc.dataclasses as mlcd
 import pytest
+from mlc._cython import SYSTEM
 
 
+@pytest.mark.xfail(
+    condition=SYSTEM == "Windows",
+    reason="`vcvarsall.bat` not found for some reason",
+)
 def test_jit_load() -> None:
     mlc.cc.jit_load("""
     #include <mlc/core/all.h>

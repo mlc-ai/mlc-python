@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 project(
   mlc
-  VERSION 0.0.14
+  VERSION 0.1.0
   DESCRIPTION "MLC-Python"
   LANGUAGES C CXX
 )

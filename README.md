@@ -180,5 +180,5 @@ This project uses `cibuildwheel` to build cross-platform wheels. See `.github/wo
 export CIBW_BUILD_VERBOSITY=3
 export CIBW_BUILD="cp3*-manylinux_x86_64"
 python -m pip install pipx
-pipx run cibuildwheel==2.20.0 --output-dir wheelhouse
+pipx run cibuildwheel==2.22.0 --output-dir wheelhouse
 ```
