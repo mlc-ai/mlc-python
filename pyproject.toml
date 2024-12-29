@@ -57,8 +57,6 @@ line-length = 100
 indent-width = 4
 target-version = "py39"
 include = ["pyproject.toml", "python/**/*.py", "tests/python/**/*.py"]
-
-[tool.ruff.lint]
 select = [
     "UP",  # pyupgrade, https://docs.astral.sh/ruff/rules/#pyupgrade-up
     "PL",  # pylint, https://docs.astral.sh/ruff/rules/#pylint-pl
@@ -72,13 +70,12 @@ select = [
 ]
 ignore = [
     "PLR2004", # pylint: magic-value-comparison
-    "ANN101",  # flake8-annotations: missing-type-self
     "ANN401",  # flake8-annotations: any-type
 ]
 fixable = ["ALL"]
 unfixable = []
 
-[tool.ruff.lint.per-file-ignores]
+[tool.ruff.per-file-ignores]
 "__init__.py" = ["F401"]
 
 [tool.ruff.format]
