@@ -75,38 +75,38 @@ struct Object {
 /******************* Section 2. Object Ref *******************/
 
 namespace mlc {
-#define MLC_DEF_OBJ_REF(SelfType, ObjType, ParentType)                                                                                                \
-public:                                                                                                                                               \
-  [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kObjRef;                                                \
-  using TSelf = SelfType;                                                                                                                             \
-  using TObj = ObjType;                                                                                                                               \
-  using TObjRef = SelfType;                                                                                                                           \
-                                                                                                                                                      \
-private:                                                                                                                                              \
-  using TBase = ::mlc::base::PtrBase;                                                                                                                 \
-  template <typename U> using DObj = std::enable_if_t<::mlc::base::IsDerivedFrom<U, TObj>>;                                                           \
-  template <typename U> using DObjRef = std::enable_if_t<::mlc::base::IsDerivedFromObjRef<U, TObj>>;                                                  \
-  template <typename U> using DOpt = std::enable_if_t<::mlc::base::IsDerivedFromOpt<U, TObj>>;                                                        \
-                                                                                                                                                      \
-public:                                                                                                                                               \
-  /***** Section 1. Default constructor/destructors *****/                                                                                            \
-  MLC_INLINE SelfType(std::nullptr_t) = delete;                                                                                                       \
-  MLC_INLINE SelfType(::mlc::NullType) : ParentType(::mlc::Null) {}                                                                                   \
-  MLC_INLINE SelfType &operator=(std::nullptr_t) = delete;                                                                                            \
-  MLC_INLINE SelfType &operator=(::mlc::NullType) { return this->Reset(); }                                                                           \
-  MLC_INLINE ~SelfType() = default;                                                                                                                   \
+#define MLC_DEF_OBJ_REF(SelfType, ObjType, ParentType)                                                                 \
+public:                                                                                                                \
+  [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kObjRef;                 \
+  using TSelf = SelfType;                                                                                              \
+  using TObj = ObjType;                                                                                                \
+  using TObjRef = SelfType;                                                                                            \
+                                                                                                                       \
+private:                                                                                                               \
+  using TBase = ::mlc::base::PtrBase;                                                                                  \
+  template <typename U> using DObj = std::enable_if_t<::mlc::base::IsDerivedFrom<U, TObj>>;                            \
+  template <typename U> using DObjRef = std::enable_if_t<::mlc::base::IsDerivedFromObjRef<U, TObj>>;                   \
+  template <typename U> using DOpt = std::enable_if_t<::mlc::base::IsDerivedFromOpt<U, TObj>>;                         \
+                                                                                                                       \
+public:                                                                                                                \
+  /***** Section 1. Default constructor/destructors *****/                                                             \
+  MLC_INLINE SelfType(std::nullptr_t) = delete;                                                                        \
+  MLC_INLINE SelfType(::mlc::NullType) : ParentType(::mlc::Null) {}                                                    \
+  MLC_INLINE SelfType &operator=(std::nullptr_t) = delete;                                                             \
+  MLC_INLINE SelfType &operator=(::mlc::NullType) { return this->Reset(); }                                            \
+  MLC_INLINE ~SelfType() = default;                                                                                    \
   /* clang-format off */                                                                                    \
   MLC_INLINE SelfType(const TSelf &src) : ParentType(::mlc::Null) { this->_Set(src.ptr); TBase::IncRef(); } \
   MLC_INLINE SelfType(TSelf &&src) : ParentType(::mlc::Null) { this->_Set(src.ptr); src.ptr = nullptr; }    \
   MLC_INLINE TSelf &operator=(const TSelf &other) { TSelf(other).Swap(*this); return *this; }               \
   MLC_INLINE TSelf &operator=(TSelf &&other) { TSelf(std::move(other)).Swap(*this); return *this; }         \
-  MLC_INLINE TSelf &Reset() { TBase::Reset(); return *this; }                                         \
-  /* clang-format on */                                                                                                                               \
-  /***** Section 2. The `new` operator *****/                                                                                                         \
-  template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<TObj, Args...>>>                                                    \
-  MLC_INLINE explicit SelfType(Args &&...args)                                                                                                        \
-      : SelfType(::mlc::base::AllocatorOf<TObj>::New(std::forward<Args>(args)...)) {}                                                                 \
-  /***** Section 3. From derived pointers *****/                                                                                                      \
+  MLC_INLINE TSelf &Reset() { TBase::Reset(); return *this; }          \
+  /* clang-format on */                                                                                                \
+  /***** Section 2. The `new` operator *****/                                                                          \
+  template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<TObj, Args...>>>                     \
+  MLC_INLINE explicit SelfType(Args &&...args)                                                                         \
+      : SelfType(::mlc::base::AllocatorOf<TObj>::New(std::forward<Args>(args)...)) {}                                  \
+  /***** Section 3. From derived pointers *****/                                                                       \
   /* clang-format off */                                                                                                                                                                                                          \
   template <typename U, typename = DObj<U>> MLC_INLINE explicit SelfType(const U *src) : ParentType(::mlc::Null) { this->_Set(reinterpret_cast<const MLCAny *>(src)); TBase::IncRef(); TBase::CheckNull<TSelf>(); }               \
   template <typename U, typename = DObj<U>> MLC_INLINE SelfType(const ::mlc::Ref<U> &src) : ParentType(::mlc::Null) { TBase::_Set(reinterpret_cast<const MLCObjPtr &>(src)); TBase::IncRef(); TBase::CheckNull<TSelf>(); }        \
@@ -118,45 +118,45 @@ public:                                                                         
   template <typename U, typename = DObj<U>> MLC_INLINE TSelf &operator=(const ::mlc::Ref<U> &other) { TSelf(other).Swap(*this); return *this; }                                                                                   \
   template <typename U, typename = DObj<U>> MLC_INLINE TSelf &operator=(::mlc::Ref<U> &&other) { TSelf(std::move(other)).Swap(*this); return *this; }                                                                             \
   template <typename U, typename = DObj<U>> MLC_INLINE TSelf &operator=(const ::mlc::Optional<U> &other) { TSelf(other).Swap(*this); return *this; }                                                                              \
-  template <typename U, typename = DObj<U>> MLC_INLINE TSelf &operator=(::mlc::Optional<U> &&other) { TSelf(std::move(other)).Swap(*this); return *this; } \
-  /* clang-format on */                                                                                                                               \
-  /***** Section 4. Conversion between AnyView/Any *****/                                                                                             \
-  MLC_INLINE SelfType(const ::mlc::AnyView *src) : ParentType(::mlc::Null) {                                                                          \
-    TBase::_Init<TObj>(src);                                                                                                                          \
-    TBase::CheckNull<TSelf>();                                                                                                                        \
-  }                                                                                                                                                   \
-  MLC_INLINE SelfType(const ::mlc::Any *src) : ParentType(::mlc::Null) {                                                                              \
-    TBase::_Init<TObj>(src);                                                                                                                          \
-    TBase::CheckNull<TSelf>();                                                                                                                        \
-  }                                                                                                                                                   \
-  MLC_INLINE operator ::mlc::AnyView() const { return ::mlc::AnyView(this->get()); };                                                                 \
-  MLC_INLINE operator ::mlc::Any() const { return ::mlc::Any(this->get()); }                                                                          \
-  /***** Section 5. Accessor, comparators and stringify *****/                                                                                        \
-  MLC_INLINE const TObj *get() const { return reinterpret_cast<const TObj *>(this->ptr); }                                                            \
-  MLC_INLINE TObj *get() { return reinterpret_cast<TObj *>(ptr); }                                                                                    \
-  MLC_INLINE const TObj *operator->() const { return get(); }                                                                                         \
-  MLC_INLINE TObj *operator->() { return get(); }                                                                                                     \
-  MLC_INLINE const TObj &operator*() const {                                                                                                          \
-    if (const TObj *ret = get()) {                                                                                                                    \
-      return *ret;                                                                                                                                    \
-    }                                                                                                                                                 \
-    MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                                                 \
-    MLC_UNREACHABLE();                                                                                                                                \
-  }                                                                                                                                                   \
-  MLC_INLINE TObj &operator*() {                                                                                                                      \
-    if (TObj *ret = get()) {                                                                                                                          \
-      return *ret;                                                                                                                                    \
-    }                                                                                                                                                 \
-    MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                                                 \
-    MLC_UNREACHABLE();                                                                                                                                \
-  }                                                                                                                                                   \
-  MLC_INLINE bool defined() const { return TBase::ptr != nullptr; }                                                                                   \
-  MLC_INLINE bool has_value() const { return TBase::ptr != nullptr; }                                                                                 \
-  MLC_INLINE bool operator==(std::nullptr_t) const { return TBase::ptr == nullptr; }                                                                  \
-  MLC_INLINE bool operator!=(std::nullptr_t) const { return TBase::ptr != nullptr; }                                                                  \
-  /***** Section 6. Runtime-type information *****/                                                                                                   \
-  MLC_DEF_RTTI_METHODS(true, TBase::ptr, TBase::ptr)                                                                                                  \
-  static inline const int32_t _type_reflect =                                                                                                         \
+  template <typename U, typename = DObj<U>> MLC_INLINE TSelf &operator=(::mlc::Optional<U> &&other) { TSelf(std::move(other)).Swap(*this); return *this; }                                                                                 \
+  /* clang-format on */                                                                                                \
+  /***** Section 4. Conversion between AnyView/Any *****/                                                              \
+  MLC_INLINE SelfType(const ::mlc::AnyView *src) : ParentType(::mlc::Null) {                                           \
+    TBase::_Init<TObj>(src);                                                                                           \
+    TBase::CheckNull<TSelf>();                                                                                         \
+  }                                                                                                                    \
+  MLC_INLINE SelfType(const ::mlc::Any *src) : ParentType(::mlc::Null) {                                               \
+    TBase::_Init<TObj>(src);                                                                                           \
+    TBase::CheckNull<TSelf>();                                                                                         \
+  }                                                                                                                    \
+  MLC_INLINE operator ::mlc::AnyView() const { return ::mlc::AnyView(this->get()); };                                  \
+  MLC_INLINE operator ::mlc::Any() const { return ::mlc::Any(this->get()); }                                           \
+  /***** Section 5. Accessor, comparators and stringify *****/                                                         \
+  MLC_INLINE const TObj *get() const { return reinterpret_cast<const TObj *>(this->ptr); }                             \
+  MLC_INLINE TObj *get() { return reinterpret_cast<TObj *>(ptr); }                                                     \
+  MLC_INLINE const TObj *operator->() const { return get(); }                                                          \
+  MLC_INLINE TObj *operator->() { return get(); }                                                                      \
+  MLC_INLINE const TObj &operator*() const {                                                                           \
+    if (const TObj *ret = get()) {                                                                                     \
+      return *ret;                                                                                                     \
+    }                                                                                                                  \
+    MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                  \
+    MLC_UNREACHABLE();                                                                                                 \
+  }                                                                                                                    \
+  MLC_INLINE TObj &operator*() {                                                                                       \
+    if (TObj *ret = get()) {                                                                                           \
+      return *ret;                                                                                                     \
+    }                                                                                                                  \
+    MLC_THROW(ValueError) << "Attempt to dereference a null pointer";                                                  \
+    MLC_UNREACHABLE();                                                                                                 \
+  }                                                                                                                    \
+  MLC_INLINE bool defined() const { return TBase::ptr != nullptr; }                                                    \
+  MLC_INLINE bool has_value() const { return TBase::ptr != nullptr; }                                                  \
+  MLC_INLINE bool operator==(std::nullptr_t) const { return TBase::ptr == nullptr; }                                   \
+  MLC_INLINE bool operator!=(std::nullptr_t) const { return TBase::ptr != nullptr; }                                   \
+  /***** Section 6. Runtime-type information *****/                                                                    \
+  MLC_DEF_RTTI_METHODS(true, TBase::ptr, TBase::ptr)                                                                   \
+  static inline const int32_t _type_reflect =                                                                          \
       ::mlc::core::ReflectionHelper(static_cast<int32_t>(TObj::_type_index)).Init<TObj>()
 
 struct ObjectRef : protected ::mlc::core::ObjectRefDummyRoot {
