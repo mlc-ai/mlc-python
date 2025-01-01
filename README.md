@@ -3,13 +3,14 @@
 
   MLC-Python
 </h1>
+<p align="center"> Python-first Development for AI Compilers. </p>
 
 * [:inbox_tray: Installation](#inbox_tray-installation)
 * [:key: Key Features](#key-key-features)
-  + [:building_construction: MLC Dataclass](#building_construction-mlc-dataclass)
-  + [:dart: Structure-Aware Tooling](#dart-structure-aware-tooling)
-  + [:snake: Text Formats in Python](#snake-text-formats-in-python)
-  + [:zap: Zero-Copy Interoperability with C++ Plugins](#zap-zero-copy-interoperability-with-c-plugins)
+  + [:building_construction: Define IRs with MLC Dataclasses](#building_construction-define-irs-with-mlc-dataclasses)
+  + [:snake: Design Python-based Text Formats for IRs](#snake-design-python-based-text-formats-for-irs)
+  + [:dart: Test IRs with MLC Structure-Aware Tooling](#dart-test-irs-with-mlc-structure-aware-tooling)
+  + [:zap: Migrate Gradually to C++ with MLC Plugins](#zap-migrate-gradually-to-c-with-mlc-plugins)
 * [:fuelpump: Development](#fuelpump-development)
   + [:gear: Editable Build](#gear-editable-build)
   + [:ferris_wheel: Create Wheels](#ferris_wheel-create-wheels)
@@ -27,9 +28,9 @@ pip install -U mlc-python
 
 ## :key: Key Features
 
-### :building_construction: MLC Dataclass
+### :building_construction: Define IRs with MLC Dataclasses
 
-MLC dataclass is similar to Python’s native dataclass:
+MLC provides Pythonic dataclasses:
 
 ```python
 import mlc.dataclasses as mlcd
@@ -66,9 +67,49 @@ demo.MyClass(a=12, b='test', c=None)
 demo.MyClass(a=12, b='test', c=None)
 ```
 
-### :dart: Structure-Aware Tooling
+### :snake: Design Python-based Text Formats for IRs
 
-An extra `structure` field are used to specify a dataclass's structure, indicating def site and scoping in an IR.
+**Printer.** MLC looks up method `__ir_print__` to convert IR nodes to Python AST:
+
+**[[Example](https://github.com/mlc-ai/mlc-python/blob/main/python/mlc/testing/toy_ir/ir.py)]**. Copy the toy IR definition to REPL and then create a `Func` node below:
+
+```python
+>>> a, b, c, d, e = Var("a"), Var("b"), Var("c"), Var("d"), Var("e")
+>>> f = Func("f", [a, b, c],
+  stmts=[
+    Assign(lhs=d, rhs=Add(a, b)),  # d = a + b
+    Assign(lhs=e, rhs=Add(d, c)),  # e = d + c
+  ],
+  ret=e)
+```
+
+- Method `mlc.printer.to_python` converts an IR node to Python-based text;
+
+```python
+>>> print(mlcp.to_python(f))  # Stringify to Python
+def f(a, b, c):
+  d = a + b
+  e = d + c
+  return e
+```
+
+- Method `mlc.printer.print_python` further renders the text with proper syntax highlighting. [[Screenshot](https://raw.githubusercontent.com/gist/potatomashed/5a9b20edbdde1b9a91a360baa6bce9ff/raw/3c68031eaba0620a93add270f8ad7ed2c8724a78/mlc-python-printer.svg)]
+
+```python
+>>> mlcp.print_python(f)  # Syntax highlighting
+```
+
+**AST Parser.** MLC has a concise set of APIs for implementing parser with Python's AST module, including:
+- Inspection API that obtains source code of a Python class or function and the variables they capture;
+- Variable management APIs that help with proper scoping;
+- AST fragment evaluation APIs;
+- Error rendering APIs.
+
+**[[Example](https://github.com/mlc-ai/mlc-python/blob/main/python/mlc/testing/toy_ir/parser.py)]**. With MLC APIs, a parser can be implemented with 100 lines of code for the Python text format above defined by `__ir_printer__`.
+
+### :dart: Test IRs with MLC Structure-Aware Tooling
+
+By annotating IR definitions with `structure`, MLC supports structural equality and structural hashing to detect structural equivalence between IRs:
 
 <details><summary> Define a toy IR with `structure`. </summary>
 
@@ -119,49 +160,11 @@ ValueError: Structural equality check failed at {root}.rhs.b: Inconsistent bindi
 >>> assert L1_hash != L3_hash
 ```
 
-### :snake: Text Formats in Python
+### :zap: Migrate Gradually to C++ with MLC Plugins
 
-**Printer.** MLC converts an IR node to Python AST by looking up the `__ir_print__` method.
+(🚧 Under construction)
 
-**[[Example](https://github.com/mlc-ai/mlc-python/blob/main/python/mlc/testing/toy_ir/ir.py)]**. Copy the toy IR definition to REPL and then create a `Func` node below:
-
-```python
->>> a, b, c, d, e = Var("a"), Var("b"), Var("c"), Var("d"), Var("e")
->>> f = Func("f", [a, b, c],
-  stmts=[
-    Assign(lhs=d, rhs=Add(a, b)),  # d = a + b
-    Assign(lhs=e, rhs=Add(d, c)),  # e = d + c
-  ],
-  ret=e)
-```
-
-- Method `mlc.printer.to_python` converts an IR node to Python-based text;
-
-```python
->>> print(mlcp.to_python(f))  # Stringify to Python
-def f(a, b, c):
-  d = a + b
-  e = d + c
-  return e
-```
-
-- Method `mlc.printer.print_python` further renders the text with proper syntax highlighting. [[Screenshot](https://raw.githubusercontent.com/gist/potatomashed/5a9b20edbdde1b9a91a360baa6bce9ff/raw/3c68031eaba0620a93add270f8ad7ed2c8724a78/mlc-python-printer.svg)]
-
-```python
->>> mlcp.print_python(f)  # Syntax highlighting
-```
-
-**AST Parser.** MLC has a concise set of APIs for implementing parser with Python's AST module, including:
-- Inspection API that obtains source code of a Python class or function and the variables they capture;
-- Variable management APIs that help with proper scoping;
-- AST fragment evaluation APIs;
-- Error rendering APIs.
-
-**[[Example](https://github.com/mlc-ai/mlc-python/blob/main/python/mlc/testing/toy_ir/parser.py)]**. With MLC APIs, a parser can be implemented with 100 lines of code for the Python text format above defined by `__ir_printer__`.
-
-### :zap: Zero-Copy Interoperability with C++ Plugins
-
-🚧 Under construction.
+MLC seamlessly supports zero-copy bidirectional interoperabilty with C++ plugins with no extra dependency. By gradually migrating classes and methods one at a time, a pure Python prototype can be transitioned to hybrid or Python-free development.
 
 ## :fuelpump: Development
 
