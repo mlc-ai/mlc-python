@@ -58,7 +58,7 @@ template <typename T> MLC_INLINE AnyView::AnyView(Ref<T> &&src) : AnyView(static
   // `src` is not reset here because `AnyView` does not take ownership of the object
 }
 
-template <typename T> MLC_INLINE AnyView::AnyView(const Optional<T> &src) {
+template <typename T> MLC_INLINE AnyView::AnyView(const Optional<T> &src) : MLCAny() {
   if (const auto *value = src.get()) {
     if constexpr (::mlc::base::IsPOD<T>) {
       using TPOD = T;

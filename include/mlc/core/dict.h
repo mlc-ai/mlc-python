@@ -138,11 +138,14 @@ struct UDict : public ObjectRef {
   MLC_INLINE const_iterator end() const { return get()->end(); }
   MLC_INLINE const_reverse_iterator rbegin() const { return get()->rbegin(); }
   MLC_INLINE const_reverse_iterator rend() const { return get()->rend(); }
+  MLC_INLINE static void FromAnyTuple(int32_t num_args, const AnyView *args, Any *ret) {
+    ::mlc::core::DictBase::Accessor<UDictObj>::New(num_args, args, ret);
+  }
   MLC_DEF_OBJ_REF(UDict, UDictObj, ObjectRef)
       .FieldReadOnly("capacity", &MLCDict::capacity)
       .FieldReadOnly("size", &MLCDict::size)
       .FieldReadOnly("data", &MLCDict::data)
-      .StaticFn("__init__", ::mlc::core::DictBase::Accessor<UDictObj>::New)
+      .StaticFn("__init__", FromAnyTuple)
       .MemFn("__str__", &UDictObj::__str__)
       .MemFn("__getitem__", ::mlc::core::DictBase::Accessor<UDictObj>::GetItem)
       .MemFn("__iter_get_key__", ::mlc::core::DictBase::Accessor<UDictObj>::GetKey)

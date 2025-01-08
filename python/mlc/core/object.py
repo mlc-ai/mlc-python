@@ -31,3 +31,18 @@ class Object(PyAny):
 
     def hash_s(self) -> int:
         return PyAny._mlc_hash_s(self)  # type: ignore[attr-defined]
+
+    def __copy__(self: Object) -> Object:
+        return PyAny._mlc_copy_shallow(self)  # type: ignore[attr-defined]
+
+    def __deepcopy__(self: Object, memo: dict[int, Object] | None) -> Object:
+        return PyAny._mlc_copy_deep(self)
+
+    def __hash__(self) -> int:
+        return hash((type(self), self._mlc_address))
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Object) and self._mlc_address == other._mlc_address
+
+    def __ne__(self, other: object) -> bool:
+        return not self == other

@@ -387,7 +387,11 @@ struct LibState {
       DecRef(func.v.v_obj);
     }
     FuncObj *ret = reinterpret_cast<FuncObj *>(func.v.v_obj);
-    if (func.type_index != kMLCFunc) {
+    if (func.type_index == kMLCNone) {
+      MLC_THROW(TypeError) << "Function `" << vtable_name
+                           << "` for type: " << ::mlc::base::TypeIndex2TypeKey(type_index)
+                           << " is not defined in the vtable";
+    } else if (func.type_index != kMLCFunc) {
       MLC_THROW(TypeError) << "Function `" << vtable_name
                            << "` for type: " << ::mlc::base::TypeIndex2TypeKey(type_index)
                            << " is not callable. Its type is " << ::mlc::base::TypeIndex2TypeKey(func.type_index);
@@ -401,6 +405,7 @@ struct LibState {
   static MLC_SYMBOL_HIDE inline MLCVTableHandle cxx_str = VTableGetGlobal("__cxx_str__");
   static MLC_SYMBOL_HIDE inline MLCVTableHandle str = VTableGetGlobal("__str__");
   static MLC_SYMBOL_HIDE inline MLCVTableHandle ir_print = VTableGetGlobal("__ir_print__");
+  static MLC_SYMBOL_HIDE inline MLCVTableHandle init = VTableGetGlobal("__init__");
 };
 
 } // namespace base

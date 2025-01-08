@@ -31,3 +31,6 @@ class DataType(PyAny):
 
     def __ne__(self, other: object) -> bool:
         return isinstance(other, DataType) and self._dtype_triple != other._dtype_triple
+
+    def __hash__(self) -> int:
+        return hash((DataType, *self._dtype_triple))

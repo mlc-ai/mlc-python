@@ -164,9 +164,7 @@ template <typename Visitor> inline void VisitStructure(Object *root, MLCTypeInfo
 }
 
 inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeInfo *type_info)> pre_visit,
-                      std::function<void(Object *object, MLCTypeInfo *type_info,
-                                         const std::unordered_map<Object *, int32_t> &topo_indices)>
-                          on_visit) {
+                      std::function<void(Object *object, MLCTypeInfo *type_info)> on_visit) {
   struct TopoInfo {
     Object *obj;
     MLCTypeInfo *type_info;
@@ -271,20 +269,13 @@ inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeIn
     }
   }
   // Step 3. Traverse the graph by topological order
-  std::unordered_map<Object *, int32_t> topo_indices;
   size_t num_objects = 0;
   for (; !stack.empty(); ++num_objects) {
     TopoInfo *current = stack.back();
     stack.pop_back();
-    // Step 3.1. Lable object index
-    int32_t &topo_index = topo_indices[current->obj];
-    if (topo_index != 0) {
-      MLC_THROW(InternalError) << "This should never happen: object already visited";
-    }
-    topo_index = static_cast<int32_t>(num_objects);
-    // Step 3.2. Visit object
-    on_visit(current->obj, current->type_info, topo_indices);
-    // Step 3.3. Decrease the dependency count of topo_parents
+    // Step 3.1. Visit object
+    on_visit(current->obj, current->type_info);
+    // Step 3.2. Decrease the dependency count of topo_parents
     for (TopoInfo *parent : current->topo_parents) {
       if (--parent->topo_deps == 0) {
         stack.push_back(parent);
