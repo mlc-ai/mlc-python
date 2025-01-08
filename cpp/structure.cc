@@ -1,3 +1,4 @@
+#include "mlc/core/error.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -532,11 +533,141 @@ inline uint64_t StructuralHash(Object *obj) {
 #undef MLC_CORE_HASH_S_POD
 #undef MLC_CORE_HASH_S_ANY
 
+inline Any CopyShallow(AnyView source) {
+  int32_t type_index = source.type_index;
+  if (::mlc::base::IsTypeIndexPOD(type_index)) {
+    return source;
+  } else if (UListObj *list = source.TryCast<UListObj>()) {
+    return UList(list->begin(), list->end());
+  } else if (UDictObj *dict = source.TryCast<UDictObj>()) {
+    return UDict(dict->begin(), dict->end());
+  } else if (source.IsInstance<StrObj>() || source.IsInstance<ErrorObj>() || source.IsInstance<FuncObj>()) {
+    return source;
+  }
+  struct Copier {
+    MLC_INLINE void operator()(MLCTypeField *, const Any *any) { fields->push_back(AnyView(*any)); }
+    MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { fields->push_back(AnyView(*obj)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, int8_t *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int16_t *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int32_t *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int64_t *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, float *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, double *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, DLDataType *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, DLDevice *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<void *> *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, void **v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, const char **v) { fields->push_back(AnyView(*v)); }
+    std::vector<AnyView> *fields;
+  };
+  FuncObj *init_func = ::mlc::base::LibState::VTableGetFunc(::mlc::base::LibState::init, type_index, "__init__");
+  MLCTypeInfo *type_info = ::mlc::base::TypeIndex2TypeInfo(type_index);
+  std::vector<AnyView> fields;
+  VisitFields(source.operator Object *(), type_info, Copier{&fields});
+  Any ret;
+  ::mlc::base::FuncCall(init_func, static_cast<int32_t>(fields.size()), fields.data(), &ret);
+  return ret;
+}
+
+inline Any CopyDeep(AnyView source) {
+  if (::mlc::base::IsTypeIndexPOD(source.type_index)) {
+    return source;
+  }
+  struct Copier {
+    MLC_INLINE void operator()(MLCTypeField *, const Any *any) { HandleAny(any); }
+    MLC_INLINE void operator()(MLCTypeField *, ObjectRef *ref) {
+      if (const Object *obj = ref->get()) {
+        HandleObject(obj);
+      } else {
+        fields->push_back(AnyView());
+      }
+    }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) {
+      if (const Object *obj = opt->get()) {
+        HandleObject(obj);
+      } else {
+        fields->push_back(AnyView());
+      }
+    }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, int8_t *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int16_t *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int32_t *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int64_t *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, float *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, double *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, DLDataType *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, DLDevice *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<void *> *v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, void **v) { fields->push_back(AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, const char **v) { fields->push_back(AnyView(*v)); }
+
+    void HandleObject(const Object *obj) {
+      if (auto it = orig2copy->find(obj); it != orig2copy->end()) {
+        fields->push_back(AnyView(it->second));
+      } else {
+        MLC_THROW(InternalError) << "InternalError: object doesn't exist in the memo: " << AnyView(obj);
+      }
+    }
+
+    void HandleAny(const Any *any) {
+      if (const Object *obj = any->TryCast<Object>()) {
+        HandleObject(obj);
+      } else {
+        fields->push_back(AnyView(*any));
+      }
+    }
+
+    std::unordered_map<const Object *, ObjectRef> *orig2copy;
+    std::vector<AnyView> *fields;
+  };
+  std::unordered_map<const Object *, ObjectRef> orig2copy;
+  std::vector<AnyView> fields;
+  TopoVisit(source.operator Object *(), nullptr, [&](Object *object, MLCTypeInfo *type_info) mutable -> void {
+    Any ret;
+    if (UListObj *list = object->TryCast<UListObj>()) {
+      fields.clear();
+      fields.reserve(list->size());
+      for (Any &e : *list) {
+        Copier{&orig2copy, &fields}.HandleAny(&e);
+      }
+      UList::FromAnyTuple(static_cast<int32_t>(fields.size()), fields.data(), &ret);
+    } else if (UDictObj *dict = object->TryCast<UDictObj>()) {
+      fields.clear();
+      for (auto [key, value] : *dict) {
+        Copier{&orig2copy, &fields}.HandleAny(&key);
+        Copier{&orig2copy, &fields}.HandleAny(&value);
+      }
+      UDict::FromAnyTuple(static_cast<int32_t>(fields.size()), fields.data(), &ret);
+    } else if (object->IsInstance<StrObj>() || object->IsInstance<ErrorObj>() || object->IsInstance<FuncObj>()) {
+      ret = object;
+    } else {
+      fields.clear();
+      VisitFields(object, type_info, Copier{&orig2copy, &fields});
+      FuncObj *func =
+          ::mlc::base::LibState::VTableGetFunc(::mlc::base::LibState::init, type_info->type_index, "__init__");
+      ::mlc::base::FuncCall(func, static_cast<int32_t>(fields.size()), fields.data(), &ret);
+    }
+    orig2copy[object] = ret.operator ObjectRef();
+  });
+  return orig2copy.at(source.operator Object *());
+}
+
 MLC_REGISTER_FUNC("mlc.core.StructuralEqual").set_body(::mlc::core::StructuralEqual);
 MLC_REGISTER_FUNC("mlc.core.StructuralHash").set_body([](::mlc::Object *obj) -> int64_t {
   uint64_t ret = ::mlc::core::StructuralHash(obj);
   return static_cast<int64_t>(ret);
 });
+MLC_REGISTER_FUNC("mlc.core.CopyShallow").set_body(::mlc::core::CopyShallow);
+MLC_REGISTER_FUNC("mlc.core.CopyDeep").set_body(::mlc::core::CopyDeep);
 } // namespace
 } // namespace core
 } // namespace mlc

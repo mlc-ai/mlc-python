@@ -31,26 +31,30 @@ inline mlc::Str Serialize(Any any) {
   using TObj2Idx = std::unordered_map<Object *, int32_t>;
   using TJsonTypeIndex = decltype(get_json_type_index);
   struct Emitter {
+    MLC_INLINE void operator()(MLCTypeField *, const Any *any) { EmitAny(any); }
     // clang-format off
-      MLC_INLINE void operator()(MLCTypeField *, const Any *any) { EmitAny(any); }
-      MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { if (Object *v = obj->get()) EmitObject(v); else EmitNil(); }
-      MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) { if (Object *v = opt->get()) EmitObject(v); else EmitNil(); }
-      MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { if (const int64_t *v = opt->get()) EmitInt(*v); else EmitNil(); }
-      MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { if (const double *v = opt->get())  EmitFloat(*v); else EmitNil(); }
-      MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { if (const DLDevice *v = opt->get()) EmitDevice(*v); else EmitNil(); }
-      MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { if (const DLDataType *v = opt->get()) EmitDType(*v); else EmitNil(); }
-      MLC_INLINE void operator()(MLCTypeField *, int8_t *v) { EmitInt(static_cast<int64_t>(*v)); }
-      MLC_INLINE void operator()(MLCTypeField *, int16_t *v) { EmitInt(static_cast<int64_t>(*v)); }
-      MLC_INLINE void operator()(MLCTypeField *, int32_t *v) { EmitInt(static_cast<int64_t>(*v)); }
-      MLC_INLINE void operator()(MLCTypeField *, int64_t *v) { EmitInt(static_cast<int64_t>(*v)); }
-      MLC_INLINE void operator()(MLCTypeField *, float *v) { EmitFloat(static_cast<double>(*v)); }
-      MLC_INLINE void operator()(MLCTypeField *, double *v) { EmitFloat(static_cast<double>(*v)); }
-      MLC_INLINE void operator()(MLCTypeField *, DLDataType *v) { EmitDType(*v); }
-      MLC_INLINE void operator()(MLCTypeField *, DLDevice *v) { EmitDevice(*v); }
-      MLC_INLINE void operator()(MLCTypeField *, Optional<void *> *) { MLC_THROW(TypeError) << "Unserializable type: void *"; }
-      MLC_INLINE void operator()(MLCTypeField *, void **) { MLC_THROW(TypeError) << "Unserializable type: void *"; }
-      MLC_INLINE void operator()(MLCTypeField *, const char **) { MLC_THROW(TypeError) << "Unserializable type: const char *"; }
+    MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { if (Object *v = obj->get()) EmitObject(v); else EmitNil(); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) { if (Object *v = opt->get()) EmitObject(v); else EmitNil(); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { if (const int64_t *v = opt->get()) EmitInt(*v); else EmitNil(); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { if (const double *v = opt->get())  EmitFloat(*v); else EmitNil(); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { if (const DLDevice *v = opt->get()) EmitDevice(*v); else EmitNil(); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { if (const DLDataType *v = opt->get()) EmitDType(*v); else EmitNil(); }
     // clang-format on
+    MLC_INLINE void operator()(MLCTypeField *, int8_t *v) { EmitInt(static_cast<int64_t>(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int16_t *v) { EmitInt(static_cast<int64_t>(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int32_t *v) { EmitInt(static_cast<int64_t>(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, int64_t *v) { EmitInt(static_cast<int64_t>(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, float *v) { EmitFloat(static_cast<double>(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, double *v) { EmitFloat(static_cast<double>(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *, DLDataType *v) { EmitDType(*v); }
+    MLC_INLINE void operator()(MLCTypeField *, DLDevice *v) { EmitDevice(*v); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<void *> *) {
+      MLC_THROW(TypeError) << "Unserializable type: void *";
+    }
+    MLC_INLINE void operator()(MLCTypeField *, void **) { MLC_THROW(TypeError) << "Unserializable type: void *"; }
+    MLC_INLINE void operator()(MLCTypeField *, const char **) {
+      MLC_THROW(TypeError) << "Unserializable type: const char *";
+    }
     inline void EmitNil() { (*os) << ", null"; }
     inline void EmitFloat(double v) { (*os) << ", " << std::fixed << std::setprecision(19) << v; }
     inline void EmitInt(int64_t v) {
@@ -98,10 +102,17 @@ inline mlc::Str Serialize(Any any) {
     const TObj2Idx *obj2index;
   };
 
+  std::unordered_map<Object *, int32_t> topo_indices;
   std::ostringstream os;
-  auto on_visit = [get_json_type_index = &get_json_type_index, os = &os, is_first_object = true](
-                      Object *object, MLCTypeInfo *type_info, const TObj2Idx &obj2index) mutable -> void {
-    Emitter emitter{os, get_json_type_index, &obj2index};
+  auto on_visit = [&topo_indices, get_json_type_index = &get_json_type_index, os = &os,
+                   is_first_object = true](Object *object, MLCTypeInfo *type_info) mutable -> void {
+    int32_t &topo_index = topo_indices[object];
+    if (topo_index == 0) {
+      topo_index = static_cast<int32_t>(topo_indices.size()) - 1;
+    } else {
+      MLC_THROW(InternalError) << "This should never happen: object already visited";
+    }
+    Emitter emitter{os, get_json_type_index, &topo_indices};
     if (is_first_object) {
       is_first_object = false;
     } else {
@@ -163,29 +174,23 @@ inline mlc::Str Serialize(Any any) {
 }
 
 inline Any Deserialize(const char *json_str, int64_t json_str_len) {
-  MLCVTableHandle init_vtable;
-  MLCVTableGetGlobal(nullptr, "__init__", &init_vtable);
+  MLCVTableHandle init_table = ::mlc::base::LibState::init;
   // Step 0. Parse JSON string
   UDict json_obj = JSONLoads(json_str, json_str_len);
   // Step 1. type_key => constructors
   UList type_keys = json_obj->at("type_keys");
-  std::vector<Func> constructors;
+  std::vector<FuncObj *> constructors;
   constructors.reserve(type_keys.size());
   for (Str type_key : type_keys) {
-    Any init_func;
     int32_t type_index = ::mlc::base::TypeKey2TypeIndex(type_key->data());
-    MLCVTableGetFunc(init_vtable, type_index, false, &init_func);
-    if (!::mlc::base::IsTypeIndexNone(init_func.type_index)) {
-      constructors.push_back(init_func.operator Func());
-    } else {
-      MLC_THROW(InternalError) << "Method `__init__` is not defined for type " << type_key;
-    }
+    FuncObj *func = ::mlc::base::LibState::VTableGetFunc(init_table, type_index, "__init__");
+    constructors.push_back(func);
   }
   auto invoke_init = [&constructors](UList args) {
     int32_t json_type_index = args[0];
     Any ret;
-    ::mlc::base::FuncCall(constructors.at(json_type_index).get(), static_cast<int32_t>(args.size()) - 1,
-                          args->data() + 1, &ret);
+    ::mlc::base::FuncCall(constructors.at(json_type_index), static_cast<int32_t>(args.size()) - 1, args->data() + 1,
+                          &ret);
     return ret;
   };
   // Step 2. Translate JSON object to objects

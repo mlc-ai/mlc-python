@@ -25,3 +25,6 @@ class Device(PyAny):
 
     def __ne__(self, other: object) -> bool:
         return isinstance(other, Device) and self._dtype_triple != other._dtype_triple
+
+    def __hash__(self) -> int:
+        return hash((Device, *self._device_pair))

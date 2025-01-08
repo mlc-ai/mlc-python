@@ -300,6 +300,11 @@ cdef class PyAny:
     def __init__(self):
         pass
 
+    @property
+    def _mlc_address(self):
+        cdef uint64_t ret = (<uint64_t>(self._mlc_any.v.v_obj)) if self._mlc_any.type_index >= kMLCStaticObjectBegin else 0  # no-cython-lint
+        return ret
+
     def _mlc_init(self, *init_args) -> None:
         cdef int32_t type_index = type(self)._mlc_type_info.type_index
         cdef MLCFunc* func = _vtable_get_func_ptr(_VTABLE_INIT, type_index, False)
@@ -344,6 +349,14 @@ cdef class PyAny:
         if ret < 0:
             ret += 2 ** 63
         return ret
+
+    @staticmethod
+    def _mlc_copy_shallow(PyAny x) -> PyAny:
+        return func_call(_COPY_SHALLOW, (x,))
+
+    @staticmethod
+    def _mlc_copy_deep(PyAny x) -> PyAny:
+        return func_call(_COPY_DEEP, (x,))
 
     @classmethod
     def _C(cls, bytes name, *args):
@@ -902,6 +915,11 @@ cdef class TypeCheckerList:
         cdef int32_t num_args = 0
         cdef MLCAny* c_args = NULL
         cdef MLCAny ret = _MLCAnyNone()
+        if isinstance(_value, mlc_list):
+            for v in _value:
+                _type_checker_call(self.sub, v, temporary_storage)
+            temporary_storage.append(_value)
+            return (<PyAny>_value)._mlc_any
         if not isinstance(_value, (list, tuple, mlc_list)):
             raise TypeError(f"Expected `list` or `tuple`, but got: {type(_value)}")
         value = tuple(_value)
@@ -932,6 +950,8 @@ cdef class TypeCheckerDict:
 
     @staticmethod
     cdef MLCAny convert(object _self, object _value, list temporary_storage):
+        from mlc.core.dict import Dict as mlc_dict
+
         cdef TypeCheckerDict self = <TypeCheckerDict>_self
         cdef tuple value
         cdef int32_t num_args = 0
@@ -939,9 +959,16 @@ cdef class TypeCheckerDict:
         cdef MLCAny ret = _MLCAnyNone()
         cdef TypeChecker sub_k = self.sub_k
         cdef TypeChecker sub_v = self.sub_v
-        if not isinstance(_value, dict):
+        if isinstance(_value, mlc_dict):
+            for k, v in _value.items():
+                _type_checker_call(sub_k, k, temporary_storage)
+                _type_checker_call(sub_v, v, temporary_storage)
+            temporary_storage.append(_value)
+            return (<PyAny>_value)._mlc_any
+        elif isinstance(_value, dict):
+            value = _flatten_dict_to_tuple(_value)
+        else:
             raise TypeError(f"Expected `dict`, but got: {type(_value)}")
-        value = _flatten_dict_to_tuple(_value)
         num_args = len(value)
         c_args = <MLCAny*> malloc(num_args * sizeof(MLCAny))
         try:
@@ -1403,18 +1430,20 @@ cdef PyAny _SERIALIZE = func_get_untyped("mlc.core.JSONSerialize")  # Any -> str
 cdef PyAny _DESERIALIZE = func_get_untyped("mlc.core.JSONDeserialize")  # str -> Any
 cdef PyAny _STRUCUTRAL_EQUAL = func_get_untyped("mlc.core.StructuralEqual")
 cdef PyAny _STRUCUTRAL_HASH = func_get_untyped("mlc.core.StructuralHash")
+cdef PyAny _COPY_SHALLOW = func_get_untyped("mlc.core.CopyShallow")
+cdef PyAny _COPY_DEEP = func_get_untyped("mlc.core.CopyDeep")
 
-cdef MLCVTableHandle _VTABLE_INIT = _vtable_get_global(b"__init__")
 cdef MLCVTableHandle _VTABLE_STR = _vtable_get_global(b"__str__")
-cdef MLCVTableHandle _VTABLE_NEW_REF = _vtable_get_global(b"__new_ref__")
 cdef MLCVTableHandle _VTABLE_ANY_TO_REF = _vtable_get_global(b"__any_to_ref__")
 
+cdef MLCVTableHandle _VTABLE_NEW_REF = _vtable_get_global(b"__new_ref__")
 cdef MLCFunc* _INT_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCInt, False)
 cdef MLCFunc* _FLOAT_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCFloat, False)
 cdef MLCFunc* _PTR_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCPtr, False)
 cdef MLCFunc* _DTYPE_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCDataType, False)
 cdef MLCFunc* _DEVICE_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCDevice, False)
 
+cdef MLCVTableHandle _VTABLE_INIT = _vtable_get_global(b"__init__")
 cdef MLCFunc* _DTYPE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDataType, False)
 cdef MLCFunc* _DEVICE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDevice, False)
 cdef MLCFunc* _LIST_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCList, False)

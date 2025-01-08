@@ -147,11 +147,14 @@ struct UList : public ObjectRef {
   MLC_INLINE const_iterator end() const { return get()->end(); }
   MLC_INLINE const_reverse_iterator rbegin() const { return get()->rbegin(); }
   MLC_INLINE const_reverse_iterator rend() const { return get()->rend(); }
+  MLC_INLINE static void FromAnyTuple(int32_t num_args, const AnyView *args, Any *ret) {
+    ::mlc::core::ListBase::Accessor<UListObj>::New(num_args, args, ret);
+  }
   MLC_DEF_OBJ_REF(UList, UListObj, ObjectRef)
       .FieldReadOnly("size", &MLCList::size)
       .FieldReadOnly("capacity", &MLCList::capacity)
       .FieldReadOnly("data", &MLCList::data)
-      .StaticFn("__init__", &::mlc::core::ListBase::Accessor<UListObj>::New)
+      .StaticFn("__init__", FromAnyTuple)
       .MemFn("__str__", &UListObj::__str__)
       .MemFn("__iter_at__", &::mlc::core::ListBase::Accessor<UListObj>::At);
 };

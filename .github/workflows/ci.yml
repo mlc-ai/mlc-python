@@ -20,6 +20,10 @@ jobs:
         with:
           python-version: ${{ env.MLC_PYTHON_VERSION }}
       - uses: pre-commit/action@v3.0.1
+      - uses:  ytanikin/pr-conventional-commits@1.4.0
+        with:
+          task_types: '["feat", "fix", "ci", "chore", "test"]'
+          add_label: 'false'
   windows:
     name: Windows
     runs-on: windows-latest
