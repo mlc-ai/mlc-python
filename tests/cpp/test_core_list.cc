@@ -1,3 +1,4 @@
+#include "./common.h"
 #include <gtest/gtest.h>
 #include <mlc/core/all.h>
 
@@ -10,12 +11,12 @@ class TestTypeObj : public Object {
 public:
   int value;
   explicit TestTypeObj(int v) : value(v) {}
-  MLC_DEF_DYN_TYPE(TestTypeObj, Object, "TestType");
+  MLC_DEF_DYN_TYPE(MLC_CPPTESTS_EXPORTS, TestTypeObj, Object, "TestType");
 };
 
 class TestType : public ObjectRef {
 public:
-  MLC_DEF_OBJ_REF(TestType, TestTypeObj, ObjectRef);
+  MLC_DEF_OBJ_REF(MLC_CPPTESTS_EXPORTS, TestType, TestTypeObj, ObjectRef);
 };
 
 // Tests for List<int>

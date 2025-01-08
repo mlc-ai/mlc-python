@@ -1,3 +1,4 @@
+#include "./common.h"
 #include <gtest/gtest.h>
 #include <mlc/core/all.h>
 #include <type_traits>
@@ -15,17 +16,17 @@ class TestObj : public Object {
 public:
   int data;
   explicit TestObj(int data) : data(data) {}
-  MLC_DEF_DYN_TYPE(TestObj, Object, "mlc.testing.test_core_ref.Test");
+  MLC_DEF_DYN_TYPE(MLC_CPPTESTS_EXPORTS, TestObj, Object, "mlc.testing.test_core_ref.Test");
 };
 
 class DerivedTestObj : public TestObj {
 public:
   explicit DerivedTestObj(int data) : TestObj(data) {}
-  MLC_DEF_DYN_TYPE(DerivedTestObj, TestObj, "mlc.testing.test_core_ref.DerivedTest");
+  MLC_DEF_DYN_TYPE(MLC_CPPTESTS_EXPORTS, DerivedTestObj, TestObj, "mlc.testing.test_core_ref.DerivedTest");
 };
 
 class TestObjRef : public ObjectRef {
-  MLC_DEF_OBJ_REF(TestObjRef, TestObj, ObjectRef);
+  MLC_DEF_OBJ_REF(MLC_CPPTESTS_EXPORTS, TestObjRef, TestObj, ObjectRef);
 };
 
 // Tests for Ref<>

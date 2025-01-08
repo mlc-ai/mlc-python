@@ -19,6 +19,13 @@
 #define MLC_API __attribute__((visibility("default")))
 #endif
 
+#ifndef MLC_EXPORTS
+#define MLC_EXPORTS 0
+#else
+#undef MLC_EXPORTS
+#define MLC_EXPORTS 1
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -226,6 +233,7 @@ MLC_API MLCAny MLCGetLastError();
 MLC_API int32_t MLCAnyIncRef(MLCAny *any);
 MLC_API int32_t MLCAnyDecRef(MLCAny *any);
 MLC_API int32_t MLCAnyInplaceViewToOwned(MLCAny *any);
+MLC_API int32_t MLCHandleGetGlobal(MLCTypeTableHandle *self);
 MLC_API int32_t MLCFuncCreate(void *self, MLCDeleterType deleter, MLCFuncSafeCallType safe_call, MLCAny *ret);
 MLC_API int32_t MLCFuncSetGlobal(MLCTypeTableHandle self, const char *name, MLCAny func, int allow_override);
 MLC_API int32_t MLCFuncGetGlobal(MLCTypeTableHandle self, const char *name, MLCAny *ret);
@@ -240,7 +248,7 @@ MLC_API int32_t MLCTypeRegisterStructure(MLCTypeTableHandle self, int32_t type_i
                                          int64_t num_sub_structures, int32_t *sub_structure_indices,
                                          int32_t *sub_structure_kinds);
 MLC_API int32_t MLCTypeAddMethod(MLCTypeTableHandle self, int32_t type_index, MLCTypeMethod method);
-MLC_API int32_t MLCVTableGetGlobal(MLCTypeTableHandle _self, const char *key, MLCVTableHandle *ret);
+MLC_API int32_t MLCVTableGetGlobal(MLCTypeTableHandle self, const char *key, MLCVTableHandle *ret);
 MLC_API int32_t MLCVTableGetFunc(MLCVTableHandle vtable, int32_t type_index, int32_t allow_ancestor, MLCAny *ret);
 MLC_API int32_t MLCVTableSetFunc(MLCVTableHandle vtable, int32_t type_index, MLCFunc *func, int32_t override_mode);
 MLC_API int32_t MLCErrorCreate(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret);

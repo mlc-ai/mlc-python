@@ -1,4 +1,4 @@
-#include "mlc/base/base_traits.h"
+#include "./common.h"
 #include <gtest/gtest.h>
 #include <mlc/core/all.h>
 #include <type_traits>
@@ -61,7 +61,7 @@ inline void CheckConvertFail(Callable convert, int32_t type_index, const char *e
     FAIL() << "No exception thrown";
   } catch (Exception &ex) {
     std::ostringstream os;
-    os << "Cannot convert from type `" << base::TypeIndex2TypeKey(type_index) << "` to `" << expected_type << "`";
+    os << "Cannot convert from type `" << Lib::GetTypeKey(type_index) << "` to `" << expected_type << "`";
     EXPECT_EQ(ex.what(), os.str());
   }
 }

@@ -16,22 +16,22 @@ namespace typing {
 struct TypeObj : public Object {
 protected:
   TypeObj() = default;
-  MLC_DEF_STATIC_TYPE(TypeObj, Object, MLCTypeIndex::kMLCTyping, "mlc.core.typing.Type");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, TypeObj, Object, MLCTypeIndex::kMLCTyping, "mlc.core.typing.Type");
 };
 
 struct Type : public ObjectRef {
-  MLC_DEF_OBJ_REF(Type, TypeObj, ObjectRef);
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Type, TypeObj, ObjectRef);
 };
 
 struct AnyTypeObj : protected MLCTypingAny {
   AnyTypeObj() = default;
   ::mlc::Str __str__() const { return "Any"; }
   ::mlc::Str __cxx_str__() const { return "::mlc::Any"; }
-  MLC_DEF_STATIC_TYPE(AnyTypeObj, TypeObj, MLCTypeIndex::kMLCTypingAny, "mlc.core.typing.AnyType");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, AnyTypeObj, TypeObj, MLCTypeIndex::kMLCTypingAny, "mlc.core.typing.AnyType");
 };
 
 struct AnyType : public Type {
-  MLC_DEF_OBJ_REF(AnyType, AnyTypeObj, Type)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, AnyType, AnyTypeObj, Type)
       .StaticFn("__init__", InitOf<AnyTypeObj>)
       .MemFn("__str__", &AnyTypeObj::__str__)
       .MemFn("__cxx_str__", &AnyTypeObj::__cxx_str__);
@@ -65,7 +65,7 @@ struct AtomicTypeObj : protected MLCTypingAtomic {
     } else if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCStr)) {
       return "str";
     }
-    return ::mlc::base::TypeIndex2TypeInfo(this->type_index)->type_key;
+    return ::mlc::Lib::GetTypeKey(this->type_index);
   }
   ::mlc::Str __cxx_str__() const {
     if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCNone)) {
@@ -93,7 +93,7 @@ struct AtomicTypeObj : protected MLCTypingAtomic {
     } else if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCStr)) {
       return "::mlc::Str";
     }
-    const char *type_key = ::mlc::base::TypeIndex2TypeInfo(this->type_index)->type_key;
+    const char *type_key = ::mlc::Lib::GetTypeKey(this->type_index);
     std::ostringstream oss;
     for (size_t i = 0, j = 0;; ++i) {
       char c = type_key[i];
@@ -110,11 +110,12 @@ struct AtomicTypeObj : protected MLCTypingAtomic {
     return oss.str();
   }
   using MLCTypingAtomic::type_index;
-  MLC_DEF_STATIC_TYPE(AtomicTypeObj, TypeObj, MLCTypeIndex::kMLCTypingAtomic, "mlc.core.typing.AtomicType");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, AtomicTypeObj, TypeObj, MLCTypeIndex::kMLCTypingAtomic,
+                      "mlc.core.typing.AtomicType");
 };
 
 struct AtomicType : public Type {
-  MLC_DEF_OBJ_REF(AtomicType, AtomicTypeObj, Type)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, AtomicType, AtomicTypeObj, Type)
       .FieldReadOnly("type_index", &MLCTypingAtomic::type_index)
       .StaticFn("__init__", InitOf<AtomicTypeObj, int32_t>)
       .MemFn("__str__", &AtomicTypeObj::__str__)
@@ -129,12 +130,12 @@ struct PtrTypeObj : protected MLCTypingPtr {
     return os.str();
   }
   ::mlc::Str __cxx_str__() const {
-    ::mlc::Str ty_str = ::mlc::base::LibState::CxxStr(this->Ty());
+    ::mlc::Str ty_str = ::mlc::Lib::CxxStr(this->Ty());
     std::ostringstream os;
     os << ty_str->data() << "Obj *";
     return os.str();
   }
-  MLC_DEF_STATIC_TYPE(PtrTypeObj, TypeObj, MLCTypeIndex::kMLCTypingPtr, "mlc.core.typing.PtrType");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, PtrTypeObj, TypeObj, MLCTypeIndex::kMLCTypingPtr, "mlc.core.typing.PtrType");
 
 private:
   Type &TyMut() { return reinterpret_cast<Type &>(this->MLCTypingPtr::ty); }
@@ -142,7 +143,7 @@ private:
 };
 
 struct PtrType : public Type {
-  MLC_DEF_OBJ_REF(PtrType, PtrTypeObj, Type)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, PtrType, PtrTypeObj, Type)
       .StaticFn("__init__", InitOf<PtrTypeObj, Type>)
       ._Field("ty", offsetof(MLCTypingPtr, ty), sizeof(MLCTypingPtr::ty), false, ParseType<Type>())
       .MemFn("__str__", &PtrTypeObj::__str__)
@@ -157,12 +158,12 @@ struct OptionalObj : protected MLCTypingOptional {
     return os.str();
   }
   ::mlc::Str __cxx_str__() const {
-    ::mlc::Str ty_str = ::mlc::base::LibState::CxxStr(this->Ty());
+    ::mlc::Str ty_str = ::mlc::Lib::CxxStr(this->Ty());
     std::ostringstream os;
     os << "::mlc::Optional<" << ty_str->data() << ">";
     return os.str();
   }
-  MLC_DEF_STATIC_TYPE(OptionalObj, TypeObj, MLCTypeIndex::kMLCTypingOptional, "mlc.core.typing.Optional");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, OptionalObj, TypeObj, MLCTypeIndex::kMLCTypingOptional, "mlc.core.typing.Optional");
 
 private:
   Type &TyMutable() { return reinterpret_cast<Type &>(this->MLCTypingOptional::ty); }
@@ -170,7 +171,7 @@ private:
 };
 
 struct Optional : public Type {
-  MLC_DEF_OBJ_REF(Optional, OptionalObj, Type)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Optional, OptionalObj, Type)
       .StaticFn("__init__", InitOf<OptionalObj, Type>)
       ._Field("ty", offsetof(MLCTypingOptional, ty), sizeof(MLCTypingOptional::ty), false, ParseType<Type>())
       .MemFn("__str__", &OptionalObj::__str__)
@@ -185,12 +186,12 @@ struct ListObj : protected MLCTypingList {
     return os.str();
   }
   ::mlc::Str __cxx_str__() const {
-    ::mlc::Str ty_str = ::mlc::base::LibState::CxxStr(this->Ty());
+    ::mlc::Str ty_str = ::mlc::Lib::CxxStr(this->Ty());
     std::ostringstream os;
     os << "::mlc::List<" << ty_str->data() << ">";
     return os.str();
   }
-  MLC_DEF_STATIC_TYPE(ListObj, TypeObj, MLCTypeIndex::kMLCTypingList, "mlc.core.typing.List");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, ListObj, TypeObj, MLCTypeIndex::kMLCTypingList, "mlc.core.typing.List");
 
 protected:
   Type &TyMutable() { return reinterpret_cast<Type &>(this->MLCTypingList::ty); }
@@ -198,7 +199,7 @@ protected:
 };
 
 struct List : public Type {
-  MLC_DEF_OBJ_REF(List, ListObj, Type)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, List, ListObj, Type)
       .StaticFn("__init__", InitOf<ListObj, Type>)
       ._Field("ty", offsetof(MLCTypingList, ty), sizeof(MLCTypingList::ty), false, ParseType<Type>())
       .MemFn("__str__", &ListObj::__str__)
@@ -216,13 +217,13 @@ struct DictObj : protected MLCTypingDict {
     return os.str();
   }
   ::mlc::Str __cxx_str__() const {
-    ::mlc::Str k_str = ::mlc::base::LibState::CxxStr(this->TyK());
-    ::mlc::Str v_str = ::mlc::base::LibState::CxxStr(this->TyV());
+    ::mlc::Str k_str = ::mlc::Lib::CxxStr(this->TyK());
+    ::mlc::Str v_str = ::mlc::Lib::CxxStr(this->TyV());
     std::ostringstream os;
     os << "::mlc::Dict<" << k_str->data() << ", " << v_str->data() << ">";
     return os.str();
   }
-  MLC_DEF_STATIC_TYPE(DictObj, TypeObj, MLCTypeIndex::kMLCTypingDict, "mlc.core.typing.Dict");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, DictObj, TypeObj, MLCTypeIndex::kMLCTypingDict, "mlc.core.typing.Dict");
 
 protected:
   Type &TyKMut() { return reinterpret_cast<Type &>(this->ty_k); }
@@ -232,7 +233,7 @@ protected:
 };
 
 struct Dict : public Type {
-  MLC_DEF_OBJ_REF(Dict, DictObj, Type)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Dict, DictObj, Type)
       .StaticFn("__init__", InitOf<DictObj, Type, Type>)
       ._Field("ty_k", offsetof(MLCTypingDict, ty_k), sizeof(MLCTypingDict::ty_k), false, ParseType<Type>())
       ._Field("ty_v", offsetof(MLCTypingDict, ty_v), sizeof(MLCTypingDict::ty_v), false, ParseType<Type>())

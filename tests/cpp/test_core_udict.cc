@@ -1,3 +1,4 @@
+#include "./common.h"
 #include <algorithm>
 #include <gtest/gtest.h>
 #include <mlc/core/all.h>

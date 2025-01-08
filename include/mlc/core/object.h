@@ -1,7 +1,7 @@
 #ifndef MLC_CORE_OBJECT_H_
 #define MLC_CORE_OBJECT_H_
 
-#include "./utils.h"
+#include "./reflection.h"
 #include <iomanip>
 
 /******************* Section 0. Dummy root *******************/
@@ -22,7 +22,7 @@ struct ObjectRefDummyRoot : protected ::mlc::base::PtrBase {
 
 /******************* Section 1. Object *******************/
 
-#define MLC_DEF_TYPE_COMMON_(SelfType, ParentType, TypeIndex, TypeKey)                                                 \
+#define MLC_DEF_TYPE_COMMON_(IS_EXPORT, SelfType, ParentType, TypeIndex, TypeKey)                                      \
 public:                                                                                                                \
   template <typename> friend struct ::mlc::DefaultObjectAllocator;                                                     \
   template <typename> friend struct ::mlc::base::ObjPtrTraitsDefault;                                                  \
@@ -31,8 +31,9 @@ public:                                                                         
   MLC_DEF_RTTI_METHODS(false, reinterpret_cast<MLCAny *>(this), reinterpret_cast<const MLCAny *>(this))                \
   [[maybe_unused]] static constexpr const char *_type_key = TypeKey;                                                   \
   [[maybe_unused]] static inline MLCTypeInfo *_type_info =                                                             \
-      ::mlc::core::TypeRegister<SelfType>(static_cast<int32_t>(ParentType::_type_index), /**/                          \
-                                          static_cast<int32_t>(TypeIndex), TypeKey);                                   \
+      (IS_EXPORT) ? ::mlc::Lib::TypeRegister(static_cast<int32_t>(ParentType::_type_index),                            \
+                                             static_cast<int32_t>(TypeIndex), TypeKey)                                 \
+                  : ::mlc::Lib::GetTypeInfo(TypeKey);                                                                  \
   [[maybe_unused]] static inline int32_t *_type_ancestors = _type_info->type_ancestors;                                \
   [[maybe_unused]] static constexpr int32_t _type_depth = ParentType::_type_depth + 1;                                 \
   [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kObj;                    \
@@ -40,14 +41,14 @@ public:                                                                         
   using _type_ancestor_types [[maybe_unused]] =                                                                        \
       ::mlc::base::TupleAppend<typename ParentType::_type_ancestor_types, SelfType>
 
-#define MLC_DEF_STATIC_TYPE(SelfType, ParentType, TypeIndex, TypeKey)                                                  \
+#define MLC_DEF_STATIC_TYPE(IS_EXPORT, SelfType, ParentType, TypeIndex, TypeKey)                                       \
 public:                                                                                                                \
-  MLC_DEF_TYPE_COMMON_(SelfType, ParentType, TypeIndex, TypeKey);                                                      \
+  MLC_DEF_TYPE_COMMON_(IS_EXPORT, SelfType, ParentType, TypeIndex, TypeKey);                                           \
   [[maybe_unused]] static constexpr int32_t _type_index = static_cast<int32_t>(TypeIndex)
 
-#define MLC_DEF_DYN_TYPE(SelfType, ParentType, TypeKey)                                                                \
+#define MLC_DEF_DYN_TYPE(IS_EXPORT, SelfType, ParentType, TypeKey)                                                     \
 public:                                                                                                                \
-  MLC_DEF_TYPE_COMMON_(SelfType, ParentType, -1, TypeKey);                                                             \
+  MLC_DEF_TYPE_COMMON_(IS_EXPORT, SelfType, ParentType, -1, TypeKey);                                                  \
   [[maybe_unused]] static inline int32_t _type_index = _type_info->type_index
 
 namespace mlc {
@@ -68,14 +69,14 @@ struct Object {
   }
   friend std::ostream &operator<<(std::ostream &os, const Object &src);
 
-  MLC_DEF_STATIC_TYPE(Object, ::mlc::core::ObjectDummyRoot, MLCTypeIndex::kMLCObject, "object.Object");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, Object, ::mlc::core::ObjectDummyRoot, MLCTypeIndex::kMLCObject, "object.Object");
 };
 } // namespace mlc
 
 /******************* Section 2. Object Ref *******************/
 
 namespace mlc {
-#define MLC_DEF_OBJ_REF(SelfType, ObjType, ParentType)                                                                 \
+#define MLC_DEF_OBJ_REF(IS_EXPORT, SelfType, ObjType, ParentType)                                                      \
 public:                                                                                                                \
   [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kObjRef;                 \
   using TSelf = SelfType;                                                                                              \
@@ -157,10 +158,10 @@ public:                                                                         
   /***** Section 6. Runtime-type information *****/                                                                    \
   MLC_DEF_RTTI_METHODS(true, TBase::ptr, TBase::ptr)                                                                   \
   static inline const int32_t _type_reflect =                                                                          \
-      ::mlc::core::ReflectionHelper(static_cast<int32_t>(TObj::_type_index)).Init<TObj>()
+      ::mlc::core::Reflect<IS_EXPORT>(static_cast<int32_t>(TObj::_type_index)).Init<TObj>()
 
 struct ObjectRef : protected ::mlc::core::ObjectRefDummyRoot {
-  MLC_DEF_OBJ_REF(ObjectRef, Object, ::mlc::core::ObjectRefDummyRoot)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, ObjectRef, Object, ::mlc::core::ObjectRefDummyRoot)
       .StaticFn("__init__", InitOf<Object>)
       .MemFn("__str__", &Object::__str__);
   friend std::ostream &operator<<(std::ostream &os, const TSelf &src);

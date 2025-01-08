@@ -79,11 +79,11 @@ struct TestingCClassObj : public Object {
 
   int64_t i64_plus_one() const { return i64 + 1; }
 
-  MLC_DEF_DYN_TYPE(TestingCClassObj, Object, "mlc.testing.c_class");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, TestingCClassObj, Object, "mlc.testing.c_class");
 };
 
 struct TestingCClass : public ObjectRef {
-  MLC_DEF_OBJ_REF(TestingCClass, TestingCClassObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, TestingCClass, TestingCClassObj, ObjectRef)
       .Field("i8", &TestingCClassObj::i8)
       .Field("i16", &TestingCClassObj::i16)
       .Field("i32", &TestingCClassObj::i32)

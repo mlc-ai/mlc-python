@@ -185,7 +185,7 @@ inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeIn
         obj_list.push_back(std::make_unique<TopoInfo>());
         TopoInfo *info = obj_list.back().get();
         info->obj = obj;
-        info->type_info = ::mlc::base::TypeIndex2TypeInfo(obj->GetTypeIndex());
+        info->type_info = Lib::GetTypeInfo(obj->GetTypeIndex());
         info->topo_deps = 0;
         return info;
       }(child);

@@ -379,8 +379,7 @@ struct TypeTable {
   }
 
   void AddMethod(int32_t type_index, MLCTypeMethod method) {
-    // TODO: check `override_mode`
-    this->GetGlobalVTable(method.name)->Set(type_index, reinterpret_cast<FuncObj *>(method.func), 0);
+    this->GetGlobalVTable(method.name)->Set(type_index, reinterpret_cast<FuncObj *>(method.func), 2);
     this->GetTypeInfoWrapper(type_index)->AddMethod(method);
   }
 
@@ -395,39 +394,39 @@ struct TypeTable {
 
 struct _POD_REG {
   inline static const int32_t _none = //
-      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCNone))
+      ::mlc::core::_Reflect(static_cast<int32_t>(MLCTypeIndex::kMLCNone))
           .MemFn("__str__", &::mlc::base::TypeTraits<std::nullptr_t>::__str__);
   inline static const int32_t _int = //
-      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCInt))
+      ::mlc::core::_Reflect(static_cast<int32_t>(MLCTypeIndex::kMLCInt))
           .StaticFn("__init__", [](AnyView value) { return value.operator int64_t(); })
           .StaticFn("__new_ref__",
                     [](void *dst, Optional<int64_t> value) { *reinterpret_cast<Optional<int64_t> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<int64_t>::__str__);
   inline static const int32_t _float =
-      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCFloat))
+      ::mlc::core::_Reflect(static_cast<int32_t>(MLCTypeIndex::kMLCFloat))
           .StaticFn("__new_ref__",
                     [](void *dst, Optional<double> value) { *reinterpret_cast<Optional<double> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<double>::__str__);
   inline static const int32_t _ptr =
-      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCPtr))
+      ::mlc::core::_Reflect(static_cast<int32_t>(MLCTypeIndex::kMLCPtr))
           .StaticFn("__new_ref__",
                     [](void *dst, Optional<void *> value) { *reinterpret_cast<Optional<void *> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<void *>::__str__);
   inline static const int32_t _device =
-      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDevice))
+      ::mlc::core::_Reflect(static_cast<int32_t>(MLCTypeIndex::kMLCDevice))
           .StaticFn("__init__", [](AnyView device) { return device.operator DLDevice(); })
           .StaticFn("__new_ref__",
                     [](void *dst, Optional<DLDevice> value) { *reinterpret_cast<Optional<DLDevice> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<DLDevice>::__str__);
   inline static const int32_t _dtype =
-      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCDataType))
+      ::mlc::core::_Reflect(static_cast<int32_t>(MLCTypeIndex::kMLCDataType))
           .StaticFn("__init__", [](AnyView dtype) { return dtype.operator DLDataType(); })
           .StaticFn(
               "__new_ref__",
               [](void *dst, Optional<DLDataType> value) { *reinterpret_cast<Optional<DLDataType> *>(dst) = value; })
           .MemFn("__str__", &::mlc::base::TypeTraits<DLDataType>::__str__);
   inline static const int32_t _str = //
-      ::mlc::core::ReflectionHelper(static_cast<int32_t>(MLCTypeIndex::kMLCRawStr))
+      ::mlc::core::_Reflect(static_cast<int32_t>(MLCTypeIndex::kMLCRawStr))
           .MemFn("__str__", &::mlc::base::TypeTraits<const char *>::__str__);
 };
 
@@ -463,7 +462,6 @@ inline void VTable::Set(int32_t type_index, FuncObj *func, int32_t override_mode
       // Allow override
       this->type_table->pool.DelObj(it->second);
     } else if (override_mode == 2) {
-      // TODO: throw exception
       MLCTypeInfo *type_info = this->type_table->GetTypeInfo(type_index);
       if (type_info && !name.empty()) {
         MLC_THROW(KeyError) << "VTable `" << name << "` already registered for type: " << type_info->type_key;

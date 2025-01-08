@@ -185,3 +185,9 @@ MLC_API void MLCExtObjDelete(void *objptr) {
     std::abort();
   }
 }
+
+MLC_API int32_t MLCHandleGetGlobal(MLCTypeTableHandle *self) {
+  MLC_SAFE_CALL_BEGIN();
+  *self = TypeTable::Global();
+  MLC_SAFE_CALL_END(&last_error);
+}

@@ -8,8 +8,10 @@
 #include "./list.h"          // IWYU pragma: export
 #include "./object.h"        // IWYU pragma: export
 #include "./object_path.h"   // IWYU pragma: export
+#include "./reflection.h"    // IWYU pragma: export
 #include "./str.h"           // IWYU pragma: export
 #include "./typing.h"        // IWYU pragma: export
+#include "./utils.h"         // IWYU pragma: export
 
 namespace mlc {
 namespace core {
@@ -74,9 +76,8 @@ inline void ReportTypeFieldError(const char *type_key, MLCTypeField *field) {
 }
 
 MLC_INLINE void DeleteExternObject(Object *objptr) {
-  MLCTypeInfo *info = nullptr;
   int32_t type_index = objptr->GetTypeIndex();
-  MLCTypeIndex2Info(nullptr, type_index, &info);
+  MLCTypeInfo *info = Lib::GetTypeInfo(type_index);
   if (info) {
     struct ExternObjDeleter {
       MLC_INLINE void operator()(MLCTypeField *, Any *any) { any->Reset(); }
@@ -120,6 +121,39 @@ template <typename E> MLC_INLINE ListObj<E> *TypeTraits<ListObj<E> *>::AnyToType
 }
 
 } // namespace base
+} // namespace mlc
+
+namespace mlc {
+inline ::mlc::Str Lib::CxxStr(AnyView obj) {
+  FuncObj *func = VTableGetFunc(cxx_str, obj.type_index, "__cxx_str__");
+  Any ret;
+  ::mlc::base::FuncCall(func, 1, &obj, &ret);
+  return ret;
+}
+inline ::mlc::Str Lib::Str(AnyView obj) {
+  FuncObj *func = VTableGetFunc(str, obj.type_index, "__str__");
+  Any ret;
+  ::mlc::base::FuncCall(func, 1, &obj, &ret);
+  return ret;
+}
+inline Any Lib::IRPrint(AnyView obj, AnyView printer, AnyView path) {
+  FuncObj *func = Lib::VTableGetFunc(ir_print, obj.GetTypeIndex(), "__ir_print__");
+  Any ret;
+  ::mlc::base::FuncCall(func, 3, std::array<AnyView, 3>{obj, printer, path}.data(), &ret);
+  return ret;
+}
+inline int32_t Lib::FuncSetGlobal(const char *name, FuncObj *func, bool allow_override) {
+  ::MLCFuncSetGlobal(nullptr, name, Any(func), allow_override);
+  return 0;
+}
+inline FuncObj *Lib::FuncGetGlobal(const char *name, bool allow_missing) {
+  Any ret;
+  ::MLCFuncGetGlobal(nullptr, name, &ret);
+  if (!ret.defined() && !allow_missing) {
+    MLC_THROW(KeyError) << "Missing global function: " << name;
+  }
+  return ret;
+}
 } // namespace mlc
 
 #endif // MLC_CORE_ALL_H_

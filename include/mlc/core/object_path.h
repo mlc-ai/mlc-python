@@ -34,13 +34,13 @@ struct ObjectPathObj : public Object {
   ObjectPathObj *GetPrefix(int64_t prefix_length) const;
   bool IsPrefixOf(const ObjectPathObj *other) const;
 
-  MLC_DEF_DYN_TYPE(ObjectPathObj, Object, "mlc.core.ObjectPath");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, ObjectPathObj, Object, "mlc.core.ObjectPath");
 };
 
 struct ObjectPath : public ObjectRef {
   static ObjectPath Root() { return ObjectPath(-1, Any(), Optional<ObjectRef>(nullptr), 1); }
 
-  MLC_DEF_OBJ_REF(ObjectPath, ObjectPathObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, ObjectPath, ObjectPathObj, ObjectRef)
       .Field("kind", &ObjectPathObj::kind)
       .Field("key", &ObjectPathObj::key)
       .Field("prev", &ObjectPathObj::prev)
@@ -74,7 +74,7 @@ inline ::mlc::Str ObjectPathObj::__str__() const {
     } else if (::mlc::base::IsTypeIndexPOD(type_index) || type_index == kMLCStr) {
       os << "[" << p->key << "]";
     } else {
-      const char *type_key = ::mlc::base::TypeIndex2TypeKey(type_index);
+      const char *type_key = ::mlc::Lib::GetTypeKey(type_index);
       os << "[" << type_key << "@" << static_cast<const void *>(p->key.v.v_obj) << "]";
     }
   }

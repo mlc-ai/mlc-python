@@ -33,9 +33,11 @@
 #if defined(_MSC_VER)
 #define MLC_INLINE __forceinline
 #define MLC_INLINE_NO_MSVC __inline
+#define MLC_NOINLINE __declspec(noinline)
 #else
 #define MLC_INLINE inline __attribute__((always_inline))
 #define MLC_INLINE_NO_MSVC MLC_INLINE
+#define MLC_NOINLINE __attribute__((noinline))
 #endif
 
 #if defined(_MSC_VER)
@@ -70,8 +72,8 @@
   try {                                                                                                                \
     return Expr;                                                                                                       \
   } catch (const ::mlc::base::TemporaryTypeError &) {                                                                  \
-    MLC_THROW(TypeError) << "Cannot convert from type `" << ::mlc::base::TypeIndex2TypeKey(TypeIndex) << "` to `"      \
-                         << (TypeStr) << "`";                                                                          \
+    MLC_THROW(TypeError) << "Cannot convert from type `" << ::mlc::Lib::GetTypeKey(TypeIndex) << "` to `" << (TypeStr) \
+                         << "`";                                                                                       \
   }                                                                                                                    \
   MLC_UNREACHABLE()
 
@@ -108,45 +110,6 @@ StrObj *StrCopyFromCharArray(const char *source, size_t length);
 void FuncCall(const void *func, int32_t num_args, const MLCAny *args, MLCAny *ret);
 template <typename Callable> Any CallableToAny(Callable &&callable);
 template <typename DerivedType, typename SelfType = Object> bool IsInstanceOf(const MLCAny *self);
-
-MLC_INLINE MLCTypeInfo *TypeIndex2TypeInfo(int32_t type_index) {
-  MLCTypeInfo *type_info;
-  MLCTypeIndex2Info(nullptr, type_index, &type_info);
-  return type_info;
-}
-
-MLC_INLINE MLCTypeInfo *TypeKey2TypeInfo(const char *type_key) {
-  MLCTypeInfo *type_info;
-  MLCTypeKey2Info(nullptr, type_key, &type_info);
-  return type_info;
-}
-
-MLC_INLINE const char *TypeIndex2TypeKey(int32_t type_index) {
-  if (MLCTypeInfo *type_info = TypeIndex2TypeInfo(type_index)) {
-    return type_info->type_key;
-  }
-  return "(undefined)";
-}
-
-MLC_INLINE int32_t TypeIndexOf(const MLCAny *self) { return self ? self->type_index : static_cast<int32_t>(kMLCNone); }
-
-MLC_INLINE int32_t TypeKey2TypeIndex(const char *type_key) {
-  if (MLCTypeInfo *type_info = TypeKey2TypeInfo(type_key)) {
-    return type_info->type_index;
-  }
-  MLC_THROW(TypeError) << "Cannot find type with key: " << type_key;
-  MLC_UNREACHABLE();
-}
-
-MLC_INLINE const char *TypeIndex2TypeKey(const MLCAny *self) {
-  if (self == nullptr) {
-    return "None";
-  }
-  if (MLCTypeInfo *type_info = TypeIndex2TypeInfo(self->type_index)) {
-    return type_info->type_key;
-  }
-  return "(undefined)";
-}
 
 MLC_INLINE bool IsTypeIndexNone(int32_t type_index) {
   return type_index == static_cast<int32_t>(MLCTypeIndex::kMLCNone);
@@ -374,39 +337,7 @@ inline bool AnyEqual(const MLCAny &a, const MLCAny &b) {
   return a.v.v_int64 == b.v.v_int64;
 }
 
-struct LibState {
-  static inline MLCVTableHandle VTableGetGlobal(const char *name) {
-    MLCVTableHandle ret;
-    MLCVTableGetGlobal(nullptr, name, &ret);
-    return ret;
-  }
-  static inline FuncObj *VTableGetFunc(MLCVTableHandle vtable, int32_t type_index, const char *vtable_name) {
-    MLCAny func{};
-    MLCVTableGetFunc(vtable, type_index, true, &func);
-    if (!IsTypeIndexPOD(func.type_index)) {
-      DecRef(func.v.v_obj);
-    }
-    FuncObj *ret = reinterpret_cast<FuncObj *>(func.v.v_obj);
-    if (func.type_index == kMLCNone) {
-      MLC_THROW(TypeError) << "Function `" << vtable_name
-                           << "` for type: " << ::mlc::base::TypeIndex2TypeKey(type_index)
-                           << " is not defined in the vtable";
-    } else if (func.type_index != kMLCFunc) {
-      MLC_THROW(TypeError) << "Function `" << vtable_name
-                           << "` for type: " << ::mlc::base::TypeIndex2TypeKey(type_index)
-                           << " is not callable. Its type is " << ::mlc::base::TypeIndex2TypeKey(func.type_index);
-    }
-    return ret;
-  }
-  static inline ::mlc::Str CxxStr(AnyView obj);
-  static inline ::mlc::Str Str(AnyView obj);
-  static inline Any IRPrint(AnyView obj, AnyView printer, AnyView path);
-
-  static MLC_SYMBOL_HIDE inline MLCVTableHandle cxx_str = VTableGetGlobal("__cxx_str__");
-  static MLC_SYMBOL_HIDE inline MLCVTableHandle str = VTableGetGlobal("__str__");
-  static MLC_SYMBOL_HIDE inline MLCVTableHandle ir_print = VTableGetGlobal("__ir_print__");
-  static MLC_SYMBOL_HIDE inline MLCVTableHandle init = VTableGetGlobal("__init__");
-};
+MLC_INLINE int32_t TypeIndexOf(const MLCAny *self) { return self ? self->type_index : static_cast<int32_t>(kMLCNone); }
 
 } // namespace base
 } // namespace mlc
