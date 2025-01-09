@@ -3,6 +3,7 @@
 
 #include "./error.h"
 #include "./str.h"
+#include "./utils.h"
 #include <array>
 #include <type_traits>
 
@@ -36,7 +37,7 @@ struct FuncObj : public MLCFunc {
     this->MLCFunc::safe_call = reinterpret_cast<MLCFuncSafeCallType>(FuncObj::SafeCallImpl);
   }
 
-  MLC_DEF_STATIC_TYPE(FuncObj, Object, MLCTypeIndex::kMLCFunc, "object.Func");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, FuncObj, Object, MLCTypeIndex::kMLCFunc, "object.Func");
 };
 
 struct FuncObj::Allocator {
@@ -51,13 +52,11 @@ struct Func : public ObjectRef {
   }
   template <typename FuncType, typename = std::enable_if_t<::mlc::base::HasFuncTraits<FuncType>>>
   Func(FuncType func) : Func(FuncObj::Allocator::New(std::move(func))) {}
-  static Any GetGlobal(const char *name) {
-    Any ret;
-    ::MLCFuncGetGlobal(nullptr, name, &ret);
-    return ret;
+  static FuncObj *GetGlobal(const char *name, bool allow_missing = false) {
+    return Lib::FuncGetGlobal(name, allow_missing);
   }
   // A dummy function to trigger reflection - otherwise reflection registration will be skipped
-  MLC_DEF_OBJ_REF(Func, FuncObj, ObjectRef).StaticFn("__nothing__", []() {});
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Func, FuncObj, ObjectRef).StaticFn("__nothing__", []() {});
 };
 } // namespace mlc
 
@@ -73,7 +72,8 @@ template <typename FuncType> struct FuncImpl : public FuncObj {
 struct FuncRegistryHelper {
   explicit FuncRegistryHelper(const char *name) : name(name) {}
   template <typename FuncType> FuncRegistryHelper &set_body(FuncType func, bool allow_override = false) {
-    ::MLCFuncSetGlobal(nullptr, name, Any(Ref<FuncObj>::New(std::move(func))), allow_override);
+    Ref<FuncObj> f = Ref<FuncObj>::New(std::forward<FuncType>(func));
+    Lib::FuncSetGlobal(name, f.get(), allow_override);
     return *this;
   }
   const char *name;

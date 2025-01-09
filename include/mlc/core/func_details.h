@@ -65,7 +65,7 @@ template <typename Function, typename StorageInfo> struct UnpackCallArgConverter
           MLC_THROW(TypeError) << "Mismatched type on argument #" << i << " when calling: `"
                                << FuncCanonicalize<Function>::Sig() << "`. Expected `"
                                << ::mlc::base::Type2Str<Type>::Run() << "` but got `"
-                               << ::mlc::base::TypeIndex2TypeKey(v.type_index) << "`";
+                               << ::mlc::Lib::GetTypeKey(v.type_index) << "`";
         } else if (strcmp(e.Obj()->kind(), "NestedTypeError") == 0) {
           MLC_THROW(TypeError) << "Mismatched type on argument #" << i << " when calling: `"
                                << FuncCanonicalize<Function>::Sig() << "`. " << e.what();

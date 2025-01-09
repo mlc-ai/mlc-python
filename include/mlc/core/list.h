@@ -3,6 +3,7 @@
 
 #include "./list_base.h"
 #include "./object.h"
+#include "./utils.h"
 #include <iterator>
 #include <type_traits>
 
@@ -101,7 +102,7 @@ struct UListObj : protected core::ListBase {
     return os.str();
   }
 
-  MLC_DEF_STATIC_TYPE(UListObj, Object, MLCTypeIndex::kMLCList, "object.List");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, UListObj, Object, MLCTypeIndex::kMLCList, "object.List");
 };
 
 struct UList : public ObjectRef {
@@ -150,7 +151,7 @@ struct UList : public ObjectRef {
   MLC_INLINE static void FromAnyTuple(int32_t num_args, const AnyView *args, Any *ret) {
     ::mlc::core::ListBase::Accessor<UListObj>::New(num_args, args, ret);
   }
-  MLC_DEF_OBJ_REF(UList, UListObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, UList, UListObj, ObjectRef)
       .FieldReadOnly("size", &MLCList::size)
       .FieldReadOnly("capacity", &MLCList::capacity)
       .FieldReadOnly("data", &MLCList::data)
@@ -264,7 +265,7 @@ template <typename T> struct List : protected UList {
   MLC_INLINE const_reverse_iterator rbegin() const { return get()->rbegin(); }
   MLC_INLINE const_reverse_iterator rend() const { return get()->rend(); }
 
-  MLC_DEF_OBJ_REF(List, ListObj<T>, UList);
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, List, ListObj<T>, UList);
 };
 
 template <typename T> MLC_INLINE_NO_MSVC List<T> UList::AsTyped() const { return List<T>(get()->AsTyped<T>()); }

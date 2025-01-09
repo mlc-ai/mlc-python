@@ -11,11 +11,11 @@ struct DefaultFrameObj : public Object {
 
   DefaultFrameObj() = default;
   explicit DefaultFrameObj(mlc::List<Stmt> stmts) : stmts(stmts) {}
-  MLC_DEF_DYN_TYPE(DefaultFrameObj, Object, "mlc.printer.DefaultFrame");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, DefaultFrameObj, Object, "mlc.printer.DefaultFrame");
 };
 
 struct DefaultFrame : public ObjectRef {
-  MLC_DEF_OBJ_REF(DefaultFrame, DefaultFrameObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, DefaultFrame, DefaultFrameObj, ObjectRef)
       .Field("stmts", &DefaultFrameObj::stmts)
       .StaticFn("__init__", InitOf<DefaultFrameObj, mlc::List<Stmt>>);
 }; // struct DefaultFrame
@@ -25,11 +25,11 @@ struct VarInfoObj : public Object {
   Func creator;
 
   explicit VarInfoObj(Optional<Str> name, Func creator) : name(name), creator(creator) {}
-  MLC_DEF_DYN_TYPE(VarInfoObj, Object, "mlc.printer.VarInfo");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, VarInfoObj, Object, "mlc.printer.VarInfo");
 }; // struct VarInfoObj
 
 struct VarInfo : public ObjectRef {
-  MLC_DEF_OBJ_REF(VarInfo, VarInfoObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, VarInfo, VarInfoObj, ObjectRef)
       .Field("creator", &VarInfoObj::creator)
       .Field("name", &VarInfoObj::name)
       .StaticFn("__init__", InitOf<VarInfoObj, Optional<Str>, Func>);
@@ -112,7 +112,7 @@ struct IRPrinterObj : public Object {
     if (!opt_obj.has_value()) {
       return Literal::Null();
     }
-    Node ret = ::mlc::base::LibState::IRPrint(opt_obj.value(), this, path);
+    Node ret = ::mlc::Lib::IRPrint(opt_obj.value(), this, path);
     ret->source_paths->push_back(path);
     return ret;
   }
@@ -131,11 +131,11 @@ struct IRPrinterObj : public Object {
     frames.pop_back();
   }
 
-  MLC_DEF_DYN_TYPE(IRPrinterObj, Object, "mlc.printer.IRPrinter");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, IRPrinterObj, Object, "mlc.printer.IRPrinter");
 }; // struct IRPrinterObj
 
 struct IRPrinter : public ObjectRef {
-  MLC_DEF_OBJ_REF(IRPrinter, IRPrinterObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, IRPrinter, IRPrinterObj, ObjectRef)
       .Field("cfg", &IRPrinterObj::cfg)
       .Field("obj2info", &IRPrinterObj::obj2info)
       .Field("defined_names", &IRPrinterObj::defined_names)
@@ -157,7 +157,7 @@ struct IRPrinter : public ObjectRef {
 inline Str ToPython(const ObjectRef &obj, const PrinterConfig &cfg) {
   IRPrinter printer(cfg);
   printer->FramePush(DefaultFrame());
-  Node ret = ::mlc::base::LibState::IRPrint(obj, printer, ObjectPath::Root());
+  Node ret = ::mlc::Lib::IRPrint(obj, printer, ObjectPath::Root());
   printer->FramePop();
   return ret->ToPython(cfg);
 }

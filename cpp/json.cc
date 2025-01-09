@@ -84,7 +84,7 @@ inline mlc::Str Serialize(Any any) {
       } else if (type_index >= kMLCStaticObjectBegin) {
         EmitObject(any->operator Object *());
       } else {
-        MLC_THROW(TypeError) << "Cannot serialize type: " << ::mlc::base::TypeIndex2TypeKey(type_index);
+        MLC_THROW(TypeError) << "Cannot serialize type: " << Lib::GetTypeKey(type_index);
       }
     }
     inline void EmitObject(Object *obj) {
@@ -160,7 +160,7 @@ inline mlc::Str Serialize(Any any) {
     DLDataType v = any;
     os << "[" << type_dtype << ", \"" << TypeTraits<DLDataType>::__str__(v) << "\"]";
   } else {
-    MLC_THROW(TypeError) << "Cannot serialize type: " << mlc::base::TypeIndex2TypeKey(any.type_index);
+    MLC_THROW(TypeError) << "Cannot serialize type: " << Lib::GetTypeKey(any.type_index);
   }
   os << "], \"type_keys\": [";
   for (size_t i = 0; i < type_keys.size(); ++i) {
@@ -174,7 +174,6 @@ inline mlc::Str Serialize(Any any) {
 }
 
 inline Any Deserialize(const char *json_str, int64_t json_str_len) {
-  MLCVTableHandle init_table = ::mlc::base::LibState::init;
   // Step 0. Parse JSON string
   UDict json_obj = JSONLoads(json_str, json_str_len);
   // Step 1. type_key => constructors
@@ -182,8 +181,8 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len) {
   std::vector<FuncObj *> constructors;
   constructors.reserve(type_keys.size());
   for (Str type_key : type_keys) {
-    int32_t type_index = ::mlc::base::TypeKey2TypeIndex(type_key->data());
-    FuncObj *func = ::mlc::base::LibState::VTableGetFunc(init_table, type_index, "__init__");
+    int32_t type_index = Lib::GetTypeIndex(type_key->data());
+    FuncObj *func = Lib::_init(type_index);
     constructors.push_back(func);
   }
   auto invoke_init = [&constructors](UList args) {

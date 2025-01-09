@@ -2,6 +2,7 @@
 #define MLC_CORE_DICT_H_
 #include "./dict_base.h"
 #include "./object.h"
+#include "./utils.h"
 #include <initializer_list>
 #include <type_traits>
 
@@ -96,7 +97,7 @@ struct UDictObj : protected ::mlc::core::DictBase {
   MLC_INLINE static uint64_t Hash(const MLCAny &a) { return ::mlc::base::AnyHash(a); }
   MLC_INLINE static bool Equal(const MLCAny &a, const MLCAny &b) { return ::mlc::base::AnyEqual(a, b); }
 
-  MLC_DEF_STATIC_TYPE(UDictObj, Object, MLCTypeIndex::kMLCDict, "object.Dict");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, UDictObj, Object, MLCTypeIndex::kMLCDict, "object.Dict");
 };
 
 struct UDict : public ObjectRef {
@@ -141,7 +142,7 @@ struct UDict : public ObjectRef {
   MLC_INLINE static void FromAnyTuple(int32_t num_args, const AnyView *args, Any *ret) {
     ::mlc::core::DictBase::Accessor<UDictObj>::New(num_args, args, ret);
   }
-  MLC_DEF_OBJ_REF(UDict, UDictObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, UDict, UDictObj, ObjectRef)
       .FieldReadOnly("capacity", &MLCDict::capacity)
       .FieldReadOnly("size", &MLCDict::size)
       .FieldReadOnly("data", &MLCDict::data)
@@ -291,7 +292,7 @@ template <typename K, typename V> struct Dict : protected UDict {
   MLC_INLINE const_reverse_iterator rbegin() const { return get()->rbegin(); }
   MLC_INLINE const_reverse_iterator rend() const { return get()->rend(); }
 
-  MLC_DEF_OBJ_REF(Dict, TSelfDict, UDict);
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Dict, TSelfDict, UDict);
 };
 
 template <typename K, typename V> MLC_INLINE_NO_MSVC Dict<K, V> UDict::AsTyped() const {

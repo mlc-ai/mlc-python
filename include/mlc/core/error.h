@@ -59,7 +59,7 @@ struct ErrorObj : public MLCError {
     os << this->kind() << ": " << info[0] << std::endl;
   }
 
-  MLC_DEF_STATIC_TYPE(ErrorObj, Object, MLCTypeIndex::kMLCError, "object.Error");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, ErrorObj, Object, MLCTypeIndex::kMLCError, "object.Error");
 };
 
 struct ErrorObj::Allocator {
@@ -73,7 +73,7 @@ struct ErrorObj::Allocator {
 };
 
 struct Error : public ObjectRef {
-  MLC_DEF_OBJ_REF(Error, ErrorObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Error, ErrorObj, ObjectRef)
       .FieldReadOnly("kind", &MLCError::kind)
       .MemFn("__str__", &ErrorObj::__str__);
 };

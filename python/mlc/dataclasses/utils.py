@@ -395,14 +395,14 @@ def prototype_cxx(type_info: type | TypeInfo) -> str:
     print(" {}", file=io)
     # Step 2.3. Macro to define object type
     print(
-        f'  MLC_DEF_DYN_TYPE({cls_name}Obj, {parent_obj_name}, "{type_info.type_key}");',
+        f'  MLC_DEF_DYN_TYPE(_EXPORTS, {cls_name}Obj, {parent_obj_name}, "{type_info.type_key}");',
         file=io,
     )
     print(f"}};  // struct {cls_name}Obj\n", file=io)
     # Step 3. Object reference class
     print(f"struct {cls_name} : public {parent_ref_name} {{", file=io)
     # Step 3.1. Define fields for reflection
-    print(f"  MLC_DEF_OBJ_REF({cls_name}, {cls_name}Obj, {parent_ref_name})", file=io)
+    print(f"  MLC_DEF_OBJ_REF(_EXPORTS, {cls_name}, {cls_name}Obj, {parent_ref_name})", file=io)
     for name, _ in fields:
         print(f'    .Field("{name}", &{cls_name}Obj::{name})', file=io)
     # Step 3.2. Define `__init__` method for reflection

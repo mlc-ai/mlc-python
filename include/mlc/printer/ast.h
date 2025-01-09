@@ -20,11 +20,11 @@ struct PrinterConfigObj : public Object {
                             mlc::List<ObjectPath> path_to_underline)
       : indent_spaces(indent_spaces), print_line_numbers(print_line_numbers), num_context_lines(num_context_lines),
         path_to_underline(path_to_underline) {}
-  MLC_DEF_DYN_TYPE(PrinterConfigObj, Object, "mlc.printer.PrinterConfig");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, PrinterConfigObj, Object, "mlc.printer.PrinterConfig");
 };
 
 struct PrinterConfig : public ObjectRef {
-  MLC_DEF_OBJ_REF(PrinterConfig, PrinterConfigObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, PrinterConfig, PrinterConfigObj, ObjectRef)
       .Field("indent_spaces", &PrinterConfigObj::indent_spaces)
       .Field("print_line_numbers", &PrinterConfigObj::print_line_numbers)
       .Field("num_context_lines", &PrinterConfigObj::num_context_lines)
@@ -42,7 +42,7 @@ namespace printer {
 struct NodeObj : public ::mlc::Object {
   ::mlc::List<::mlc::core::ObjectPath> source_paths;
   explicit NodeObj(::mlc::List<::mlc::core::ObjectPath> source_paths) : source_paths(source_paths) {}
-  MLC_DEF_DYN_TYPE(NodeObj, ::mlc::Object, "mlc.printer.ast.Node");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, NodeObj, ::mlc::Object, "mlc.printer.ast.Node");
   mlc::Str ToPython(PrinterConfig cfg) const {
     static auto func = ::mlc::base::GetGlobalFuncCall<2>("mlc.printer.DocToPythonScript");
     return func({this, cfg});
@@ -50,7 +50,7 @@ struct NodeObj : public ::mlc::Object {
 }; // struct NodeObj
 
 struct Node : public ::mlc::ObjectRef {
-  MLC_DEF_OBJ_REF(Node, NodeObj, ::mlc::ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Node, NodeObj, ::mlc::ObjectRef)
       .Field("source_paths", &NodeObj::source_paths)
       .StaticFn("__init__", ::mlc::InitOf<NodeObj, ::mlc::List<::mlc::core::ObjectPath>>)
       .MemFn("to_python", &NodeObj::ToPython);
@@ -75,11 +75,11 @@ struct ExprObj : public ::mlc::Object {
   Expr CallKw(mlc::List<::mlc::printer::Expr> args, mlc::List<::mlc::Str> kwargs_keys,
               mlc::List<::mlc::printer::Expr> kwargs_values) const;
 
-  MLC_DEF_DYN_TYPE(ExprObj, ::mlc::printer::NodeObj, "mlc.printer.ast.Expr");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, ExprObj, ::mlc::printer::NodeObj, "mlc.printer.ast.Expr");
 }; // struct ExprObj
 
 struct Expr : public ::mlc::printer::Node {
-  MLC_DEF_OBJ_REF(Expr, ExprObj, ::mlc::printer::Node)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Expr, ExprObj, ::mlc::printer::Node)
       .Field("source_paths", &ExprObj::source_paths)
       .StaticFn("__init__", ::mlc::InitOf<ExprObj, ::mlc::List<::mlc::core::ObjectPath>>)
       .MemFn("attr", &ExprObj::Attr)
@@ -100,11 +100,11 @@ struct StmtObj : public ::mlc::Object {
   ::mlc::Optional<::mlc::Str> comment;
   explicit StmtObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment)
       : source_paths(source_paths), comment(comment) {}
-  MLC_DEF_DYN_TYPE(StmtObj, ::mlc::printer::NodeObj, "mlc.printer.ast.Stmt");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, StmtObj, ::mlc::printer::NodeObj, "mlc.printer.ast.Stmt");
 }; // struct StmtObj
 
 struct Stmt : public ::mlc::printer::Node {
-  MLC_DEF_OBJ_REF(Stmt, StmtObj, ::mlc::printer::Node)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Stmt, StmtObj, ::mlc::printer::Node)
       .Field("source_paths", &StmtObj::source_paths)
       .Field("comment", &StmtObj::comment)
       .StaticFn("__init__", ::mlc::InitOf<StmtObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>>);
@@ -124,11 +124,11 @@ struct StmtBlockObj : public ::mlc::Object {
   explicit StmtBlockObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
                         ::mlc::List<::mlc::printer::Stmt> stmts)
       : source_paths(source_paths), comment(comment), stmts(stmts) {}
-  MLC_DEF_DYN_TYPE(StmtBlockObj, ::mlc::printer::StmtObj, "mlc.printer.ast.StmtBlock");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, StmtBlockObj, ::mlc::printer::StmtObj, "mlc.printer.ast.StmtBlock");
 }; // struct StmtBlockObj
 
 struct StmtBlock : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(StmtBlock, StmtBlockObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, StmtBlock, StmtBlockObj, ::mlc::printer::Stmt)
       .Field("source_paths", &StmtBlockObj::source_paths)
       .Field("comment", &StmtBlockObj::comment)
       .Field("stmts", &StmtBlockObj::stmts)
@@ -148,7 +148,7 @@ struct LiteralObj : public ::mlc::Object {
   ::mlc::Any value;
   explicit LiteralObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Any value)
       : source_paths(source_paths), value(value) {}
-  MLC_DEF_DYN_TYPE(LiteralObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Literal");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, LiteralObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Literal");
 }; // struct LiteralObj
 
 struct Literal : public ::mlc::printer::Expr {
@@ -157,7 +157,7 @@ struct Literal : public ::mlc::printer::Expr {
   static Literal Float(double value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }
   static Literal Null() { return Literal(mlc::List<ObjectPath>(), Any()); }
 
-  MLC_DEF_OBJ_REF(Literal, LiteralObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Literal, LiteralObj, ::mlc::printer::Expr)
       .Field("source_paths", &LiteralObj::source_paths)
       .Field("value", &LiteralObj::value)
       .StaticFn("__init__", ::mlc::InitOf<LiteralObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Any>);
@@ -176,11 +176,11 @@ struct IdObj : public ::mlc::Object {
   explicit IdObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Str name)
       : source_paths(source_paths), name(name) {}
   explicit IdObj(::mlc::Str name) : source_paths(), name(name) {}
-  MLC_DEF_DYN_TYPE(IdObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Id");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, IdObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Id");
 }; // struct IdObj
 
 struct Id : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Id, IdObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Id, IdObj, ::mlc::printer::Expr)
       .Field("source_paths", &IdObj::source_paths)
       .Field("name", &IdObj::name)
       .StaticFn("__init__", ::mlc::InitOf<IdObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Str>);
@@ -199,11 +199,11 @@ struct AttrObj : public ::mlc::Object {
   ::mlc::Str name;
   explicit AttrObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::printer::Expr obj, ::mlc::Str name)
       : source_paths(source_paths), obj(obj), name(name) {}
-  MLC_DEF_DYN_TYPE(AttrObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Attr");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, AttrObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Attr");
 }; // struct AttrObj
 
 struct Attr : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Attr, AttrObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Attr, AttrObj, ::mlc::printer::Expr)
       .Field("source_paths", &AttrObj::source_paths)
       .Field("obj", &AttrObj::obj)
       .Field("name", &AttrObj::name)
@@ -225,11 +225,11 @@ struct IndexObj : public ::mlc::Object {
   explicit IndexObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::printer::Expr obj,
                     ::mlc::List<::mlc::printer::Expr> idx)
       : source_paths(source_paths), obj(obj), idx(idx) {}
-  MLC_DEF_DYN_TYPE(IndexObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Index");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, IndexObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Index");
 }; // struct IndexObj
 
 struct Index : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Index, IndexObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Index, IndexObj, ::mlc::printer::Expr)
       .Field("source_paths", &IndexObj::source_paths)
       .Field("obj", &IndexObj::obj)
       .Field("idx", &IndexObj::idx)
@@ -255,11 +255,11 @@ struct CallObj : public ::mlc::Object {
                    ::mlc::List<::mlc::printer::Expr> kwargs_values)
       : source_paths(source_paths), callee(callee), args(args), kwargs_keys(kwargs_keys), kwargs_values(kwargs_values) {
   }
-  MLC_DEF_DYN_TYPE(CallObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Call");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, CallObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Call");
 }; // struct CallObj
 
 struct Call : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Call, CallObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Call, CallObj, ::mlc::printer::Expr)
       .Field("source_paths", &CallObj::source_paths)
       .Field("callee", &CallObj::callee)
       .Field("args", &CallObj::args)
@@ -321,11 +321,11 @@ struct OperationObj : public ::mlc::Object {
   explicit OperationObj(::mlc::List<::mlc::core::ObjectPath> source_paths, int64_t op,
                         ::mlc::List<::mlc::printer::Expr> operands)
       : source_paths(source_paths), op(op), operands(operands) {}
-  MLC_DEF_DYN_TYPE(OperationObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Operation");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, OperationObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Operation");
 }; // struct OperationObj
 
 struct Operation : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Operation, OperationObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Operation, OperationObj, ::mlc::printer::Expr)
       .Field("source_paths", &OperationObj::source_paths)
       .Field("op", &OperationObj::op)
       .Field("operands", &OperationObj::operands)
@@ -347,11 +347,11 @@ struct LambdaObj : public ::mlc::Object {
   explicit LambdaObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::List<::mlc::printer::Id> args,
                      ::mlc::printer::Expr body)
       : source_paths(source_paths), args(args), body(body) {}
-  MLC_DEF_DYN_TYPE(LambdaObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Lambda");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, LambdaObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Lambda");
 }; // struct LambdaObj
 
 struct Lambda : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Lambda, LambdaObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Lambda, LambdaObj, ::mlc::printer::Expr)
       .Field("source_paths", &LambdaObj::source_paths)
       .Field("args", &LambdaObj::args)
       .Field("body", &LambdaObj::body)
@@ -371,11 +371,11 @@ struct TupleObj : public ::mlc::Object {
   ::mlc::List<::mlc::printer::Expr> values;
   explicit TupleObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::List<::mlc::printer::Expr> values)
       : source_paths(source_paths), values(values) {}
-  MLC_DEF_DYN_TYPE(TupleObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Tuple");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, TupleObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Tuple");
 }; // struct TupleObj
 
 struct Tuple : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Tuple, TupleObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Tuple, TupleObj, ::mlc::printer::Expr)
       .Field("source_paths", &TupleObj::source_paths)
       .Field("values", &TupleObj::values)
       .StaticFn("__init__",
@@ -394,11 +394,11 @@ struct ListObj : public ::mlc::Object {
   ::mlc::List<::mlc::printer::Expr> values;
   explicit ListObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::List<::mlc::printer::Expr> values)
       : source_paths(source_paths), values(values) {}
-  MLC_DEF_DYN_TYPE(ListObj, ::mlc::printer::ExprObj, "mlc.printer.ast.List");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, ListObj, ::mlc::printer::ExprObj, "mlc.printer.ast.List");
 }; // struct ListObj
 
 struct List : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(List, ListObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, List, ListObj, ::mlc::printer::Expr)
       .Field("source_paths", &ListObj::source_paths)
       .Field("values", &ListObj::values)
       .StaticFn("__init__",
@@ -419,11 +419,11 @@ struct DictObj : public ::mlc::Object {
   explicit DictObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::List<::mlc::printer::Expr> keys,
                    ::mlc::List<::mlc::printer::Expr> values)
       : source_paths(source_paths), keys(keys), values(values) {}
-  MLC_DEF_DYN_TYPE(DictObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Dict");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, DictObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Dict");
 }; // struct DictObj
 
 struct Dict : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Dict, DictObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Dict, DictObj, ::mlc::printer::Expr)
       .Field("source_paths", &DictObj::source_paths)
       .Field("keys", &DictObj::keys)
       .Field("values", &DictObj::values)
@@ -446,11 +446,11 @@ struct SliceObj : public ::mlc::Object {
   explicit SliceObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::printer::Expr> start,
                     ::mlc::Optional<::mlc::printer::Expr> stop, ::mlc::Optional<::mlc::printer::Expr> step)
       : source_paths(source_paths), start(start), stop(stop), step(step) {}
-  MLC_DEF_DYN_TYPE(SliceObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Slice");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, SliceObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Slice");
 }; // struct SliceObj
 
 struct Slice : public ::mlc::printer::Expr {
-  MLC_DEF_OBJ_REF(Slice, SliceObj, ::mlc::printer::Expr)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Slice, SliceObj, ::mlc::printer::Expr)
       .Field("source_paths", &SliceObj::source_paths)
       .Field("start", &SliceObj::start)
       .Field("stop", &SliceObj::stop)
@@ -477,11 +477,11 @@ struct AssignObj : public ::mlc::Object {
                      ::mlc::printer::Expr lhs, ::mlc::Optional<::mlc::printer::Expr> rhs,
                      ::mlc::Optional<::mlc::printer::Expr> annotation)
       : source_paths(source_paths), comment(comment), lhs(lhs), rhs(rhs), annotation(annotation) {}
-  MLC_DEF_DYN_TYPE(AssignObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Assign");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, AssignObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Assign");
 }; // struct AssignObj
 
 struct Assign : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(Assign, AssignObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Assign, AssignObj, ::mlc::printer::Stmt)
       .Field("source_paths", &AssignObj::source_paths)
       .Field("comment", &AssignObj::comment)
       .Field("lhs", &AssignObj::lhs)
@@ -509,11 +509,11 @@ struct IfObj : public ::mlc::Object {
                  ::mlc::printer::Expr cond, ::mlc::List<::mlc::printer::Stmt> then_branch,
                  ::mlc::List<::mlc::printer::Stmt> else_branch)
       : source_paths(source_paths), comment(comment), cond(cond), then_branch(then_branch), else_branch(else_branch) {}
-  MLC_DEF_DYN_TYPE(IfObj, ::mlc::printer::StmtObj, "mlc.printer.ast.If");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, IfObj, ::mlc::printer::StmtObj, "mlc.printer.ast.If");
 }; // struct IfObj
 
 struct If : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(If, IfObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, If, IfObj, ::mlc::printer::Stmt)
       .Field("source_paths", &IfObj::source_paths)
       .Field("comment", &IfObj::comment)
       .Field("cond", &IfObj::cond)
@@ -540,11 +540,11 @@ struct WhileObj : public ::mlc::Object {
   explicit WhileObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
                     ::mlc::printer::Expr cond, ::mlc::List<::mlc::printer::Stmt> body)
       : source_paths(source_paths), comment(comment), cond(cond), body(body) {}
-  MLC_DEF_DYN_TYPE(WhileObj, ::mlc::printer::StmtObj, "mlc.printer.ast.While");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, WhileObj, ::mlc::printer::StmtObj, "mlc.printer.ast.While");
 }; // struct WhileObj
 
 struct While : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(While, WhileObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, While, WhileObj, ::mlc::printer::Stmt)
       .Field("source_paths", &WhileObj::source_paths)
       .Field("comment", &WhileObj::comment)
       .Field("cond", &WhileObj::cond)
@@ -569,11 +569,11 @@ struct ForObj : public ::mlc::Object {
   explicit ForObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
                   ::mlc::printer::Expr lhs, ::mlc::printer::Expr rhs, ::mlc::List<::mlc::printer::Stmt> body)
       : source_paths(source_paths), comment(comment), lhs(lhs), rhs(rhs), body(body) {}
-  MLC_DEF_DYN_TYPE(ForObj, ::mlc::printer::StmtObj, "mlc.printer.ast.For");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, ForObj, ::mlc::printer::StmtObj, "mlc.printer.ast.For");
 }; // struct ForObj
 
 struct For : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(For, ForObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, For, ForObj, ::mlc::printer::Stmt)
       .Field("source_paths", &ForObj::source_paths)
       .Field("comment", &ForObj::comment)
       .Field("lhs", &ForObj::lhs)
@@ -601,11 +601,11 @@ struct WithObj : public ::mlc::Object {
                    ::mlc::Optional<::mlc::printer::Expr> lhs, ::mlc::printer::Expr rhs,
                    ::mlc::List<::mlc::printer::Stmt> body)
       : source_paths(source_paths), comment(comment), lhs(lhs), rhs(rhs), body(body) {}
-  MLC_DEF_DYN_TYPE(WithObj, ::mlc::printer::StmtObj, "mlc.printer.ast.With");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, WithObj, ::mlc::printer::StmtObj, "mlc.printer.ast.With");
 }; // struct WithObj
 
 struct With : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(With, WithObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, With, WithObj, ::mlc::printer::Stmt)
       .Field("source_paths", &WithObj::source_paths)
       .Field("comment", &WithObj::comment)
       .Field("lhs", &WithObj::lhs)
@@ -630,11 +630,11 @@ struct ExprStmtObj : public ::mlc::Object {
   explicit ExprStmtObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
                        ::mlc::printer::Expr expr)
       : source_paths(source_paths), comment(comment), expr(expr) {}
-  MLC_DEF_DYN_TYPE(ExprStmtObj, ::mlc::printer::StmtObj, "mlc.printer.ast.ExprStmt");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, ExprStmtObj, ::mlc::printer::StmtObj, "mlc.printer.ast.ExprStmt");
 }; // struct ExprStmtObj
 
 struct ExprStmt : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(ExprStmt, ExprStmtObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, ExprStmt, ExprStmtObj, ::mlc::printer::Stmt)
       .Field("source_paths", &ExprStmtObj::source_paths)
       .Field("comment", &ExprStmtObj::comment)
       .Field("expr", &ExprStmtObj::expr)
@@ -657,11 +657,11 @@ struct AssertObj : public ::mlc::Object {
   explicit AssertObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
                      ::mlc::printer::Expr cond, ::mlc::Optional<::mlc::printer::Expr> msg)
       : source_paths(source_paths), comment(comment), cond(cond), msg(msg) {}
-  MLC_DEF_DYN_TYPE(AssertObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Assert");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, AssertObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Assert");
 }; // struct AssertObj
 
 struct Assert : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(Assert, AssertObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Assert, AssertObj, ::mlc::printer::Stmt)
       .Field("source_paths", &AssertObj::source_paths)
       .Field("comment", &AssertObj::comment)
       .Field("cond", &AssertObj::cond)
@@ -684,11 +684,11 @@ struct ReturnObj : public ::mlc::Object {
   explicit ReturnObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
                      ::mlc::Optional<::mlc::printer::Expr> value)
       : source_paths(source_paths), comment(comment), value(value) {}
-  MLC_DEF_DYN_TYPE(ReturnObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Return");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, ReturnObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Return");
 }; // struct ReturnObj
 
 struct Return : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(Return, ReturnObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Return, ReturnObj, ::mlc::printer::Stmt)
       .Field("source_paths", &ReturnObj::source_paths)
       .Field("comment", &ReturnObj::comment)
       .Field("value", &ReturnObj::value)
@@ -723,11 +723,11 @@ struct FunctionObj : public ::mlc::Object {
       }
     }
   }
-  MLC_DEF_DYN_TYPE(FunctionObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Function");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, FunctionObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Function");
 }; // struct FunctionObj
 
 struct Function : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(Function, FunctionObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Function, FunctionObj, ::mlc::printer::Stmt)
       .Field("source_paths", &FunctionObj::source_paths)
       .Field("comment", &FunctionObj::comment)
       .Field("name", &FunctionObj::name)
@@ -759,11 +759,11 @@ struct ClassObj : public ::mlc::Object {
                     ::mlc::printer::Id name, ::mlc::List<::mlc::printer::Expr> decorators,
                     ::mlc::List<::mlc::printer::Stmt> body)
       : source_paths(source_paths), comment(comment), name(name), decorators(decorators), body(body) {}
-  MLC_DEF_DYN_TYPE(ClassObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Class");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, ClassObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Class");
 }; // struct ClassObj
 
 struct Class : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(Class, ClassObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Class, ClassObj, ::mlc::printer::Stmt)
       .Field("source_paths", &ClassObj::source_paths)
       .Field("comment", &ClassObj::comment)
       .Field("name", &ClassObj::name)
@@ -787,11 +787,11 @@ struct CommentObj : public ::mlc::Object {
   ::mlc::Optional<::mlc::Str> comment;
   explicit CommentObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment)
       : source_paths(source_paths), comment(comment) {}
-  MLC_DEF_DYN_TYPE(CommentObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Comment");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, CommentObj, ::mlc::printer::StmtObj, "mlc.printer.ast.Comment");
 }; // struct CommentObj
 
 struct Comment : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(Comment, CommentObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Comment, CommentObj, ::mlc::printer::Stmt)
       .Field("source_paths", &CommentObj::source_paths)
       .Field("comment", &CommentObj::comment)
       .StaticFn("__init__",
@@ -810,11 +810,11 @@ struct DocStringObj : public ::mlc::Object {
   ::mlc::Optional<::mlc::Str> comment;
   explicit DocStringObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment)
       : source_paths(source_paths), comment(comment) {}
-  MLC_DEF_DYN_TYPE(DocStringObj, ::mlc::printer::StmtObj, "mlc.printer.ast.DocString");
+  MLC_DEF_DYN_TYPE(MLC_EXPORTS, DocStringObj, ::mlc::printer::StmtObj, "mlc.printer.ast.DocString");
 }; // struct DocStringObj
 
 struct DocString : public ::mlc::printer::Stmt {
-  MLC_DEF_OBJ_REF(DocString, DocStringObj, ::mlc::printer::Stmt)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, DocString, DocStringObj, ::mlc::printer::Stmt)
       .Field("source_paths", &DocStringObj::source_paths)
       .Field("comment", &DocStringObj::comment)
       .StaticFn("__init__",

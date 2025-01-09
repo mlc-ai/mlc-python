@@ -1,7 +1,6 @@
 #ifndef MLC_CORE_STR_H_
 #define MLC_CORE_STR_H_
 #include "./object.h"
-#include <array>
 #include <cctype>
 #include <cstring>
 #include <ostream>
@@ -98,7 +97,7 @@ struct StrObj : public MLCStr {
     ret.emplace_back(start, end - start);
     return ret;
   }
-  MLC_DEF_STATIC_TYPE(StrObj, Object, MLCTypeIndex::kMLCStr, "object.Str");
+  MLC_DEF_STATIC_TYPE(MLC_EXPORTS, StrObj, Object, MLCTypeIndex::kMLCStr, "object.Str");
 };
 } // namespace mlc
 
@@ -174,7 +173,7 @@ struct Str : public ObjectRef {
   inline std::string_view ToStdStringView() const {
     return std::string_view(this->get()->data(), this->get()->length());
   }
-  MLC_DEF_OBJ_REF(Str, StrObj, ObjectRef)
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Str, StrObj, ObjectRef)
       .FieldReadOnly("length", &MLCStr::length)
       .FieldReadOnly("data", &MLCStr::data)
       .MemFn("__str__", &StrObj::__str__);
@@ -247,12 +246,12 @@ template <typename T> inline Str Ref<T>::str() const {
 }
 
 inline std::ostream &operator<<(std::ostream &os, const AnyView &src) {
-  os << ::mlc::base::LibState::Str(src)->data();
+  os << Lib::Str(src)->data();
   return os;
 }
 
 inline std::ostream &operator<<(std::ostream &os, const Any &src) {
-  os << ::mlc::base::LibState::Str(src).data();
+  os << Lib::Str(src).data();
   return os;
 }
 
@@ -263,7 +262,7 @@ template <typename T> inline std::ostream &operator<<(std::ostream &os, const Re
     v.type_index = src.ptr->type_index;
     v.v.v_obj = src.ptr;
   }
-  os << ::mlc::base::LibState::Str(reinterpret_cast<const AnyView &>(v))->data();
+  os << ::mlc::Lib::Str(reinterpret_cast<const AnyView &>(v))->data();
   return os;
 }
 
@@ -274,7 +273,7 @@ inline std::ostream &operator<<(std::ostream &os, const ObjectRef &_src) {
     v.type_index = src.ptr->type_index;
     v.v.v_obj = src.ptr;
   }
-  os << ::mlc::base::LibState::Str(reinterpret_cast<const AnyView &>(v))->data();
+  os << ::mlc::Lib::Str(reinterpret_cast<const AnyView &>(v))->data();
   return os;
 }
 
@@ -282,7 +281,7 @@ inline std::ostream &operator<<(std::ostream &os, const Object &src) {
   MLCAny v{};
   v.type_index = src._mlc_header.type_index;
   v.v.v_obj = const_cast<MLCAny *>(reinterpret_cast<const MLCAny *>(&src));
-  os << ::mlc::base::LibState::Str(reinterpret_cast<const AnyView &>(v))->data();
+  os << ::mlc::Lib::Str(reinterpret_cast<const AnyView &>(v))->data();
   return os;
 }
 
@@ -443,28 +442,6 @@ namespace base {
 MLC_INLINE StrObj *StrCopyFromCharArray(const char *source, size_t length) {
   return StrObj::Allocator::New(source, length + 1);
 }
-
-inline ::mlc::Str LibState::CxxStr(AnyView obj) {
-  FuncObj *func = VTableGetFunc(cxx_str, obj.type_index, "__cxx_str__");
-  Any ret;
-  ::mlc::base::FuncCall(func, 1, &obj, &ret);
-  return ret;
-}
-
-inline ::mlc::Str LibState::Str(AnyView obj) {
-  FuncObj *func = VTableGetFunc(str, obj.type_index, "__str__");
-  Any ret;
-  ::mlc::base::FuncCall(func, 1, &obj, &ret);
-  return ret;
-}
-
-inline Any LibState::IRPrint(AnyView obj, AnyView printer, AnyView path) {
-  FuncObj *func = base::LibState::VTableGetFunc(ir_print, obj.GetTypeIndex(), "__ir_print__");
-  Any ret;
-  ::mlc::base::FuncCall(func, 3, std::array<AnyView, 3>{obj, printer, path}.data(), &ret);
-  return ret;
-}
-
 } // namespace base
 } // namespace mlc
 

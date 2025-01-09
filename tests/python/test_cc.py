@@ -10,6 +10,7 @@ from mlc._cython import SYSTEM
 )
 def test_jit_load() -> None:
     mlc.cc.jit_load("""
+    #define MLC_JIT_EXPORTS 1
     #include <mlc/core/all.h>
     #include <string>
 
@@ -18,11 +19,11 @@ def test_jit_load() -> None:
     int32_t y;
     MyObj(mlc::Str x, int y) : x(x), y(y) {}
     int32_t YPlusOne() const { return y + 1; }
-    MLC_DEF_DYN_TYPE(MyObj, Object, "mlc.MyObj");
+    MLC_DEF_DYN_TYPE(MLC_JIT_EXPORTS, MyObj, Object, "mlc.MyObj");
     };
 
     struct MyObjRef : public mlc::ObjectRef {
-    MLC_DEF_OBJ_REF(MyObjRef, MyObj, mlc::ObjectRef)
+    MLC_DEF_OBJ_REF(MLC_JIT_EXPORTS, MyObjRef, MyObj, mlc::ObjectRef)
         .Field("x", &MyObj::x)
         .FieldReadOnly("y", &MyObj::y)
         .StaticFn("__init__", mlc::InitOf<MyObj, mlc::Str, int32_t>)

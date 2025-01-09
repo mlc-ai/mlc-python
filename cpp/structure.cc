@@ -152,8 +152,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
       int32_t lhs_type_index = lhs ? lhs->GetTypeIndex() : kMLCNone;
       int32_t rhs_type_index = rhs ? rhs->GetTypeIndex() : kMLCNone;
       if (lhs_type_index != rhs_type_index) {
-        MLC_CORE_EQ_S_ERR(::mlc::base::TypeIndex2TypeKey(lhs_type_index),
-                          ::mlc::base::TypeIndex2TypeKey(rhs_type_index), new_path);
+        MLC_CORE_EQ_S_ERR(Lib::GetTypeKey(lhs_type_index), Lib::GetTypeKey(rhs_type_index), new_path);
       } else if (lhs_type_index == kMLCStr) {
         Str lhs_str(reinterpret_cast<StrObj *>(lhs));
         Str rhs_str(reinterpret_cast<StrObj *>(rhs));
@@ -164,7 +163,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
         throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", new_path);
       } else {
         bool visited = false;
-        MLCTypeInfo *type_info = ::mlc::base::TypeIndex2TypeInfo(lhs_type_index);
+        MLCTypeInfo *type_info = Lib::GetTypeInfo(lhs_type_index);
         tasks->push_back(Task{lhs, rhs, type_info, visited, bind_free_vars, new_path, nullptr});
       }
     }
@@ -301,14 +300,14 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
 
 struct HashCache {
   inline static const uint64_t MLC_SYMBOL_HIDE kNoneCombined =
-      ::mlc::base::HashCombine(::mlc::base::TypeIndex2TypeInfo(kMLCNone)->type_key_hash, 0);
-  inline static const uint64_t MLC_SYMBOL_HIDE kInt = ::mlc::base::TypeIndex2TypeInfo(kMLCInt)->type_key_hash;
-  inline static const uint64_t MLC_SYMBOL_HIDE kFloat = ::mlc::base::TypeIndex2TypeInfo(kMLCFloat)->type_key_hash;
-  inline static const uint64_t MLC_SYMBOL_HIDE kPtr = ::mlc::base::TypeIndex2TypeInfo(kMLCPtr)->type_key_hash;
-  inline static const uint64_t MLC_SYMBOL_HIDE kDType = ::mlc::base::TypeIndex2TypeInfo(kMLCDataType)->type_key_hash;
-  inline static const uint64_t MLC_SYMBOL_HIDE kDevice = ::mlc::base::TypeIndex2TypeInfo(kMLCDevice)->type_key_hash;
-  inline static const uint64_t MLC_SYMBOL_HIDE kRawStr = ::mlc::base::TypeIndex2TypeInfo(kMLCRawStr)->type_key_hash;
-  inline static const uint64_t MLC_SYMBOL_HIDE kStrObj = ::mlc::base::TypeIndex2TypeInfo(kMLCStr)->type_key_hash;
+      ::mlc::base::HashCombine(Lib::GetTypeInfo(kMLCNone)->type_key_hash, 0);
+  inline static const uint64_t MLC_SYMBOL_HIDE kInt = Lib::GetTypeInfo(kMLCInt)->type_key_hash;
+  inline static const uint64_t MLC_SYMBOL_HIDE kFloat = Lib::GetTypeInfo(kMLCFloat)->type_key_hash;
+  inline static const uint64_t MLC_SYMBOL_HIDE kPtr = Lib::GetTypeInfo(kMLCPtr)->type_key_hash;
+  inline static const uint64_t MLC_SYMBOL_HIDE kDType = Lib::GetTypeInfo(kMLCDataType)->type_key_hash;
+  inline static const uint64_t MLC_SYMBOL_HIDE kDevice = Lib::GetTypeInfo(kMLCDevice)->type_key_hash;
+  inline static const uint64_t MLC_SYMBOL_HIDE kRawStr = Lib::GetTypeInfo(kMLCRawStr)->type_key_hash;
+  inline static const uint64_t MLC_SYMBOL_HIDE kStrObj = Lib::GetTypeInfo(kMLCStr)->type_key_hash;
   inline static const uint64_t MLC_SYMBOL_HIDE kBound = ::mlc::base::StrHash("$$Bounds$$");
   inline static const uint64_t MLC_SYMBOL_HIDE kUnbound = ::mlc::base::StrHash("$$Unbound$$");
 };
@@ -399,7 +398,7 @@ inline uint64_t StructuralHash(Object *obj) {
       } else if (type_index == kMLCFunc || type_index == kMLCError) {
         throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", ObjectPath::Root());
       } else {
-        MLCTypeInfo *type_info = ::mlc::base::TypeIndex2TypeInfo(type_index);
+        MLCTypeInfo *type_info = Lib::GetTypeInfo(type_index);
         tasks->emplace_back(Task{obj, type_info, false, bind_free_vars, type_info->type_key_hash});
       }
     }
@@ -565,8 +564,8 @@ inline Any CopyShallow(AnyView source) {
     MLC_INLINE void operator()(MLCTypeField *, const char **v) { fields->push_back(AnyView(*v)); }
     std::vector<AnyView> *fields;
   };
-  FuncObj *init_func = ::mlc::base::LibState::VTableGetFunc(::mlc::base::LibState::init, type_index, "__init__");
-  MLCTypeInfo *type_info = ::mlc::base::TypeIndex2TypeInfo(type_index);
+  FuncObj *init_func = Lib::_init(type_index);
+  MLCTypeInfo *type_info = Lib::GetTypeInfo(type_index);
   std::vector<AnyView> fields;
   VisitFields(source.operator Object *(), type_info, Copier{&fields});
   Any ret;
@@ -652,9 +651,8 @@ inline Any CopyDeep(AnyView source) {
     } else {
       fields.clear();
       VisitFields(object, type_info, Copier{&orig2copy, &fields});
-      FuncObj *func =
-          ::mlc::base::LibState::VTableGetFunc(::mlc::base::LibState::init, type_info->type_index, "__init__");
-      ::mlc::base::FuncCall(func, static_cast<int32_t>(fields.size()), fields.data(), &ret);
+      FuncObj *init_func = Lib::_init(type_info->type_index);
+      ::mlc::base::FuncCall(init_func, static_cast<int32_t>(fields.size()), fields.data(), &ret);
     }
     orig2copy[object] = ret.operator ObjectRef();
   });

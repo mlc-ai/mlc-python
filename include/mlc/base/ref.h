@@ -2,6 +2,7 @@
 #define MLC_BASE_REF_H_
 
 #include "./alloc.h"
+#include "./lib.h"
 #include "./utils.h"
 #include <type_traits>
 
@@ -29,7 +30,7 @@
     if (::mlc::base::IsInstanceOf<DerivedObj, TObj>(ObjPtrMut)) {                                                      \
       return reinterpret_cast<DerivedObj *>(ObjPtrMut);                                                                \
     }                                                                                                                  \
-    MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::base::TypeIndex2TypeKey(ObjPtrMut) << "` to type `"    \
+    MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::Lib::GetTypeKey(ObjPtrMut) << "` to type `"            \
                          << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";                                           \
     MLC_UNREACHABLE();                                                                                                 \
   }                                                                                                                    \
@@ -42,11 +43,11 @@
     if (::mlc::base::IsInstanceOf<DerivedObj, TObj>(ObjPtrConst)) {                                                    \
       return reinterpret_cast<const DerivedObj *>(ObjPtrConst);                                                        \
     }                                                                                                                  \
-    MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::base::TypeIndex2TypeKey(ObjPtrConst) << "` to type `"  \
+    MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::Lib::GetTypeKey(ObjPtrConst) << "` to type `"          \
                          << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";                                           \
     MLC_UNREACHABLE();                                                                                                 \
   }                                                                                                                    \
-  MLC_INLINE const char *GetTypeKey() const { return ::mlc::base::TypeIndex2TypeKey(ObjPtrConst); }                    \
+  MLC_INLINE const char *GetTypeKey() const { return ::mlc::Lib::GetTypeKey(ObjPtrConst); }                            \
   MLC_INLINE int32_t GetTypeIndex() const { return ::mlc::base::TypeIndexOf(ObjPtrConst); }
 
 namespace mlc {

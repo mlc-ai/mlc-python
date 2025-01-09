@@ -1,5 +1,6 @@
 #ifndef MLC_BASE_OPTIONAL_H_
 #define MLC_BASE_OPTIONAL_H_
+#include "./lib.h"
 #include "./ref.h"
 #include "./utils.h"
 #include <type_traits>

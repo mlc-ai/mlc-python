@@ -1,6 +1,7 @@
 #ifndef MLC_BASE_ANY_H_
 #define MLC_BASE_ANY_H_
 #include "./base_traits.h"
+#include "./lib.h"
 #include "./utils.h"
 #include <cstring>
 #include <type_traits>
@@ -72,20 +73,20 @@ struct AnyView : public MLCAny {
   }
   template <typename DerivedObj> inline DerivedObj *Cast() {
     if (!this->IsInstance<DerivedObj>()) {
-      MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::base::TypeIndex2TypeKey(this->type_index)
-                           << "` to type `" << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
+      MLC_THROW(TypeError) << "Cannot cast from type `" << Lib::GetTypeKey(this->type_index) << "` to type `"
+                           << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
     }
     return reinterpret_cast<DerivedObj *>(this->v.v_obj);
   }
   template <typename DerivedObj> MLC_INLINE const DerivedObj *Cast() const {
     if (!this->IsInstance<DerivedObj>()) {
-      MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::base::TypeIndex2TypeKey(this->type_index)
-                           << "` to type `" << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
+      MLC_THROW(TypeError) << "Cannot cast from type `" << Lib::GetTypeKey(this->type_index) << "` to type `"
+                           << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
     }
     return reinterpret_cast<const DerivedObj *>(this->v.v_obj);
   }
   int32_t GetTypeIndex() const { return this->type_index; }
-  const char *GetTypeKey() const { return ::mlc::base::TypeIndex2TypeInfo(this->type_index)->type_key; }
+  const char *GetTypeKey() const { return Lib::GetTypeKey(this->type_index); }
 
   template <typename T, typename = std::enable_if_t<::mlc::base::Anyable<::mlc::base::RemoveCR<T>>>>
   MLC_INLINE_NO_MSVC T _CastWithStorage(Any *storage) const; // TODO: reemove this
@@ -166,20 +167,20 @@ struct Any : public MLCAny {
   }
   template <typename DerivedObj> inline DerivedObj *Cast() {
     if (!this->IsInstance<DerivedObj>()) {
-      MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::base::TypeIndex2TypeKey(this->type_index)
-                           << "` to type `" << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
+      MLC_THROW(TypeError) << "Cannot cast from type `" << Lib::GetTypeKey(this->type_index) << "` to type `"
+                           << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
     }
     return reinterpret_cast<DerivedObj *>(this->v.v_obj);
   }
   template <typename DerivedObj> MLC_INLINE const DerivedObj *Cast() const {
     if (!this->IsInstance<DerivedObj>()) {
-      MLC_THROW(TypeError) << "Cannot cast from type `" << ::mlc::base::TypeIndex2TypeKey(this->type_index)
-                           << "` to type `" << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
+      MLC_THROW(TypeError) << "Cannot cast from type `" << Lib::GetTypeKey(this->type_index) << "` to type `"
+                           << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
     }
     return reinterpret_cast<const DerivedObj *>(this->v.v_obj);
   }
   int32_t GetTypeIndex() const { return this->type_index; }
-  const char *GetTypeKey() const { return ::mlc::base::TypeIndex2TypeInfo(this->type_index)->type_key; }
+  const char *GetTypeKey() const { return Lib::GetTypeKey(this->type_index); }
 
 protected:
   MLC_INLINE void Swap(MLCAny &src) {

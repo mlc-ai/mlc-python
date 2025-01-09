@@ -4,6 +4,7 @@
 #include "./alloc.h"         // IWYU pragma: export
 #include "./any.h"           // IWYU pragma: export
 #include "./base_traits.h"   // IWYU pragma: export
+#include "./lib.h"           // IWYU pragma: export
 #include "./optional.h"      // IWYU pragma: export
 #include "./ref.h"           // IWYU pragma: export
 #include "./traits_device.h" // IWYU pragma: export

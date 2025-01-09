@@ -1,6 +1,7 @@
 #ifndef MLC_BASE_TRAITS_OBJECT_H_
 #define MLC_BASE_TRAITS_OBJECT_H_
 
+#include "./lib.h"
 #include "./utils.h"
 
 namespace mlc {
@@ -78,13 +79,12 @@ template <typename DerivedType, typename SelfType> MLC_INLINE bool IsInstanceOf(
     return false;
   }
   // (Case 3) Look up the type table for type hierarchy via `type_index`.
-  MLCTypeInfo *info;
-  MLCTypeIndex2Info(nullptr, type_index, &info);
-  if (info == nullptr) {
-    MLC_THROW(InternalError) << "Undefined type index: " << type_index;
+  if (MLCTypeInfo *info = Lib::GetTypeInfo(type_index)) {
+    return info->type_depth > DerivedType::_type_depth &&
+           info->type_ancestors[DerivedType::_type_depth] == DerivedType::_type_index;
   }
-  return info->type_depth > DerivedType::_type_depth &&
-         info->type_ancestors[DerivedType::_type_depth] == DerivedType::_type_index;
+  MLC_THROW(InternalError) << "Undefined type index: " << type_index;
+  MLC_UNREACHABLE();
 }
 } // namespace base
 } // namespace mlc

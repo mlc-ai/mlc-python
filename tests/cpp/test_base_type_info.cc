@@ -1,3 +1,4 @@
+#include "./common.h"
 #include <gtest/gtest.h>
 #include <mlc/core/all.h>
 
@@ -15,19 +16,19 @@ struct SubType : public Object {
       throw std::runtime_error("New Error");
     }
   }
-  MLC_DEF_DYN_TYPE(SubType, Object, "test.SubType");
+  MLC_DEF_DYN_TYPE(MLC_CPPTESTS_EXPORTS, SubType, Object, "test.SubType");
 };
 
 struct TestObj : public Object {
   int x;
   explicit TestObj(int x) : x(x) {}
-  MLC_DEF_DYN_TYPE(TestObj, Object, "test.TestObj");
+  MLC_DEF_DYN_TYPE(MLC_CPPTESTS_EXPORTS, TestObj, Object, "test.TestObj");
 };
 
 struct SubTestObj : public TestObj {
   int y;
   explicit SubTestObj(int x, int y) : TestObj(x), y(y) {}
-  MLC_DEF_DYN_TYPE(SubTestObj, TestObj, "test.SubTestObj");
+  MLC_DEF_DYN_TYPE(MLC_CPPTESTS_EXPORTS, SubTestObj, TestObj, "test.SubTestObj");
 };
 
 void CheckAncestor(int32_t num, const int32_t *ancestors, std::vector<int32_t> expected) {

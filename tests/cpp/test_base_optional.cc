@@ -1,3 +1,4 @@
+#include "./common.h"
 #include <gtest/gtest.h>
 #include <mlc/core/all.h>
 
@@ -9,12 +10,12 @@ class TestObj : public Object {
 public:
   int value;
   explicit TestObj(int v) : value(v) {}
-  MLC_DEF_DYN_TYPE(TestObj, Object, "mlc.testing.test_base_optional.TestObj");
+  MLC_DEF_DYN_TYPE(MLC_CPPTESTS_EXPORTS, TestObj, Object, "mlc.testing.test_base_optional.TestObj");
 };
 
 class TestObjRef : public ObjectRef {
 public:
-  MLC_DEF_OBJ_REF(TestObjRef, TestObj, ObjectRef);
+  MLC_DEF_OBJ_REF(MLC_CPPTESTS_EXPORTS, TestObjRef, TestObj, ObjectRef);
 };
 
 // Default Constructor Tests
