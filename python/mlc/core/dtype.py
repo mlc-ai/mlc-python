@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from mlc._cython import DataTypeCode, PyAny, c_class_core, dtype_as_triple, dtype_normalize
 
+if TYPE_CHECKING:
+    import torch
+
 
 @c_class_core("dtype")
 class DataType(PyAny):
-    def __init__(self, dtype: str | np.dtype | DataType) -> None:
+    def __init__(self, dtype: str | np.dtype | type[torch.dtype] | DataType) -> None:
         self._mlc_init(dtype_normalize(dtype))
 
     @property
@@ -15,8 +20,12 @@ class DataType(PyAny):
         return dtype_as_triple(self)
 
     @property
-    def code(self) -> DataTypeCode:
-        return DataTypeCode(self._dtype_triple[0])
+    def code(self) -> DataTypeCode | int:
+        code = self._dtype_triple[0]
+        try:
+            return DataTypeCode(code)
+        except ValueError:
+            return code
 
     @property
     def bits(self) -> int:
@@ -34,3 +43,20 @@ class DataType(PyAny):
 
     def __hash__(self) -> int:
         return hash((DataType, *self._dtype_triple))
+
+    def torch(self) -> torch.dtype:
+        import torch
+
+        if (ret := getattr(torch, str(self), None)) is not None:
+            if isinstance(ret, torch.dtype):
+                return ret
+        raise ValueError(f"Cannot convert to `torch.dtype` from: {self}")
+
+    def numpy(self) -> np.dtype:
+        return np.dtype(str(self))
+
+    @staticmethod
+    def register(name: str, bits: int) -> int:
+        from .func import Func
+
+        return Func.get("mlc.base.DataTypeRegister")(name, bits)

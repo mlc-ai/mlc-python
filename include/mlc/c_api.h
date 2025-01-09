@@ -30,11 +30,30 @@
 extern "C" {
 #endif
 
-typedef enum {
-  // TODO: 1) add complete set of fp8 support; 2) allow more flexible dtype definition
-  kDLDataTypeFloat8E4M3FN = 7,
-  kDLDataTypeFloat8E5M2 = 8,
-} DLDataTypeCodeExtension;
+typedef enum { // ranged [0, 2 ** 8)
+  kMLCExtension_DLDataTypeCode_Begin = 7,
+  // 8-bit floating point representations
+  kDLDataTypeFloat8Begin = 7,
+  kDLDataTypeFloat8E3M4 = 7,
+  kDLDataTypeFloat8E4M3 = 8,
+  kDLDataTypeFloat8E4M3B11FNUZ = 9,
+  kDLDataTypeFloat8E4M3FN = 10,
+  kDLDataTypeFloat8E4M3FNUZ = 11,
+  kDLDataTypeFloat8E5M2 = 12,
+  kDLDataTypeFloat8E5M2FNUZ = 13,
+  kDLDataTypeFloat8E8M0FNU = 14,
+  kDLDataTypeFloat8End = 15,
+  // Microscaling (MX) sub-byte floating point representations
+  kDLDataTypeFloat4E2M1FN = 15, // higher 4 bits are unused
+  kDLDataTypeFloat6E2M3FN = 16, // higher 2 bits are unused
+  kDLDataTypeFloat6E3M2FN = 17, // higher 2 bits are unused
+  kMLCExtension_DLDataTypeCode_End = kDLDataTypeFloat6E3M2FN,
+} MLCExtension_DLDataTypeCode;
+
+typedef enum { // ranged [0, 2 ** 32)
+  kMLCExtension_DLDeviceType_Begin = 18,
+  kMLCExtension_DLDeviceType_End = kMLCExtension_DLDeviceType_Begin,
+} MLCExtension_DLDeviceType;
 
 #ifdef __cplusplus
 enum MLCTypeIndex : int32_t {

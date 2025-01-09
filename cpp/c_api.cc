@@ -19,7 +19,6 @@ using ::mlc::registry::TypeTable;
 
 namespace {
 thread_local Any last_error;
-MLC_REGISTER_FUNC("mlc.ffi.LoadDSO").set_body([](std::string name) { TypeTable::Get(nullptr)->LoadDSO(name); });
 } // namespace
 
 MLC_API MLCAny MLCGetLastError() {

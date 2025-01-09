@@ -1279,7 +1279,7 @@ cpdef object error_pycode_fake(str filename, str funcname, int32_t lineno):
 cpdef tuple dtype_as_triple(PyAny obj):
     cdef DLDataType dtype = obj._mlc_any.v.v_dtype
     cdef int32_t code = <int32_t>dtype.code
-    cdef int32_t bits = <int32_t>dtype.code
+    cdef int32_t bits = <int32_t>dtype.bits
     cdef int32_t lanes = <int32_t>dtype.lanes
     return code, bits, lanes
 

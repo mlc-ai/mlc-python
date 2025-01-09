@@ -52,12 +52,16 @@ ERR_KIND2CLS = {
     "NotImplementedError": NotImplementedError,
     "InternalError": InternalError,
 }
-DTYPE_PRESET: dict[typing.Any, typing.Any] = {
+DTYPE_PRESET: dict[typing.Any, str] = {
     np.dtype(np.bool_): "bool",
+    np.dtype(ml_dtypes.int2): "int2",
+    np.dtype(ml_dtypes.int4): "int4",
     np.dtype(np.int8): "int8",
     np.dtype(np.int16): "int16",
     np.dtype(np.int32): "int32",
     np.dtype(np.int64): "int64",
+    np.dtype(ml_dtypes.uint2): "uint2",
+    np.dtype(ml_dtypes.uint4): "uint4",
     np.dtype(np.uint8): "uint8",
     np.dtype(np.uint16): "uint16",
     np.dtype(np.uint32): "uint32",
@@ -65,9 +69,21 @@ DTYPE_PRESET: dict[typing.Any, typing.Any] = {
     np.dtype(np.float16): "float16",
     np.dtype(np.float32): "float32",
     np.dtype(np.float64): "float64",
+    # bfloat16
     np.dtype(ml_dtypes.bfloat16): "bfloat16",
+    # 8-bit floating point representations
+    np.dtype(ml_dtypes.float8_e3m4): "float8_e3m4",
+    np.dtype(ml_dtypes.float8_e4m3): "float8_e4m3",
+    np.dtype(ml_dtypes.float8_e4m3b11fnuz): "float8_e4m3b11fnuz",
     np.dtype(ml_dtypes.float8_e4m3fn): "float8_e4m3fn",
+    np.dtype(ml_dtypes.float8_e4m3fnuz): "float8_e4m3fnuz",
     np.dtype(ml_dtypes.float8_e5m2): "float8_e5m2",
+    np.dtype(ml_dtypes.float8_e5m2fnuz): "float8_e5m2fnuz",
+    np.dtype(ml_dtypes.float8_e8m0fnu): "float8_e8m0fnu",
+    # Microscaling (MX) sub-byte floating point representations
+    np.dtype(ml_dtypes.float4_e2m1fn): "float4_e2m1fn",  # higher 4 bits are unused
+    np.dtype(ml_dtypes.float6_e2m3fn): "float6_e2m3fn",  # higher 2 bits are unused
+    np.dtype(ml_dtypes.float6_e3m2fn): "float6_e3m2fn",  # higher 2 bits are unused
 }
 
 
@@ -134,8 +150,19 @@ class DataTypeCode(enum.Enum):
     bfloat = 4
     complex = 5
     bool = 6
-    float8_e4m3fn = 7
-    float8_e5m2 = 8
+    # 8-bit floating point representations
+    float8_e3m4 = 7
+    float8_e4m3 = 8
+    float8_e4m3b11fnuz = 9
+    float8_e4m3fn = 10
+    float8_e4m3fnuz = 11
+    float8_e5m2 = 12
+    float8_e5m2fnuz = 13
+    float8_e8m0fnu = 14
+    # Microscaling (MX) sub-byte floating point representations
+    float4_e2m1fn = 15  # higher 4 bits are unused
+    float6_e2m3fn = 16  # higher 2 bits are unused
+    float6_e3m2fn = 17  # higher 2 bits are unused
 
 
 @dataclasses.dataclass(eq=False, **_DATACLASS_SLOTS)
@@ -177,8 +204,7 @@ class Field:
     def __post_init__(self) -> None:
         if self.structure not in (None, "bind", "nobind"):
             raise ValueError(
-                "Invalid `field.structure`. Expected `bind` or `nobind`, "
-                f"but got: {self.structure}"
+                f"Invalid `field.structure`. Expected `bind` or `nobind`, but got: {self.structure}"
             )
 
 
@@ -263,14 +289,50 @@ def lib_path(core_path: str) -> tuple[Path, ctypes.CDLL]:
     return path, lib
 
 
-def dtype_normalize(dtype: str | np.dtype | DataType) -> str | DataType:
-    dtype = DTYPE_PRESET.get(dtype, dtype)
-    if isinstance(dtype, np.dtype):
-        dtype = str(dtype)
-    return dtype
+def dtype_normalize(dtype: typing.Any) -> str | DataType:
+    if isinstance(dtype, str):
+        return dtype
+
+    def _torch_dtype_to_str() -> str | None:
+        if "torch" not in sys.modules:
+            return None
+        import torch
+
+        if not isinstance(dtype, torch.dtype):
+            return None
+
+        return str(dtype)[6:]  # remove `torch.`
+
+    def _numpy_dtype_to_str() -> str | None:
+        try:
+            np_dtype = np.dtype(dtype)
+        except:
+            return None
+        return DTYPE_PRESET.get(np_dtype, None) or str(dtype)
+
+    if (np_dtype := _numpy_dtype_to_str()) is not None:
+        return np_dtype
+    if (torch_dtype := _torch_dtype_to_str()) is not None:
+        return torch_dtype
+    from mlc.core.dtype import DataType
+
+    return dtype if isinstance(dtype, DataType) else str(dtype)
 
 
-def device_normalize(device: str | Device) -> str | Device:
+def device_normalize(device: typing.Any) -> str | Device:
+    def _torch_device_to_str() -> str | None:
+        if "torch" not in sys.modules:
+            return None
+        import torch
+
+        if not isinstance(device, torch.device):
+            return None
+        index = device.index or 0
+
+        return f"{device.type}:{index}"
+
+    if (torch_device := _torch_device_to_str()) is not None:
+        return torch_device
     return device
 
 

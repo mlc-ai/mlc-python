@@ -154,6 +154,49 @@ inline FuncObj *Lib::FuncGetGlobal(const char *name, bool allow_missing) {
   }
   return ret;
 }
+inline const char *Lib::DeviceTypeToStr(int32_t device_type) {
+  static FuncObj *func_device_type2str = ::mlc::Lib::FuncGetGlobal("mlc.base.DeviceTypeToStr");
+  AnyView arg(device_type);
+  Any ret;
+  ::mlc::base::FuncCall(func_device_type2str, 1, &arg, &ret);
+  void *ptr = ret;
+  return static_cast<const char *>(ptr);
+}
+inline int32_t Lib::DeviceTypeFromStr(const char *source) {
+  static FuncObj *func_device_type2str = ::mlc::Lib::FuncGetGlobal("mlc.base.DeviceTypeFromStr");
+  AnyView arg(source);
+  Any ret;
+  ::mlc::base::FuncCall(func_device_type2str, 1, &arg, &ret);
+  return ret;
+}
+inline void Lib::DeviceTypeRegister(const char *name) {
+  static FuncObj *func_device_type_register = ::mlc::Lib::FuncGetGlobal("mlc.base.DeviceTypeRegister");
+  AnyView arg(name);
+  Any ret;
+  ::mlc::base::FuncCall(func_device_type_register, 1, &arg, &ret);
+}
+inline const char *Lib::DataTypeCodeToStr(int32_t dtype_code) {
+  static FuncObj *func_dtype_code2str = ::mlc::Lib::FuncGetGlobal("mlc.base.DataTypeCodeToStr");
+  AnyView arg(dtype_code);
+  Any ret;
+  ::mlc::base::FuncCall(func_dtype_code2str, 1, &arg, &ret);
+  void *ptr = ret;
+  return static_cast<const char *>(ptr);
+}
+inline DLDataType Lib::DataTypeFromStr(const char *source) {
+  static FuncObj *func_dtype_from_str = ::mlc::Lib::FuncGetGlobal("mlc.base.DataTypeFromStr");
+  AnyView arg(source);
+  Any ret;
+  ::mlc::base::FuncCall(func_dtype_from_str, 1, &arg, &ret);
+  return ret;
+}
+inline void Lib::DataTypeRegister(const char *name, int32_t dtype_bits) {
+  static FuncObj *func_dtype_register = ::mlc::Lib::FuncGetGlobal("mlc.base.DataTypeRegister");
+  AnyView arg[2]{name, dtype_bits};
+  Any ret;
+  ::mlc::base::FuncCall(func_dtype_register, 2, arg, &ret);
+}
+
 } // namespace mlc
 
 #endif // MLC_CORE_ALL_H_
