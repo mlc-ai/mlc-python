@@ -11,6 +11,12 @@ struct Lib {
   static ::mlc::Str CxxStr(AnyView obj);
   static ::mlc::Str Str(AnyView obj);
   static Any IRPrint(AnyView obj, AnyView printer, AnyView path);
+  static const char *DeviceTypeToStr(int32_t device_type);
+  static int32_t DeviceTypeFromStr(const char *source);
+  static void DeviceTypeRegister(const char *name);
+  static const char *DataTypeCodeToStr(int32_t dtype_code);
+  static DLDataType DataTypeFromStr(const char *source);
+  static void DataTypeRegister(const char *name, int32_t dtype_bits);
 
   static FuncObj *_init(int32_t type_index) { return VTableGetFunc(init, type_index, "__init__"); }
   MLC_INLINE static MLCTypeInfo *GetTypeInfo(int32_t type_index) {
