@@ -153,23 +153,7 @@ class StmtBlock(Stmt):
 
 @mlcd.c_class("mlc.printer.ast.Literal")
 class Literal(Expr):
-    value: Any  # int, str, float, None
-
-    @staticmethod
-    def Int(value: int) -> "Literal":
-        return Literal(value=value)
-
-    @staticmethod
-    def Str(value: str) -> "Literal":
-        return Literal(value=value)
-
-    @staticmethod
-    def Float(value: float) -> "Literal":
-        return Literal(value=value)
-
-    @staticmethod
-    def Null() -> "Literal":
-        return Literal(value=None)
+    value: Any  # int, str, float, bool, None
 
 
 @mlcd.c_class("mlc.printer.ast.Id")

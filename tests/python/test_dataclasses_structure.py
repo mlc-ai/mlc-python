@@ -14,6 +14,7 @@ class Expr(mlcd.PyClass):
 @mlcd.py_class(structure="var")
 class Var(Expr):
     name: str = mlcd.field(structure=None)
+    is_global: bool = mlcd.field(default=False)
 
 
 @mlcd.py_class(structure="nobind")
@@ -320,3 +321,20 @@ def test_func_stmts() -> None:
         "LHS has been bound to a different node while RHS is not bound"
     )
     assert func_f.hash_s() != func_g.hash_s()
+
+
+def test_global_var() -> None:
+    x = Var("x", is_global=False)
+    y = Var("y", is_global=True)
+    z = Var("z", is_global=True)
+    lhs = x + y + z
+    rhs = z + y + x
+    with pytest.raises(ValueError) as e:
+        lhs.eq_s(rhs, bind_free_vars=True, assert_mode=True)
+    assert str(e.value) == "Structural equality check failed at {root}.a.a.is_global: False vs True"
+    assert lhs.hash_s() != rhs.hash_s()
+
+    lhs = x + y + z
+    rhs = x + z + y
+    lhs.eq_s(rhs, bind_free_vars=True, assert_mode=True)
+    assert lhs.hash_s() == rhs.hash_s()

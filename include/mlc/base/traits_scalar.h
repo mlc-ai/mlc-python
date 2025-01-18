@@ -7,6 +7,25 @@
 namespace mlc {
 namespace base {
 
+template <> struct TypeTraits<bool> {
+  static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCBool);
+  static constexpr const char *type_str = "bool";
+
+  MLC_INLINE static void TypeToAny(bool src, MLCAny *ret) {
+    ret->type_index = static_cast<int32_t>(MLCTypeIndex::kMLCBool);
+    ret->v.v_int64 = static_cast<int64_t>(src);
+  }
+  MLC_INLINE static bool AnyToTypeOwned(const MLCAny *v) {
+    MLCTypeIndex ty = static_cast<MLCTypeIndex>(v->type_index);
+    if (ty == MLCTypeIndex::kMLCBool) {
+      return v->v.v_bool;
+    }
+    throw TemporaryTypeError();
+  }
+  MLC_INLINE static bool AnyToTypeUnowned(const MLCAny *v) { return AnyToTypeOwned(v); }
+  MLC_INLINE static std::string __str__(bool src) { return src ? "True" : "False"; }
+};
+
 template <typename Int> struct TypeTraits<Int, std::enable_if_t<std::is_integral_v<Int>>> {
   static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCInt);
   static constexpr const char *type_str = "int";

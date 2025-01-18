@@ -34,3 +34,10 @@ class Func(Object):
             return func
 
         return decorator
+
+
+def json_loads(s: str) -> Any:
+    return _json_loads(s)
+
+
+_json_loads = Func.get("mlc.core.JSONLoads")

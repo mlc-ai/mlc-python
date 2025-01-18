@@ -1,101 +1,9 @@
-from typing import Any, Optional, Union
+from typing import Union
 
 import mlc
 import numpy as np
 import pytest
-
-
-@mlc.c_class("mlc.testing.c_class")
-class CClassForTest(mlc.Object):
-    i8: int
-    i16: int
-    i32: int
-    i64: int
-    f32: float
-    f64: float
-    raw_ptr: mlc.Ptr
-    dtype: mlc.DataType
-    device: mlc.Device
-    any: Any
-    func: mlc.Func
-    ulist: list[Any]
-    udict: dict
-    str_: str
-    str_readonly: str
-    ###
-    list_any: list[Any]
-    list_list_int: list[list[int]]
-    dict_any_any: dict[Any, Any]
-    dict_str_any: dict[str, Any]
-    dict_any_str: dict[Any, str]
-    dict_str_list_int: dict[str, list[int]]
-    ###
-    opt_i64: Optional[int]
-    opt_f64: Optional[float]
-    opt_raw_ptr: Optional[mlc.Ptr]
-    opt_dtype: Optional[mlc.DataType]
-    opt_device: Optional[mlc.Device]
-    opt_func: Optional[mlc.Func]
-    opt_ulist: Optional[list]
-    opt_udict: Optional[dict[Any, Any]]
-    opt_str: Optional[str]
-    ###
-    opt_list_any: Optional[list[Any]]
-    opt_list_list_int: Optional[list[list[int]]]
-    opt_dict_any_any: Optional[dict]
-    opt_dict_str_any: Optional[dict[str, Any]]
-    opt_dict_any_str: Optional[dict[Any, str]]
-    opt_dict_str_list_int: Optional[dict[str, list[int]]]
-
-    def i64_plus_one(self) -> int:
-        return type(self)._C(b"i64_plus_one", self)
-
-
-@mlc.py_class("mlc.testing.py_class")
-class PyClassForTest(mlc.PyClass):
-    i8: int  # `py_class` doesn't support `int8`, it will effectively be `int64_t`
-    i16: int  # `py_class` doesn't support `int16`, it will effectively be `int64_t`
-    i32: int  # `py_class` doesn't support `int32`, it will effectively be `int64_t`
-    i64: int
-    f32: float  # `py_class` doesn't support `float32`, it will effectively be `float64`
-    f64: float
-    raw_ptr: mlc.Ptr
-    dtype: mlc.DataType
-    device: mlc.Device
-    any: Any
-    func: mlc.Func
-    ulist: list[Any]
-    udict: dict
-    str_: str
-    str_readonly: str
-    ###
-    list_any: list[Any]
-    list_list_int: list[list[int]]
-    dict_any_any: dict[Any, Any]
-    dict_str_any: dict[str, Any]
-    dict_any_str: dict[Any, str]
-    dict_str_list_int: dict[str, list[int]]
-    ###
-    opt_i64: Optional[int]
-    opt_f64: Optional[float]
-    opt_raw_ptr: Optional[mlc.Ptr]
-    opt_dtype: Optional[mlc.DataType]
-    opt_device: Optional[mlc.Device]
-    opt_func: Optional[mlc.Func]
-    opt_ulist: Optional[list]
-    opt_udict: Optional[dict[Any, Any]]
-    opt_str: Optional[str]
-    ###
-    opt_list_any: Optional[list[Any]]
-    opt_list_list_int: Optional[list[list[int]]]
-    opt_dict_any_any: Optional[dict]
-    opt_dict_str_any: Optional[dict[str, Any]]
-    opt_dict_any_str: Optional[dict[Any, str]]
-    opt_dict_str_list_int: Optional[dict[str, list[int]]]
-
-    def i64_plus_one(self) -> int:
-        return self.i64 + 1
-
+from mlc.testing.dataclasses import CClassForTest, PyClassForTest, field_get, field_set
 
 MLCClassForTest = Union[CClassForTest, PyClassForTest]
 
@@ -103,6 +11,7 @@ MLCClassForTest = Union[CClassForTest, PyClassForTest]
 @pytest.fixture
 def mlc_class_for_test(request: pytest.FixtureRequest) -> MLCClassForTest:
     kwargs = {
+        "bool_": False,
         "i8": 8,
         "i16": 16,
         "i32": 32,
@@ -126,6 +35,7 @@ def mlc_class_for_test(request: pytest.FixtureRequest) -> MLCClassForTest:
         "dict_any_str": {1: "1.0", 2.0: "2", "three": "four", 4: "5"},
         "dict_str_list_int": {"1": [1, 2, 3], "2": [4, 5, 6]},
         ###
+        "opt_bool": True,
         "opt_i64": -64,
         "opt_f64": None,
         "opt_raw_ptr": None,
@@ -149,6 +59,25 @@ def mlc_class_for_test(request: pytest.FixtureRequest) -> MLCClassForTest:
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     if "mlc_class_for_test" in metafunc.fixturenames:
         metafunc.parametrize("mlc_class_for_test", [CClassForTest, PyClassForTest], indirect=True)
+
+
+def test_mlc_class_bool(mlc_class_for_test: MLCClassForTest) -> None:
+    obj = mlc_class_for_test
+    assert obj.bool_ == False
+    assert field_get(obj, "bool_") == False
+
+    obj.bool_ = True
+    assert obj.bool_ == True
+    assert field_get(obj, "bool_") == True
+
+    with pytest.raises(TypeError):
+        obj.bool_ = 42  # type: ignore[assignment]
+
+    field_set(obj, "bool_", False)
+    assert obj.bool_ == False
+
+    field_set(obj, "bool_", True)
+    assert obj.bool_ == True
 
 
 def test_mlc_class_i8(mlc_class_for_test: MLCClassForTest) -> None:
@@ -442,6 +371,17 @@ def test_mlc_class_dict_str_list_int(mlc_class_for_test: MLCClassForTest) -> Non
         and tuple(obj.dict_str_list_int["1"]) == (4, 3, 2)
         and tuple(obj.dict_str_list_int["2"]) == (1, 2, 3)
     )
+
+
+def test_mlc_class_opt_bool(mlc_class_for_test: MLCClassForTest) -> None:
+    obj = mlc_class_for_test
+    assert obj.opt_bool == True
+    obj.opt_bool = False
+    assert obj.opt_bool == False
+    with pytest.raises(TypeError):
+        obj.opt_bool = 42  # type: ignore[assignment]
+    obj.opt_bool = None
+    assert obj.opt_bool is None
 
 
 def test_mlc_class_opt_i64(mlc_class_for_test: MLCClassForTest) -> None:

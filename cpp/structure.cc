@@ -1,4 +1,3 @@
-#include "mlc/core/error.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -13,31 +12,19 @@
 #include <unordered_map>
 
 namespace mlc {
-namespace core {
 namespace {
 
-uint64_t StructuralHash(Object *obj);
-bool StructuralEqual(Object *lhs, Object *rhs, bool bind_free_vars, bool assert_mode);
+using mlc::core::ObjectPath;
+using mlc::core::TopoVisit;
+using mlc::core::VisitFields;
+using mlc::core::VisitStructure;
+
 void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars);
 
 struct SEqualError : public std::runtime_error {
   ObjectPath path;
   SEqualError(const char *msg, ObjectPath path) : std::runtime_error(msg), path(path) {}
 };
-
-inline bool StructuralEqual(Object *lhs, Object *rhs, bool bind_free_vars, bool assert_mode) {
-  try {
-    StructuralEqualImpl(lhs, rhs, bind_free_vars);
-    return true;
-  } catch (SEqualError &e) {
-    if (assert_mode) {
-      std::ostringstream os;
-      os << "Structural equality check failed at " << e.path << ": " << e.what();
-      MLC_THROW(ValueError) << os.str();
-    }
-  }
-  return false;
-}
 
 template <typename T> MLC_INLINE T *WithOffset(Object *obj, MLCTypeField *field) {
   return reinterpret_cast<T *>(reinterpret_cast<char *>(obj) + field->offset);
@@ -95,11 +82,13 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
     static bool CharArrayEqual(CharArray lhs, CharArray rhs) { return std::strcmp(lhs, rhs) == 0; }
     static bool FloatEqual(float lhs, float rhs) { return std::abs(lhs - rhs) < 1e-6; }
     static bool DoubleEqual(double lhs, double rhs) { return std::abs(lhs - rhs) < 1e-8; }
+    MLC_CORE_EQ_S_OPT(bool, std::equal_to<bool>());
     MLC_CORE_EQ_S_OPT(int64_t, std::equal_to<int64_t>());
     MLC_CORE_EQ_S_OPT(double, DoubleEqual);
     MLC_CORE_EQ_S_OPT(DLDevice, DeviceEqual);
     MLC_CORE_EQ_S_OPT(DLDataType, DataTypeEqual);
     MLC_CORE_EQ_S_OPT(VoidPtr, std::equal_to<const void *>());
+    MLC_CORE_EQ_S_POD(bool, std::equal_to<bool>());
     MLC_CORE_EQ_S_POD(int8_t, std::equal_to<int8_t>());
     MLC_CORE_EQ_S_POD(int16_t, std::equal_to<int16_t>());
     MLC_CORE_EQ_S_POD(int32_t, std::equal_to<int32_t>());
@@ -136,6 +125,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
       if (type_index == kMLCNone) {
         return;
       }
+      MLC_CORE_EQ_S_ANY(type_index == kMLCBool, bool, std::equal_to<bool>(), lhs, rhs, new_path);
       MLC_CORE_EQ_S_ANY(type_index == kMLCInt, int64_t, std::equal_to<int64_t>(), lhs, rhs, new_path);
       MLC_CORE_EQ_S_ANY(type_index == kMLCFloat, double, DoubleEqual, lhs, rhs, new_path);
       MLC_CORE_EQ_S_ANY(type_index == kMLCPtr, VoidPtr, std::equal_to<const void *>(), lhs, rhs, new_path);
@@ -301,6 +291,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
 struct HashCache {
   inline static const uint64_t MLC_SYMBOL_HIDE kNoneCombined =
       ::mlc::base::HashCombine(Lib::GetTypeInfo(kMLCNone)->type_key_hash, 0);
+  inline static const uint64_t MLC_SYMBOL_HIDE kBool = Lib::GetTypeInfo(kMLCBool)->type_key_hash;
   inline static const uint64_t MLC_SYMBOL_HIDE kInt = Lib::GetTypeInfo(kMLCInt)->type_key_hash;
   inline static const uint64_t MLC_SYMBOL_HIDE kFloat = Lib::GetTypeInfo(kMLCFloat)->type_key_hash;
   inline static const uint64_t MLC_SYMBOL_HIDE kPtr = Lib::GetTypeInfo(kMLCPtr)->type_key_hash;
@@ -322,7 +313,7 @@ template <typename T> MLC_INLINE uint64_t HashTyped(uint64_t type_hash, T value)
   return ::mlc::base::HashCombine(type_hash, u.tgt);
 }
 
-inline uint64_t StructuralHash(Object *obj) {
+inline uint64_t StructuralHashImpl(Object *obj) {
   using CharArray = const char *;
   using VoidPtr = ::mlc::base::VoidPtr;
   using mlc::base::HashCombine;
@@ -335,6 +326,7 @@ inline uint64_t StructuralHash(Object *obj) {
     size_t index_in_result_hashes{0xffffffffffffffff};
   };
   struct Visitor {
+    static uint64_t HashBool(bool a) { return HashTyped<int64_t>(HashCache::kBool, static_cast<int64_t>(a)); }
     static uint64_t HashInteger(int64_t a) { return HashTyped<int64_t>(HashCache::kInt, a); }
     static uint64_t HashPtr(VoidPtr a) { return HashTyped<VoidPtr>(HashCache::kPtr, a); }
     static uint64_t HashDevice(DLDevice a) { return HashTyped<DLDevice>(HashCache::kDevice, a); }
@@ -344,11 +336,13 @@ inline uint64_t StructuralHash(Object *obj) {
     static uint64_t HashDouble(double a) { return HashTyped<double>(HashCache::kFloat, std::isnan(a) ? std::numeric_limits<double>::quiet_NaN() : a); }
     static uint64_t HashCharArray(CharArray a) { return HashTyped<uint64_t>(HashCache::kRawStr, ::mlc::base::StrHash(a)); }
     // clang-format on
+    MLC_CORE_HASH_S_OPT(bool, HashBool);
     MLC_CORE_HASH_S_OPT(int64_t, HashInteger);
     MLC_CORE_HASH_S_OPT(double, HashDouble);
     MLC_CORE_HASH_S_OPT(DLDevice, HashDevice);
     MLC_CORE_HASH_S_OPT(DLDataType, HashDataType);
     MLC_CORE_HASH_S_OPT(VoidPtr, HashPtr);
+    MLC_CORE_HASH_S_POD(bool, HashBool);
     MLC_CORE_HASH_S_POD(int8_t, HashInteger);
     MLC_CORE_HASH_S_POD(int16_t, HashInteger);
     MLC_CORE_HASH_S_POD(int32_t, HashInteger);
@@ -378,6 +372,7 @@ inline uint64_t StructuralHash(Object *obj) {
     }
     static void EnqueueAny(std::vector<Task> *tasks, bool bind_free_vars, const Any *v) {
       int32_t type_index = v->GetTypeIndex();
+      MLC_CORE_HASH_S_ANY(type_index == kMLCBool, bool, HashBool);
       MLC_CORE_HASH_S_ANY(type_index == kMLCInt, int64_t, HashInteger);
       MLC_CORE_HASH_S_ANY(type_index == kMLCFloat, double, HashDouble);
       MLC_CORE_HASH_S_ANY(type_index == kMLCPtr, VoidPtr, HashPtr);
@@ -475,6 +470,8 @@ inline uint64_t StructuralHash(Object *obj) {
         uint64_t hash = 0;
         if (k.type_index == kMLCNone) {
           hash = HashCache::kNoneCombined;
+        } else if (k.type_index == kMLCBool) {
+          hash = Visitor::HashInteger(k.v.v_bool);
         } else if (k.type_index == kMLCInt) {
           hash = Visitor::HashInteger(k.v.v_int64);
         } else if (k.type_index == kMLCFloat) {
@@ -532,7 +529,7 @@ inline uint64_t StructuralHash(Object *obj) {
 #undef MLC_CORE_HASH_S_POD
 #undef MLC_CORE_HASH_S_ANY
 
-inline Any CopyShallow(AnyView source) {
+inline Any CopyShallowImpl(AnyView source) {
   int32_t type_index = source.type_index;
   if (::mlc::base::IsTypeIndexPOD(type_index)) {
     return source;
@@ -547,10 +544,12 @@ inline Any CopyShallow(AnyView source) {
     MLC_INLINE void operator()(MLCTypeField *, const Any *any) { fields->push_back(AnyView(*any)); }
     MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { fields->push_back(AnyView(*obj)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<bool> *opt) { fields->push_back(AnyView(*opt)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { fields->push_back(AnyView(*opt)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { fields->push_back(AnyView(*opt)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { fields->push_back(AnyView(*opt)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, bool *v) { fields->push_back(AnyView(*v)); }
     MLC_INLINE void operator()(MLCTypeField *, int8_t *v) { fields->push_back(AnyView(*v)); }
     MLC_INLINE void operator()(MLCTypeField *, int16_t *v) { fields->push_back(AnyView(*v)); }
     MLC_INLINE void operator()(MLCTypeField *, int32_t *v) { fields->push_back(AnyView(*v)); }
@@ -573,7 +572,7 @@ inline Any CopyShallow(AnyView source) {
   return ret;
 }
 
-inline Any CopyDeep(AnyView source) {
+inline Any CopyDeepImpl(AnyView source) {
   if (::mlc::base::IsTypeIndexPOD(source.type_index)) {
     return source;
   }
@@ -593,10 +592,12 @@ inline Any CopyDeep(AnyView source) {
         fields->push_back(AnyView());
       }
     }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<bool> *opt) { fields->push_back(AnyView(*opt)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { fields->push_back(AnyView(*opt)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { fields->push_back(AnyView(*opt)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { fields->push_back(AnyView(*opt)); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { fields->push_back(AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *, bool *v) { fields->push_back(AnyView(*v)); }
     MLC_INLINE void operator()(MLCTypeField *, int8_t *v) { fields->push_back(AnyView(*v)); }
     MLC_INLINE void operator()(MLCTypeField *, int16_t *v) { fields->push_back(AnyView(*v)); }
     MLC_INLINE void operator()(MLCTypeField *, int32_t *v) { fields->push_back(AnyView(*v)); }
@@ -659,13 +660,32 @@ inline Any CopyDeep(AnyView source) {
   return orig2copy.at(source.operator Object *());
 }
 
-MLC_REGISTER_FUNC("mlc.core.StructuralEqual").set_body(::mlc::core::StructuralEqual);
-MLC_REGISTER_FUNC("mlc.core.StructuralHash").set_body([](::mlc::Object *obj) -> int64_t {
-  uint64_t ret = ::mlc::core::StructuralHash(obj);
-  return static_cast<int64_t>(ret);
-});
-MLC_REGISTER_FUNC("mlc.core.CopyShallow").set_body(::mlc::core::CopyShallow);
-MLC_REGISTER_FUNC("mlc.core.CopyDeep").set_body(::mlc::core::CopyDeep);
 } // namespace
-} // namespace core
+} // namespace mlc
+
+namespace mlc {
+
+bool StructuralEqual(AnyView lhs, AnyView rhs, bool bind_free_vars, bool assert_mode) {
+  try {
+    // TODO: support non objects
+    StructuralEqualImpl(lhs.operator Object *(), rhs.operator Object *(), bind_free_vars);
+    return true;
+  } catch (SEqualError &e) {
+    if (assert_mode) {
+      std::ostringstream os;
+      os << "Structural equality check failed at " << e.path << ": " << e.what();
+      MLC_THROW(ValueError) << os.str();
+    }
+  }
+  return false;
+}
+
+int64_t StructuralHash(AnyView root) {
+  // TODO: support non objects
+  return static_cast<int64_t>(StructuralHashImpl(root.operator Object *()));
+}
+
+Any CopyShallow(AnyView source) { return CopyShallowImpl(source); }
+Any CopyDeep(AnyView source) { return CopyDeepImpl(source); }
+
 } // namespace mlc

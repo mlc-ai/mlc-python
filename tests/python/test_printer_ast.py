@@ -12,8 +12,8 @@ if TYPE_CHECKING:
     "doc,expected",
     [
         (mlcp.ast.Literal(None), "None"),
-        (mlcp.ast.Literal(True), "1"),
-        (mlcp.ast.Literal(False), "0"),
+        (mlcp.ast.Literal(True), "True"),
+        (mlcp.ast.Literal(False), "False"),
         (mlcp.ast.Literal("test"), '"test"'),
         (mlcp.ast.Literal(""), '""'),
         (mlcp.ast.Literal('""'), r'"\"\""'),
@@ -154,7 +154,7 @@ SPECIAL_OP_CASES = [
     (
         mlcp.ast.OperationKind.IfThenElse,
         [mlcp.ast.Literal(True), mlcp.ast.Literal("true"), mlcp.ast.Literal("false")],
-        '"true" if 1 else "false"',
+        '"true" if True else "false"',
     ),
     (
         mlcp.ast.OperationKind.IfThenElse,
@@ -622,13 +622,13 @@ def test_print_expr_stmt_doc() -> None:
         (
             None,
             """
-            assert 1
+            assert True
             """,
         ),
         (
             mlcp.ast.Literal("test message"),
             """
-            assert 1, "test message"
+            assert True, "test message"
             """,
         ),
     ],
@@ -967,7 +967,7 @@ else:
             "comment",
             """
 # comment
-while 1:
+while True:
     x = y
 """,
         ),
@@ -1000,7 +1000,7 @@ x  # comment
             mlcp.ast.Assert(mlcp.ast.Literal(True)),
             "comment",
             """
-assert 1  # comment
+assert True  # comment
             """,
         ),
         (

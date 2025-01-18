@@ -42,6 +42,8 @@ struct AtomicTypeObj : protected MLCTypingAtomic {
   ::mlc::Str __str__() const {
     if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCNone)) {
       return "None";
+    } else if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCBool)) {
+      return "bool";
     } else if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCInt)) {
       return "int";
     } else if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCFloat)) {
@@ -70,6 +72,8 @@ struct AtomicTypeObj : protected MLCTypingAtomic {
   ::mlc::Str __cxx_str__() const {
     if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCNone)) {
       return "std::nullptr_t";
+    } else if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCBool)) {
+      return "bool";
     } else if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCInt)) {
       return "int64_t";
     } else if (type_index == static_cast<int32_t>(MLCTypeIndex::kMLCFloat)) {

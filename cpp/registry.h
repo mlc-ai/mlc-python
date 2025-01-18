@@ -10,9 +10,21 @@
 #include <iostream>
 #include <memory>
 #include <mlc/core/all.h>
+#include <mlc/printer/all.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+namespace mlc { // C++ APIs
+Any JSONLoads(AnyView json_str);
+Any JSONDeserialize(AnyView json_str);
+Str JSONSerialize(AnyView source);
+bool StructuralEqual(AnyView lhs, AnyView rhs, bool bind_free_vars, bool assert_mode);
+int64_t StructuralHash(AnyView root);
+Any CopyShallow(AnyView root);
+Any CopyDeep(AnyView root);
+Str DocToPythonScript(mlc::printer::Node node, mlc::printer::PrinterConfig cfg);
+} // namespace mlc
 
 namespace mlc {
 namespace registry {
@@ -613,8 +625,7 @@ inline TypeTable *TypeTable::New() {
   self->type_table.resize(1024);
   self->type_key_to_info.reserve(1024);
   self->num_types = static_cast<int32_t>(MLCTypeIndex::kMLCDynObjectBegin);
-  self->SetFunc("mlc.ffi.LoadDSO", //
-                Func([self](std::string name) { self->LoadDSO(name); }).get());
+  self->SetFunc("mlc.ffi.LoadDSO", Func([self](std::string name) { self->LoadDSO(name); }).get());
   self->SetFunc("mlc.base.DeviceTypeToStr",
                 Func([self](int32_t device_type) { return self->DeviceTypeToStr(device_type); }).get());
   self->SetFunc("mlc.base.DeviceTypeFromStr",
@@ -624,13 +635,28 @@ inline TypeTable *TypeTable::New() {
                                              }).get());
   self->SetFunc("mlc.base.DataTypeCodeToStr",
                 Func([self](int32_t dtype_code) { return self->DataTypeCodeToStr(dtype_code); }).get());
-  self->SetFunc("mlc.base.DataTypeFromStr", //
-                Func([self](const char *str) { return self->DataTypeFromStr(str); }).get());
+  self->SetFunc("mlc.base.DataTypeFromStr", Func([self](const char *str) { return self->DataTypeFromStr(str); }).get());
   self->SetFunc("mlc.base.DeviceTypeRegister",
                 Func([self](const char *name) { return self->DeviceTypeRegister(name); }).get());
+  self->SetFunc("mlc.core.JSONLoads", Func(::mlc::JSONLoads).get());
+  self->SetFunc("mlc.core.JSONSerialize", Func(::mlc::JSONSerialize).get());
+  self->SetFunc("mlc.core.JSONDeserialize", Func(::mlc::JSONDeserialize).get());
+  self->SetFunc("mlc.core.StructuralEqual", Func(::mlc::StructuralEqual).get());
+  self->SetFunc("mlc.core.StructuralHash", Func(::mlc::StructuralHash).get());
+  self->SetFunc("mlc.core.CopyShallow", Func(::mlc::CopyShallow).get());
+  self->SetFunc("mlc.core.CopyDeep", Func(::mlc::CopyDeep).get());
+  self->SetFunc("mlc.printer.DocToPythonScript", Func(::mlc::DocToPythonScript).get());
+  self->SetFunc("mlc.printer.ToPython", Func(::mlc::printer::ToPython).get());
 
   MLC_TYPE_TABLE_INIT_TYPE_BEGIN(std::nullptr_t, self);
   method_member("__str__", &TypeTraits<std::nullptr_t>::__str__);
+  MLC_TYPE_TABLE_INIT_TYPE_END()
+
+  MLC_TYPE_TABLE_INIT_TYPE_BEGIN(bool, self);
+  method_static("__init__", [](AnyView value) { return value.operator bool(); });
+  method_static("__new_ref__",
+                [](void *dst, Optional<bool> value) { *reinterpret_cast<Optional<bool> *>(dst) = value; });
+  method_member("__str__", &TypeTraits<bool>::__str__);
   MLC_TYPE_TABLE_INIT_TYPE_END()
 
   MLC_TYPE_TABLE_INIT_TYPE_BEGIN(int64_t, self);

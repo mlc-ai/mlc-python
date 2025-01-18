@@ -65,12 +65,14 @@ template <typename T> struct PODAllocator;
       ret->_mlc_header.type_index = static_cast<int32_t>(TypeIndex);                                                   \
       ret->_mlc_header.ref_cnt = 0;                                                                                    \
       ret->_mlc_header.v.deleter = PODAllocator::Deleter;                                                              \
+      ret->data.v_int64 = 0;                                                                                           \
       ret->data.Field = data;                                                                                          \
       return reinterpret_cast<MLCAny *>(ret);                                                                          \
     }                                                                                                                  \
     static void Deleter(void *objptr) { delete static_cast<MLCBoxedPOD *>(objptr); }                                   \
   }
 
+MLC_DEF_POD_ALLOCATOR(bool, MLCTypeIndex::kMLCBool, v_bool);
 MLC_DEF_POD_ALLOCATOR(int64_t, MLCTypeIndex::kMLCInt, v_int64);
 MLC_DEF_POD_ALLOCATOR(double, MLCTypeIndex::kMLCFloat, v_float64);
 MLC_DEF_POD_ALLOCATOR(DLDataType, MLCTypeIndex::kMLCDataType, v_dtype);

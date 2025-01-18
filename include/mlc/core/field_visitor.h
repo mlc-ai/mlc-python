@@ -26,6 +26,8 @@ template <typename Visitor> inline void VisitFields(Object *root, MLCTypeInfo *i
       int32_t type_index = reinterpret_cast<MLCTypingAtomic *>(field->ty)->type_index;
       if (type_index >= MLCTypeIndex::kMLCStaticObjectBegin && num_bytes == sizeof(MLCObjPtr)) {
         visitor(field, static_cast<ObjectRef *>(field_addr));
+      } else if (type_index == kMLCBool && num_bytes == 1) {
+        visitor(field, static_cast<bool *>(field_addr));
       } else if (type_index == kMLCInt && num_bytes == 1) {
         visitor(field, static_cast<int8_t *>(field_addr));
       } else if (type_index == kMLCInt && num_bytes == 2) {
@@ -57,6 +59,8 @@ template <typename Visitor> inline void VisitFields(Object *root, MLCTypeInfo *i
       if (ty->type_index == kMLCTypingAtomic) {
         if (ty_atomic->type_index >= kMLCStaticObjectBegin) {
           visitor(field, static_cast<Optional<ObjectRef> *>(field_addr));
+        } else if (ty_atomic->type_index == kMLCBool) {
+          visitor(field, static_cast<Optional<bool> *>(field_addr));
         } else if (ty_atomic->type_index == kMLCInt) {
           visitor(field, static_cast<Optional<int64_t> *>(field_addr));
         } else if (ty_atomic->type_index == kMLCFloat) {
@@ -104,6 +108,8 @@ template <typename Visitor> inline void VisitStructure(Object *root, MLCTypeInfo
       int32_t type_index = reinterpret_cast<MLCTypingAtomic *>(field->ty)->type_index;
       if (type_index >= MLCTypeIndex::kMLCStaticObjectBegin && num_bytes == sizeof(MLCObjPtr)) {
         visitor(field, field_kind, static_cast<ObjectRef *>(field_addr));
+      } else if (type_index == kMLCBool && num_bytes == 1) {
+        visitor(field, field_kind, static_cast<bool *>(field_addr));
       } else if (type_index == kMLCInt && num_bytes == 1) {
         visitor(field, field_kind, static_cast<int8_t *>(field_addr));
       } else if (type_index == kMLCInt && num_bytes == 2) {
@@ -135,6 +141,8 @@ template <typename Visitor> inline void VisitStructure(Object *root, MLCTypeInfo
       if (ty->type_index == kMLCTypingAtomic) {
         if (ty_atomic->type_index >= kMLCStaticObjectBegin) {
           visitor(field, field_kind, static_cast<Optional<ObjectRef> *>(field_addr));
+        } else if (ty_atomic->type_index == kMLCBool) {
+          visitor(field, field_kind, static_cast<Optional<bool> *>(field_addr));
         } else if (ty_atomic->type_index == kMLCInt) {
           visitor(field, field_kind, static_cast<Optional<int64_t> *>(field_addr));
         } else if (ty_atomic->type_index == kMLCFloat) {
@@ -212,10 +220,12 @@ inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeIn
         state->TrackObject(current, v);
       }
     }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<bool> *) {}
     MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *) {}
     MLC_INLINE void operator()(MLCTypeField *, Optional<double> *) {}
     MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *) {}
     MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *) {}
+    MLC_INLINE void operator()(MLCTypeField *, bool *) {}
     MLC_INLINE void operator()(MLCTypeField *, int8_t *) {}
     MLC_INLINE void operator()(MLCTypeField *, int16_t *) {}
     MLC_INLINE void operator()(MLCTypeField *, int32_t *) {}

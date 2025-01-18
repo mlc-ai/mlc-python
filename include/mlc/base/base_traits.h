@@ -74,6 +74,7 @@ template <typename T> inline constexpr bool IsTemplate = IsTemplateImpl<T>::valu
 
 // IsPOD<T>
 template <typename T, typename = void> struct IsPODImpl : std::false_type {};
+template <> struct IsPODImpl<bool> : std::true_type {};
 template <typename Int> struct IsPODImpl<Int, std::enable_if_t<std::is_integral_v<Int>>> : std::true_type {};
 template <typename Float>
 struct IsPODImpl<Float, std::enable_if_t<std::is_floating_point_v<Float>>> : std::true_type {};

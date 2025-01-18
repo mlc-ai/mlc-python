@@ -148,15 +148,17 @@ def from_py(ann: type) -> Type:
     raise ValueError(f"Unsupported type: {ann}")
 
 
-_kMLCInt = 1
-_kMLCFloat = 2
-_kMLCPtr = 3
-_kMLCDataType = 4
-_kMLCDevice = 5
-_kMLCRawStr = 6
+_kMLCBool = 1
+_kMLCInt = 2
+_kMLCFloat = 3
+_kMLCPtr = 4
+_kMLCDataType = 5
+_kMLCDevice = 6
+_kMLCRawStr = 7
 _kMLCStaticObjectBegin = 1000
 _kMLCStr = 1005
 _Any = AnyType()
+_BOOL = AtomicType(_kMLCBool)
 _INT = AtomicType(_kMLCInt)
 _FLOAT = AtomicType(_kMLCFloat)
 _PTR = AtomicType(_kMLCPtr)
@@ -164,6 +166,7 @@ _STR = AtomicType(_kMLCStr)
 _UList = List(_Any)
 _UDict = Dict(_Any, _Any)
 _TYPE_INDEX_TO_CTYPES = {
+    _kMLCBool: ctypes.c_bool,
     _kMLCInt: ctypes.c_int64,
     _kMLCFloat: ctypes.c_double,
     _kMLCPtr: Ptr,
@@ -172,6 +175,7 @@ _TYPE_INDEX_TO_CTYPES = {
     _kMLCRawStr: Ptr,
 }
 _PY_TYPE_TO_MLC_TYPE: dict[typing.Any, Type] = {
+    bool: _BOOL,
     int: _INT,
     float: _FLOAT,
     Ptr: _PTR,

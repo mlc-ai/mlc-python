@@ -20,6 +20,13 @@ def test_cxx_int(x: int) -> None:
     assert isinstance(y, int) and y == x
 
 
+@pytest.mark.parametrize("x", [True, False])
+def test_cxx_bool(x: int) -> None:
+    func = mlc.Func.get("mlc.testing.cxx_bool")
+    y = func(x)
+    assert isinstance(y, bool) and y == x
+
+
 @pytest.mark.parametrize("x", [-1, 0, 1, 2.0, -2.0])
 def test_cxx_float(x: float) -> None:
     func = mlc.Func.get("mlc.testing.cxx_float")

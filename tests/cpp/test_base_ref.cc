@@ -578,6 +578,211 @@ TEST(RefPOD, FromAnyNone) {
   }
 }
 
+TEST(RefBool, DefaultConstructor) {
+  // Default-constructed Ref<bool> should be null
+  Ref<bool> ref;
+  EXPECT_EQ(ref.get(), nullptr);
+}
+
+TEST(RefBool, ConstructorFromValue) {
+  // Creating a Ref<bool> from a boolean literal
+  Ref<bool> ref_true = Ref<bool>::New(true);
+  EXPECT_NE(ref_true.get(), nullptr);
+  EXPECT_TRUE(*ref_true);
+  EXPECT_EQ(GetRefCount(ref_true), 1);
+
+  // Also test a false case
+  Ref<bool> ref_false = Ref<bool>::New(false);
+  EXPECT_NE(ref_false.get(), nullptr);
+  EXPECT_FALSE(*ref_false);
+  EXPECT_EQ(GetRefCount(ref_false), 1);
+}
+
+TEST(RefBool, CopyConstructor) {
+  // Copy construct from an existing Ref<bool>
+  Ref<bool> ref1 = Ref<bool>::New(true);
+  Ref<bool> ref2(ref1);
+  EXPECT_NE(ref1.get(), nullptr);
+  EXPECT_NE(ref2.get(), nullptr);
+  EXPECT_TRUE(*ref1);
+  EXPECT_TRUE(*ref2);
+  EXPECT_EQ(GetRefCount(ref1), 2);
+  EXPECT_EQ(GetRefCount(ref2), 2);
+}
+
+TEST(RefBool, MoveConstructor) {
+  // Move construct from an existing Ref<bool>
+  Ref<bool> ref1 = Ref<bool>::New(true);
+  Ref<bool> ref2(std::move(ref1));
+  EXPECT_EQ(ref1.get(), nullptr);
+  EXPECT_NE(ref2.get(), nullptr);
+  EXPECT_TRUE(*ref2);
+  EXPECT_EQ(GetRefCount(ref2), 1);
+}
+
+TEST(RefBool, CopyAssignment) {
+  // Copy-assign one Ref<bool> to another
+  Ref<bool> ref1 = Ref<bool>::New(false);
+  Ref<bool> ref2;
+  ref2 = ref1;
+  EXPECT_NE(ref1.get(), nullptr);
+  EXPECT_NE(ref2.get(), nullptr);
+  EXPECT_FALSE(*ref1);
+  EXPECT_FALSE(*ref2);
+  EXPECT_EQ(GetRefCount(ref1), 2);
+  EXPECT_EQ(GetRefCount(ref2), 2);
+}
+
+TEST(RefBool, MoveAssignment) {
+  // Move-assign one Ref<bool> to another
+  Ref<bool> ref1 = Ref<bool>::New(false);
+  Ref<bool> ref2;
+  ref2 = std::move(ref1);
+  EXPECT_EQ(ref1.get(), nullptr);
+  EXPECT_NE(ref2.get(), nullptr);
+  EXPECT_FALSE(*ref2);
+  EXPECT_EQ(GetRefCount(ref2), 1);
+}
+
+TEST(RefBool, Dereference) {
+  Ref<bool> ref_true = Ref<bool>::New(true);
+  EXPECT_TRUE(*ref_true);
+  *ref_true = false;
+  EXPECT_FALSE(*ref_true);
+}
+
+TEST(RefBool, Null) {
+  // Construct from Null
+  Ref<bool> ref(Null);
+  EXPECT_EQ(ref.get(), nullptr);
+}
+
+TEST(RefBool, Reset) {
+  // Reset a Ref<bool> and ensure it becomes null
+  Ref<bool> ref = Ref<bool>::New(true);
+  EXPECT_NE(ref.get(), nullptr);
+  ref.Reset();
+  EXPECT_EQ(ref.get(), nullptr);
+}
+
+TEST(RefBool, ConversionToAny) {
+  // Convert Ref<bool> to Any
+  Ref<bool> ref = Ref<bool>::New(true);
+  Any any = ref;
+  ref.Reset();
+  EXPECT_TRUE(any.operator bool());
+  // Convert back from Any to Ref<bool>
+  ref = any.operator Ref<bool>();
+  EXPECT_TRUE(*ref);
+  EXPECT_EQ(GetRefCount(ref), 1);
+}
+
+TEST(RefBool, ConversionFromAny) {
+  // Convert a Ref<bool> inside an Any back to Ref<bool>
+  Any any = Ref<bool>::New(false);
+  Ref<bool> ref = any;
+  EXPECT_FALSE(*ref);
+  EXPECT_EQ(GetRefCount(ref), 1);
+}
+
+TEST(RefBool, ConversionToAnyView) {
+  // Convert Ref<bool> to AnyView
+  Ref<bool> ref = Ref<bool>::New(true);
+  AnyView any_view = ref;
+  ref.Reset();
+  EXPECT_TRUE(any_view.operator bool());
+  // Convert back from AnyView to Ref<bool>
+  ref = any_view.operator Ref<bool>();
+  EXPECT_TRUE(*ref);
+  EXPECT_EQ(GetRefCount(ref), 1);
+}
+
+TEST(RefBool, ConversionFromAnyView) {
+  // Convert a Ref<bool> inside an AnyView back to Ref<bool>
+  Any any = Ref<bool>::New(false);
+  AnyView any_view = any;
+  Ref<bool> ref = any_view;
+  EXPECT_FALSE(*ref);
+  EXPECT_EQ(GetRefCount(ref), 1);
+}
+
+TEST(RefBool, MultipleReferences) {
+  // Multiple references to the same Ref<bool>
+  Ref<bool> ref1 = Ref<bool>::New(true);
+  Ref<bool> ref2 = ref1;
+  Ref<bool> ref3 = ref1;
+  EXPECT_EQ(GetRefCount(ref1), 3);
+  EXPECT_EQ(GetRefCount(ref2), 3);
+  EXPECT_EQ(GetRefCount(ref3), 3);
+
+  ref2.Reset();
+  EXPECT_EQ(GetRefCount(ref1), 2);
+  ref3.Reset();
+  EXPECT_EQ(GetRefCount(ref1), 1);
+}
+
+TEST(RefBool, ComparisonOperators) {
+  // Test == and != for Ref<bool>
+  Ref<bool> ref_true1 = Ref<bool>::New(true);
+  Ref<bool> ref_true2 = Ref<bool>::New(true);
+  Ref<bool> ref_false = Ref<bool>::New(false);
+
+  // They point to different allocations, so operator== checks pointer identity
+  EXPECT_TRUE(ref_true1 == ref_true1);
+  EXPECT_FALSE(ref_true1 == ref_true2);
+  EXPECT_FALSE(ref_true1 == ref_false);
+  EXPECT_FALSE(ref_true2 == ref_false);
+
+  EXPECT_FALSE(ref_true1 != ref_true1);
+  EXPECT_TRUE(ref_true1 != ref_true2);
+  EXPECT_TRUE(ref_true1 != ref_false);
+  EXPECT_TRUE(ref_true2 != ref_false);
+}
+
+TEST(RefBool, NullComparison) {
+  // Comparing Ref<bool> to nullptr
+  Ref<bool> ref_null;
+  Ref<bool> ref_true = Ref<bool>::New(true);
+
+  EXPECT_TRUE(ref_null == nullptr);
+  EXPECT_FALSE(ref_true == nullptr);
+
+  EXPECT_FALSE(ref_null != nullptr);
+  EXPECT_TRUE(ref_true != nullptr);
+}
+
+TEST(RefBool, Defined) {
+  // defined() should return false if null, true otherwise
+  Ref<bool> ref_null;
+  Ref<bool> ref_true = Ref<bool>::New(true);
+
+  EXPECT_FALSE(ref_null.defined());
+  EXPECT_TRUE(ref_true.defined());
+}
+
+TEST(RefBool, DereferenceNull) {
+  // Attempting to dereference a null Ref<bool> should throw
+  Ref<bool> ref_null;
+  try {
+    *ref_null;
+    FAIL() << "Expected exception not thrown";
+  } catch (Exception &e) {
+    EXPECT_STREQ(e.what(), "Attempt to dereference a null pointer");
+  }
+}
+
+TEST(RefBool, ResetAndAccess) {
+  // Reset and then attempt to dereference
+  Ref<bool> ref = Ref<bool>::New(true);
+  ref.Reset();
+  try {
+    *ref;
+    FAIL() << "Expected exception not thrown";
+  } catch (Exception &e) {
+    EXPECT_STREQ(e.what(), "Attempt to dereference a null pointer");
+  }
+}
+
 static_assert(!std::is_assignable<Ref<int64_t> &, Ref<double>>::value,
               "Ref<int64_t> should not be assignable from Ref<double>");
 static_assert(!std::is_constructible<Ref<int64_t>, Ref<double>>::value,

@@ -48,12 +48,13 @@ cdef extern from "mlc/c_api.h" nogil:
 
     cdef enum MLCTypeIndex:
         kMLCNone = 0
-        kMLCInt = 1
-        kMLCFloat = 2
-        kMLCPtr = 3
-        kMLCDataType = 4
-        kMLCDevice = 5
-        kMLCRawStr = 6
+        kMLCBool = 1
+        kMLCInt = 2
+        kMLCFloat = 3
+        kMLCPtr = 4
+        kMLCDataType = 5
+        kMLCDevice = 6
+        kMLCRawStr = 7
         kMLCStaticObjectBegin = 1000
         # kMLCCore [1000: 1100) {
         kMLCCoreBegin = 1000
@@ -80,6 +81,7 @@ cdef extern from "mlc/c_api.h" nogil:
         kMLCDynObjectBegin = 100000
 
     ctypedef union MLCPODValueUnion:
+        bint v_bool
         int64_t v_int64
         double v_float64
         DLDataType v_dtype
@@ -340,7 +342,7 @@ cdef class PyAny:
         return func_call(_DESERIALIZE, (mlc_json,))
 
     @staticmethod
-    def _mlc_eq_s(PyAny lhs, PyAny rhs, bind_free_vars: bool, assert_mode: bool) -> bool:
+    def _mlc_eq_s(PyAny lhs, PyAny rhs, bint bind_free_vars, bint assert_mode) -> bool:
         return bool(func_call(_STRUCUTRAL_EQUAL, (lhs, rhs, bind_free_vars, assert_mode)))
 
     @staticmethod
@@ -404,6 +406,14 @@ cdef inline MLCAny _MLCAnyObj(MLCAny* obj):
     x.type_index = obj.type_index
     x.ref_cnt = 0
     x.v.v_obj = obj
+    return x
+
+cdef inline MLCAny _MLCAnyBool(bint value):
+    cdef MLCAny x
+    x.type_index = kMLCBool
+    x.ref_cnt = 0
+    x.v.v_int64 = 0
+    x.v.v_bool = value
     return x
 
 cdef inline MLCAny _MLCAnyInt(int64_t value):
@@ -490,6 +500,8 @@ cdef inline object _any_c2py_no_inc_ref(const MLCAny x):
     cdef Str str_ret
     if type_index == kMLCNone:
         return None
+    elif type_index == kMLCBool:
+        return bool(x.v.v_bool)
     elif type_index == kMLCInt:
         return <int64_t>(x.v.v_int64)
     elif type_index == kMLCFloat:
@@ -517,6 +529,8 @@ cdef inline object _any_c2py_inc_ref(MLCAny x):
     cdef Str str_ret
     if type_index == kMLCNone:
         return None
+    elif type_index == kMLCBool:
+        return bool(x.v.v_bool)
     elif type_index == kMLCInt:
         return <int64_t>(x.v.v_int64)
     elif type_index == kMLCFloat:
@@ -560,6 +574,8 @@ cdef inline MLCAny _any_py2c(object x, list temporary_storage):
         y = (<PyAny>x)._mlc_any
     elif isinstance(x, Str):
         y = (<Str>x)._mlc_any
+    elif isinstance(x, bool):
+        y = _MLCAnyBool(<bint>x)
     elif isinstance(x, Integral):
         y = _MLCAnyInt(<int64_t>x)
     elif isinstance(x, Number):
@@ -760,11 +776,24 @@ cdef class TypeCheckerAny:
         ret.convert = TypeCheckerAny.convert
         return ret
 
+cdef class TypeCheckerAtomicBool:
+    @staticmethod
+    cdef MLCAny convert(object _self, object value, list temporary_storage):
+        if isinstance(value, bool):
+            return _MLCAnyBool(<bint?>(value))
+        raise TypeError(f"Expected `bool`, but got: {type(value)}")
+
+    cdef TypeChecker get(self):
+        cdef TypeChecker ret = TypeChecker()
+        ret._self = self
+        ret.convert = TypeCheckerAtomicBool.convert
+        return ret
+
 cdef class TypeCheckerAtomicInt:
     @staticmethod
     cdef MLCAny convert(object _self, object value, list temporary_storage):
         if isinstance(value, Integral):
-            return _MLCAnyInt(<int64_t>(value))
+            return _MLCAnyInt(<int64_t?>(value))
         raise TypeError(f"Expected `int`, but got: {type(value)}")
 
     cdef TypeChecker get(self):
@@ -783,7 +812,7 @@ cdef class TypeCheckerAtomicFloat:
     cdef TypeChecker get(self):
         cdef TypeChecker ret = TypeChecker()
         ret._self = self
-        ret.convert = TypeCheckerAtomicInt.convert
+        ret.convert = TypeCheckerAtomicFloat.convert
         return ret
 
 cdef class TypeCheckerAtomicPtr:
@@ -999,7 +1028,9 @@ cdef inline TypeChecker _type_checker_from_ty(MLCAny* ty):
         return TypeCheckerAny().get()
     elif ty.type_index == kMLCTypingAtomic:
         atomic_type_index = (<MLCTypingAtomic*>ty).type_index
-        if atomic_type_index == kMLCInt:
+        if atomic_type_index == kMLCBool:
+            return TypeCheckerAtomicBool().get()
+        elif atomic_type_index == kMLCInt:
             return TypeCheckerAtomicInt().get()
         elif atomic_type_index == kMLCFloat:
             return TypeCheckerAtomicFloat().get()
@@ -1070,6 +1101,17 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
                         raise TypeError(f"Unexpected type index: {ret.type_index}")
                 else:
                     _check_error(_C_AnyDecRef(&save))
+            return f, g
+        elif (idx, num_bytes) == (kMLCBool, 1):
+            def f(PyAny self):
+                cdef uint8_t* ret = <uint8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
+                return ret[0] != 0
+
+            def g(PyAny self, value):
+                cdef uint8_t* ret = <uint8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
+                if not isinstance(value, bool):
+                    raise TypeError(f"Expected `bool`, but got: {value}")
+                ret[0] = <bint?>(value)
             return f, g
         elif (idx, num_bytes) == (kMLCInt, 1):
             def f(PyAny self): return (<int8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
@@ -1158,6 +1200,22 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
                         raise TypeError(f"Unexpected type index: {ret.type_index}")
                 else:
                     _check_error(_C_AnyDecRef(&save))
+            return f, g
+        elif type_index == kMLCBool:
+            def f(PyAny self):
+                cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
+                cdef MLCBoxedPOD* ptr = addr[0]
+                return ptr.data.v_bool if ptr != NULL else None
+
+            def g(PyAny self, value):
+                cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
+                cdef MLCAny ret = _MLCAnyNone()
+                cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
+                if value is not None:
+                    if not isinstance(value, bool):
+                        raise TypeError(f"Expected `bool`, but got: {value}")
+                    args[1] = _MLCAnyBool(value)
+                _func_call_impl_with_c_args(_BOOL_NEW, 2, args, &ret)
             return f, g
         elif type_index == kMLCInt:
             def f(PyAny self):
@@ -1437,6 +1495,7 @@ cdef MLCVTableHandle _VTABLE_STR = _vtable_get_global(b"__str__")
 cdef MLCVTableHandle _VTABLE_ANY_TO_REF = _vtable_get_global(b"__any_to_ref__")
 
 cdef MLCVTableHandle _VTABLE_NEW_REF = _vtable_get_global(b"__new_ref__")
+cdef MLCFunc* _BOOL_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCBool, False)
 cdef MLCFunc* _INT_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCInt, False)
 cdef MLCFunc* _FLOAT_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCFloat, False)
 cdef MLCFunc* _PTR_NEW = _vtable_get_func_ptr(_VTABLE_NEW_REF, kMLCPtr, False)

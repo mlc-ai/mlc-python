@@ -676,6 +676,8 @@ inline void PythonDocPrinter::PrintTypedDoc(const Literal &doc) {
   int32_t type_index = value.GetTypeIndex();
   if (!value.defined()) {
     output_ << "None";
+  } else if (type_index == kMLCBool) {
+    output_ << (value.operator bool() ? "True" : "False");
   } else if (type_index == kMLCInt) {
     output_ << value.operator int64_t();
   } else if (type_index == kMLCFloat) {
@@ -1022,12 +1024,18 @@ inline void PythonDocPrinter::PrintTypedDoc(const DocString &doc) {
   }
 }
 
-mlc::Str DocToPythonScript(Node node, PrinterConfig cfg) {
+} // namespace
+} // namespace printer
+} // namespace mlc
+
+namespace mlc {
+
+mlc::Str DocToPythonScript(mlc::printer::Node node, mlc::printer::PrinterConfig cfg) {
   if (cfg->num_context_lines < 0) {
     constexpr int32_t kMaxInt32 = 2147483647;
     cfg->num_context_lines = kMaxInt32;
   }
-  PythonDocPrinter printer(cfg);
+  printer::PythonDocPrinter printer(cfg);
   printer.Append(node, cfg);
   mlc::Str result = printer.GetString();
   while (!result->empty() && std::isspace(result->back())) {
@@ -1036,9 +1044,8 @@ mlc::Str DocToPythonScript(Node node, PrinterConfig cfg) {
   return result;
 }
 
-MLC_REGISTER_FUNC("mlc.printer.DocToPythonScript").set_body(DocToPythonScript);
-MLC_REGISTER_FUNC("mlc.printer.ToPython").set_body(::mlc::printer::ToPython);
+Str ToPython(const ObjectRef &obj, const mlc::printer::PrinterConfig &cfg) {
+  return ::mlc::printer::ToPython(obj, cfg);
+}
 
-} // namespace
-} // namespace printer
 } // namespace mlc
