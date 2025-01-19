@@ -7,6 +7,7 @@ import pytest
 
 @mlc.py_class
 class PyClassForTest(mlc.PyClass):
+    bool_: bool
     i64: int
     f64: float
     raw_ptr: mlc.Ptr
@@ -25,6 +26,7 @@ class PyClassForTest(mlc.PyClass):
     dict_any_str: dict[Any, str]
     dict_str_list_int: dict[str, list[int]]
     ###
+    opt_bool: Optional[bool]
     opt_i64: Optional[int]
     opt_f64: Optional[float]
     opt_raw_ptr: Optional[mlc.Ptr]
@@ -49,6 +51,7 @@ class PyClassForTest(mlc.PyClass):
 @pytest.fixture
 def mlc_class_for_test() -> PyClassForTest:
     return PyClassForTest(
+        bool_=True,
         i64=64,
         f64=2.5,
         raw_ptr=mlc.Ptr(0xDEADBEEF),
@@ -67,6 +70,7 @@ def mlc_class_for_test() -> PyClassForTest:
         dict_any_str={1: "1.0", 2.0: "2", "three": "four", 4: "5"},
         dict_str_list_int={"1": [1, 2, 3], "2": [4, 5, 6]},
         ###
+        opt_bool=None,
         opt_i64=-64,
         opt_f64=-2.5,
         opt_raw_ptr=mlc.Ptr(0xBEEFDEAD),
@@ -90,6 +94,7 @@ def test_copy_shallow(mlc_class_for_test: PyClassForTest) -> None:
     src = mlc_class_for_test
     dst = copy.copy(src)
     assert src != dst
+    assert src.bool_ == dst.bool_
     assert src.i64 == dst.i64
     assert src.f64 == dst.f64
     assert src.raw_ptr.value == dst.raw_ptr.value
@@ -106,6 +111,7 @@ def test_copy_shallow(mlc_class_for_test: PyClassForTest) -> None:
     assert src.dict_str_any == dst.dict_str_any
     assert src.dict_any_str == dst.dict_any_str
     assert src.dict_str_list_int == dst.dict_str_list_int
+    assert src.opt_bool == dst.opt_bool
     assert src.opt_i64 == dst.opt_i64
     assert src.opt_f64 == dst.opt_f64
     assert src.opt_raw_ptr.value == dst.opt_raw_ptr.value  # type: ignore[union-attr]

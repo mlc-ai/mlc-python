@@ -67,12 +67,13 @@ typedef enum {
   // - `Any::type_index` is never `kMLCRawStr`
   // - `AnyView::type_index` can be `kMLCRawStr`
   kMLCNone = 0,
-  kMLCInt = 1,
-  kMLCFloat = 2,
-  kMLCPtr = 3,
-  kMLCDataType = 4,
-  kMLCDevice = 5,
-  kMLCRawStr = 6,
+  kMLCBool = 1,
+  kMLCInt = 2,
+  kMLCFloat = 3,
+  kMLCPtr = 4,
+  kMLCDataType = 5,
+  kMLCDevice = 6,
+  kMLCRawStr = 7,
   kMLCStaticObjectBegin = 1000,
   // kMLCCore [1000: 1100) {
   kMLCCoreBegin = 1000,
@@ -118,6 +119,7 @@ typedef struct {
 } MLCByteArray;
 
 typedef union {
+  bool v_bool;            // booleans
   int64_t v_int64;        // integers
   double v_float64;       // floating-point numbers
   DLDataType v_dtype;     // data type

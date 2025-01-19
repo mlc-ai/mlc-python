@@ -4,8 +4,10 @@
 #include <sstream>
 
 namespace mlc {
-namespace core {
 namespace {
+
+using mlc::core::TopoVisit;
+using mlc::core::VisitFields;
 
 mlc::Str Serialize(Any any);
 Any Deserialize(const char *json_str, int64_t json_str_len);
@@ -35,11 +37,13 @@ inline mlc::Str Serialize(Any any) {
     // clang-format off
     MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { if (Object *v = obj->get()) EmitObject(v); else EmitNil(); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) { if (Object *v = opt->get()) EmitObject(v); else EmitNil(); }
+    MLC_INLINE void operator()(MLCTypeField *, Optional<bool> *opt) { if (const bool *v = opt->get()) EmitBool(*v); else EmitNil(); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { if (const int64_t *v = opt->get()) EmitInt(*v); else EmitNil(); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { if (const double *v = opt->get())  EmitFloat(*v); else EmitNil(); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { if (const DLDevice *v = opt->get()) EmitDevice(*v); else EmitNil(); }
     MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { if (const DLDataType *v = opt->get()) EmitDType(*v); else EmitNil(); }
     // clang-format on
+    MLC_INLINE void operator()(MLCTypeField *, bool *v) { EmitBool(*v); }
     MLC_INLINE void operator()(MLCTypeField *, int8_t *v) { EmitInt(static_cast<int64_t>(*v)); }
     MLC_INLINE void operator()(MLCTypeField *, int16_t *v) { EmitInt(static_cast<int64_t>(*v)); }
     MLC_INLINE void operator()(MLCTypeField *, int32_t *v) { EmitInt(static_cast<int64_t>(*v)); }
@@ -56,6 +60,7 @@ inline mlc::Str Serialize(Any any) {
       MLC_THROW(TypeError) << "Unserializable type: const char *";
     }
     inline void EmitNil() { (*os) << ", null"; }
+    inline void EmitBool(bool v) { (*os) << ", " << (v ? "true" : "false"); }
     inline void EmitFloat(double v) { (*os) << ", " << std::fixed << std::setprecision(19) << v; }
     inline void EmitInt(int64_t v) {
       int32_t type_int = (*get_json_type_index)(TypeTraits<int64_t>::type_str);
@@ -73,6 +78,8 @@ inline mlc::Str Serialize(Any any) {
       int32_t type_index = any->type_index;
       if (type_index == kMLCNone) {
         EmitNil();
+      } else if (type_index == kMLCBool) {
+        EmitBool(any->operator bool());
       } else if (type_index == kMLCInt) {
         EmitInt(any->operator int64_t());
       } else if (type_index == kMLCFloat) {
@@ -144,6 +151,9 @@ inline mlc::Str Serialize(Any any) {
     TopoVisit(any.operator Object *(), nullptr, on_visit);
   } else if (any.type_index == kMLCNone) {
     os << "null";
+  } else if (any.type_index == kMLCBool) {
+    bool v = any.operator bool();
+    os << (v ? "true" : "false");
   } else if (any.type_index == kMLCInt) {
     int32_t type_int = get_json_type_index(TypeTraits<int64_t>::type_str);
     int64_t v = any;
@@ -211,7 +221,8 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len) {
           }
         } else if (arg.type_index == kMLCList) {
           list[j] = invoke_init(arg.operator UList());
-        } else if (arg.type_index == kMLCStr || arg.type_index == kMLCFloat || arg.type_index == kMLCNone) {
+        } else if (arg.type_index == kMLCStr || arg.type_index == kMLCBool || arg.type_index == kMLCFloat ||
+                   arg.type_index == kMLCNone) {
           // Do nothing
         } else {
           MLC_THROW(ValueError) << "Unexpected value: " << arg;
@@ -223,6 +234,7 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len) {
       values[i] = values[k];
     } else if (obj.type_index == kMLCStr) {
       // Do nothing
+      // TODO: how about kMLCBool, kMLCFloat, kMLCNone?
     } else {
       MLC_THROW(ValueError) << "Unexpected value: " << obj;
     }
@@ -277,10 +289,10 @@ inline Any JSONLoads(const char *json_str, int64_t json_str_len) {
     Any ParseBoolean() {
       if (PeekChar() == 't') {
         ExpectString("true", 4);
-        return Any(1);
+        return Any(true);
       } else {
         ExpectString("false", 5);
-        return Any(0);
+        return Any(false);
       }
     }
 
@@ -479,23 +491,27 @@ inline Any JSONLoads(const char *json_str, int64_t json_str_len) {
   }
   return JSONParser{0, json_str_len, json_str}.Parse();
 }
-
-MLC_REGISTER_FUNC("mlc.core.JSONLoads").set_body([](AnyView json_str) {
-  if (json_str.type_index == kMLCRawStr) {
-    return ::mlc::core::JSONLoads(json_str.operator const char *());
-  } else {
-    ::mlc::Str str = json_str;
-    return ::mlc::core::JSONLoads(str);
-  }
-});
-MLC_REGISTER_FUNC("mlc.core.JSONSerialize").set_body(::mlc::core::Serialize);
-MLC_REGISTER_FUNC("mlc.core.JSONDeserialize").set_body([](AnyView json_str) {
-  if (json_str.type_index == kMLCRawStr) {
-    return ::mlc::core::Deserialize(json_str.operator const char *());
-  } else {
-    return ::mlc::core::Deserialize(json_str.operator ::mlc::Str());
-  }
-});
 } // namespace
-} // namespace core
+} // namespace mlc
+
+namespace mlc {
+
+Any JSONLoads(AnyView json_str) {
+  if (json_str.type_index == kMLCRawStr) {
+    return JSONLoads(json_str.operator const char *());
+  } else {
+    return JSONLoads(json_str.operator Str());
+  }
+}
+
+Any JSONDeserialize(AnyView json_str) {
+  if (json_str.type_index == kMLCRawStr) {
+    return Deserialize(json_str.operator const char *());
+  } else {
+    return Deserialize(json_str.operator ::mlc::Str());
+  }
+}
+
+Str JSONSerialize(AnyView source) { return Serialize(source); }
+
 } // namespace mlc

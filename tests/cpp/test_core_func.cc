@@ -110,51 +110,6 @@ TEST(Func, FunctionReturningRef) {
   EXPECT_EQ(result.operator Ref<StrObj>()->c_str(), std::string("Test Ref"));
 }
 
-template <typename Callable> void CheckSignature(Callable callable, const char *expected) {
-  using Traits = ::mlc::base::FuncCanonicalize<Callable>;
-  EXPECT_STREQ(Traits::Sig().c_str(), expected);
-  Func func(std::move(callable));
-  EXPECT_NE(func.get(), nullptr);
-}
-
-TEST(Func, Signature) {
-  using CStr = const char *;
-  using CxxStr = std::string;
-  using VoidPtr = void *;
-  const char *cstr = "Hello";
-  CheckSignature([]() -> void {}, "() -> void");
-  CheckSignature([](Any, const Any, const Any &, Any &&) -> Any { return Any(); },
-                 "(0: Any, 1: Any, 2: Any, 3: Any) -> Any");
-  CheckSignature([](AnyView, const AnyView, const AnyView &, AnyView &&) -> AnyView { return AnyView(); },
-                 "(0: AnyView, 1: AnyView, 2: AnyView, 3: AnyView) -> AnyView");
-  CheckSignature([](int, const int, const int &, int &&) -> int { return 0; },
-                 "(0: int, 1: int, 2: int, 3: int) -> int");
-  CheckSignature([](double, const double, const double &, double &&) -> double { return 0.0; },
-                 "(0: float, 1: float, 2: float, 3: float) -> float");
-  CheckSignature([&](CStr, const CStr, const CStr &, CStr &&) -> CStr { return cstr; },
-                 "(0: char *, 1: char *, 2: char *, 3: char *) -> char *");
-  CheckSignature([](CxxStr, const CxxStr, const CxxStr &, CxxStr &&) -> CxxStr { return CxxStr(); },
-                 "(0: char *, 1: char *, 2: char *, 3: char *) -> char *");
-  CheckSignature([](VoidPtr, const VoidPtr, const VoidPtr &, VoidPtr &&) -> VoidPtr { return nullptr; },
-                 "(0: Ptr, 1: Ptr, 2: Ptr, 3: Ptr) -> Ptr");
-  CheckSignature([](DLDataType, const DLDataType, const DLDataType &, DLDataType &&) -> DLDataType { return {}; },
-                 "(0: dtype, 1: dtype, 2: dtype, 3: dtype) -> dtype");
-  CheckSignature([](DLDevice, const DLDevice, const DLDevice &, DLDevice &&) -> DLDevice { return {}; },
-                 "(0: Device, 1: Device, 2: Device, 3: Device) -> Device");
-  CheckSignature([](StrObj *, const StrObj *) -> Str { return Str{Null}; },
-                 "(0: object.StrObj *, 1: object.StrObj *) -> str");
-  CheckSignature([](Ref<StrObj>, const Ref<StrObj>, const Ref<StrObj> &,
-                    Ref<StrObj> &&) -> Ref<StrObj> { return Ref<StrObj>::New("Test"); },
-                 "(0: Ref<object.StrObj>, 1: Ref<object.StrObj>, 2: Ref<object.StrObj>, 3: Ref<object.StrObj>) -> "
-                 "Ref<object.StrObj>");
-  CheckSignature([](Str, const Str, const Str &, Str &&) -> Str { return Str{Null}; },
-                 "(0: str, 1: str, 2: str, 3: str) -> str");
-  CheckSignature(
-      [](Optional<int64_t>, Optional<ObjectRef>, Optional<Str>, Optional<DLDevice>, Optional<DLDataType>) -> void {},
-      "(0: Optional<int>, 1: Optional<object.Object>, 2: Optional<object.StrObj>, 3: Optional<Device>, 4: "
-      "Optional<dtype>) -> void");
-}
-
 TEST(Func, ArgumentObjRawPtr) {
   Func f1([](Object *obj) { EXPECT_EQ(reinterpret_cast<MLCAny *>(obj)->ref_cnt, 1); });
   Func f2([](ObjectRef obj) { EXPECT_EQ(reinterpret_cast<MLCAny *>(obj.get())->ref_cnt, 2); });

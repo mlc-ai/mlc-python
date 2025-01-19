@@ -129,6 +129,8 @@ inline bool ObjectPathObj::Equal(const ObjectPathObj *other) const {
       MLC_OBJ_PATH_CHECK_SEG(p->key, q->key, Object *);
     } else if (type_index == kMLCNone) {
       return true;
+    } else if (type_index == kMLCBool) {
+      MLC_OBJ_PATH_CHECK_SEG(p->key, q->key, bool);
     } else if (type_index == kMLCInt) {
       MLC_OBJ_PATH_CHECK_SEG(p->key, q->key, int64_t);
     } else if (type_index == kMLCFloat) {

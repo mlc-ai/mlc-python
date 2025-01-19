@@ -83,11 +83,13 @@ MLC_INLINE void DeleteExternObject(Object *objptr) {
       MLC_INLINE void operator()(MLCTypeField *, Any *any) { any->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, ObjectRef *obj) { obj->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<ObjectRef> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, Optional<bool> *opt) { opt->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<int64_t> *opt) { opt->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<double> *opt) { opt->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<DLDevice> *opt) { opt->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<DLDataType> *opt) { opt->Reset(); }
       MLC_INLINE void operator()(MLCTypeField *, Optional<void *> *opt) { opt->Reset(); }
+      MLC_INLINE void operator()(MLCTypeField *, bool *) {}
       MLC_INLINE void operator()(MLCTypeField *, int8_t *) {}
       MLC_INLINE void operator()(MLCTypeField *, int16_t *) {}
       MLC_INLINE void operator()(MLCTypeField *, int32_t *) {}

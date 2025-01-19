@@ -252,6 +252,7 @@ public:
     Str str() const;                                                                                                   \
   }
 
+MLC_DEFINE_POD_REF(bool, v_bool);
 MLC_DEFINE_POD_REF(int64_t, v_int64);
 MLC_DEFINE_POD_REF(double, v_float64);
 MLC_DEFINE_POD_REF(DLDevice, v_device);

@@ -186,6 +186,46 @@ TEST(Any, Constructor_Float) {
   }
 }
 
+template <typename AnyType> struct Checker_Constructor_Bool {
+  static void Check(const AnyType &v, bool expected) {
+    CheckAnyPOD<bool>(v, MLCTypeIndex::kMLCBool, expected);
+    EXPECT_STREQ(v.str()->c_str(), expected ? "True" : "False");
+    EXPECT_EQ(v.operator bool(), expected);
+    // The following conversions should fail
+    CheckConvertFail([&]() { return v.operator int(); }, v.type_index, "int");
+    CheckConvertFail([&]() { return v.operator double(); }, v.type_index, "float");
+    CheckConvertFail([&]() { return v.operator DLDevice(); }, v.type_index, "Device");
+    CheckConvertFail([&]() { return v.operator DLDataType(); }, v.type_index, "dtype");
+    CheckConvertFail([&]() { return v.operator const char *(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator std::string(); }, v.type_index, "char *");
+    CheckConvertFail([&]() { return v.operator Ref<Object>(); }, v.type_index, "object.Object *");
+    CheckConvertFail([&]() { return v.operator ObjectRef(); }, v.type_index, "object.Object *");
+  }
+};
+
+// Then write the test that uses it:
+TEST(Any, Constructor_Bool) {
+  // Check for true
+  {
+    AnyView v_true(true);
+    Checker_Constructor_Bool<AnyView>::Check(v_true, true);
+  }
+  {
+    Any v_true(true);
+    Checker_Constructor_Bool<Any>::Check(v_true, true);
+  }
+
+  // Check for false
+  {
+    AnyView v_false(false);
+    Checker_Constructor_Bool<AnyView>::Check(v_false, false);
+  }
+  {
+    Any v_false(false);
+    Checker_Constructor_Bool<Any>::Check(v_false, false);
+  }
+}
+
 template <typename AnyType> struct Checker_Constructor_Ptr_NotNull {
   static void Check(const AnyType &v) {
     CheckAnyPOD<void *>(v, MLCTypeIndex::kMLCPtr, reinterpret_cast<void *>(0x1234));

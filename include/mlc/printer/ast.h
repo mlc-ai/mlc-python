@@ -152,6 +152,7 @@ struct LiteralObj : public ::mlc::Object {
 }; // struct LiteralObj
 
 struct Literal : public ::mlc::printer::Expr {
+  static Literal Bool(bool value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }
   static Literal Int(int64_t value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }
   static Literal Str(mlc::Str value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }
   static Literal Float(double value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }

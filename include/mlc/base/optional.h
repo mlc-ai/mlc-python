@@ -181,6 +181,7 @@ public:
     return *this;                                                                                                      \
   }
 
+MLC_DEFINE_POD_OPT(bool, v_bool)
 MLC_DEFINE_POD_OPT(int64_t, v_int64)
 MLC_DEFINE_POD_OPT(double, v_float64)
 MLC_DEFINE_POD_OPT(DLDevice, v_device)
