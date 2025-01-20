@@ -1,6 +1,6 @@
 [project]
 name = "mlc-python"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
     'numpy >= 1.22',
     'ml-dtypes >= 0.1',
