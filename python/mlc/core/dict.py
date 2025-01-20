@@ -14,6 +14,12 @@ V = TypeVar("V")
 T = TypeVar("T")
 
 
+class _UnspecifiedType: ...
+
+
+Unspecified = _UnspecifiedType()
+
+
 class DictMeta(MetaNoSlots, ABCMeta): ...
 
 
@@ -75,6 +81,28 @@ class Dict(Object, Mapping[K, V], metaclass=DictMeta):
 
     def __getitem__(self, key: K) -> V:
         return Dict._C(b"__getitem__", self, key)
+
+    def __setitem__(self, key: K, value: V) -> None:
+        Dict._C(b"__setitem__", self, key, value)
+
+    def __delitem__(self, key: K) -> None:
+        Dict._C(b"__delitem__", self, key)
+
+    def pop(self, key: K, default: T | _UnspecifiedType = Unspecified) -> V | T:
+        try:
+            return Dict._C(b"__delitem__", self, key)
+        except KeyError:
+            if default is Unspecified:
+                raise
+            assert not isinstance(default, _UnspecifiedType)
+            return default
+
+    def setdefault(self, key: K, default: V | None = None) -> V | None:
+        try:
+            return self[key]
+        except KeyError:
+            self[key] = default  # type: ignore[assignment]
+            return default
 
     # Additional methods required by the Mapping ABC
     def __contains__(self, key: object) -> bool:

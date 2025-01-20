@@ -1,17 +1,17 @@
 #ifndef MLC_CORE_ALL_H_
 #define MLC_CORE_ALL_H_
-#include "./dict.h"          // IWYU pragma: export
-#include "./error.h"         // IWYU pragma: export
-#include "./field_visitor.h" // IWYU pragma: export
-#include "./func.h"          // IWYU pragma: export
-#include "./func_details.h"  // IWYU pragma: export
-#include "./list.h"          // IWYU pragma: export
-#include "./object.h"        // IWYU pragma: export
-#include "./object_path.h"   // IWYU pragma: export
-#include "./reflection.h"    // IWYU pragma: export
-#include "./str.h"           // IWYU pragma: export
-#include "./typing.h"        // IWYU pragma: export
-#include "./utils.h"         // IWYU pragma: export
+#include "./dict.h"         // IWYU pragma: export
+#include "./error.h"        // IWYU pragma: export
+#include "./func.h"         // IWYU pragma: export
+#include "./func_details.h" // IWYU pragma: export
+#include "./list.h"         // IWYU pragma: export
+#include "./object.h"       // IWYU pragma: export
+#include "./object_path.h"  // IWYU pragma: export
+#include "./reflection.h"   // IWYU pragma: export
+#include "./str.h"          // IWYU pragma: export
+#include "./typing.h"       // IWYU pragma: export
+#include "./utils.h"        // IWYU pragma: export
+#include "./visitor.h"      // IWYU pragma: export
 
 namespace mlc {
 namespace core {

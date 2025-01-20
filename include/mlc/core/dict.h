@@ -73,8 +73,8 @@ struct UDictObj : protected ::mlc::core::DictBase {
   MLC_INLINE iterator find(const Any &key) { return iterator(IterStateMut{this, Acc::Find(this, key)}); }
   MLC_INLINE const_iterator find(const Any &key) const { return const_iterator(IterStateConst{this, Acc::Find(this, key)}); }
   MLC_INLINE void erase(const Any &key) { Acc::Erase(this, key); }
-  MLC_INLINE void erase(const iterator &it) { Acc::Erase(this, it.i.i); }
-  MLC_INLINE void erase(const const_iterator &it) { Acc::Erase(this, it.i.i); }
+  MLC_INLINE void erase(const iterator &it) { Acc::_Erase(this, it.i.i); }
+  MLC_INLINE void erase(const const_iterator &it) { Acc::_Erase(this, it.i.i); }
   // clang-format on
   template <typename K, typename V> MLC_INLINE_NO_MSVC DictObj<K, V> *AsTyped() const;
 
@@ -149,6 +149,8 @@ struct UDict : public ObjectRef {
       .StaticFn("__init__", FromAnyTuple)
       .MemFn("__str__", &UDictObj::__str__)
       .MemFn("__getitem__", ::mlc::core::DictBase::Accessor<UDictObj>::GetItem)
+      .MemFn("__setitem__", ::mlc::core::DictBase::Accessor<UDictObj>::SetItem)
+      .MemFn("__delitem__", ::mlc::core::DictBase::Accessor<UDictObj>::Erase)
       .MemFn("__iter_get_key__", ::mlc::core::DictBase::Accessor<UDictObj>::GetKey)
       .MemFn("__iter_get_value__", ::mlc::core::DictBase::Accessor<UDictObj>::GetValue)
       .MemFn("__iter_advance__", ::mlc::core::DictBase::Accessor<UDictObj>::Advance);

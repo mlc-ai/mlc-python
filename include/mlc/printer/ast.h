@@ -152,11 +152,11 @@ struct LiteralObj : public ::mlc::Object {
 }; // struct LiteralObj
 
 struct Literal : public ::mlc::printer::Expr {
-  static Literal Bool(bool value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }
-  static Literal Int(int64_t value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }
-  static Literal Str(mlc::Str value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }
-  static Literal Float(double value) { return Literal(mlc::List<ObjectPath>(), Any(value)); }
-  static Literal Null() { return Literal(mlc::List<ObjectPath>(), Any()); }
+  static Literal Bool(bool value, List<ObjectPath> source_paths = {}) { return Literal(source_paths, Any(value)); }
+  static Literal Int(int64_t value, List<ObjectPath> source_paths = {}) { return Literal(source_paths, Any(value)); }
+  static Literal Str(mlc::Str value, List<ObjectPath> source_paths = {}) { return Literal(source_paths, Any(value)); }
+  static Literal Float(double value, List<ObjectPath> source_paths = {}) { return Literal(source_paths, Any(value)); }
+  static Literal Null(List<ObjectPath> source_paths = {}) { return Literal(source_paths, Any()); }
 
   MLC_DEF_OBJ_REF(MLC_EXPORTS, Literal, LiteralObj, ::mlc::printer::Expr)
       .Field("source_paths", &LiteralObj::source_paths)

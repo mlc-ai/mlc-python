@@ -108,11 +108,26 @@ struct IRPrinterObj : public Object {
     return (*it).second->creator();
   }
 
-  Any operator()(const Optional<ObjectRef> &opt_obj, const ObjectPath &path) const {
-    if (!opt_obj.has_value()) {
-      return Literal::Null();
+  Any operator()(Any source, ObjectPath path) const {
+    if (source.type_index == kMLCNone) {
+      return Literal::Null({path});
     }
-    Node ret = ::mlc::Lib::IRPrint(opt_obj.value(), this, path);
+    if (source.type_index == kMLCBool) {
+      return Literal::Bool(source.operator bool(), {path});
+    }
+    if (source.type_index == kMLCInt) {
+      return Literal::Int(source.operator int64_t(), {path});
+    }
+    if (source.type_index == kMLCStr || source.type_index == kMLCRawStr) {
+      return Literal::Str(source.operator Str(), {path});
+    }
+    if (source.type_index == kMLCFloat) {
+      return Literal::Float(source.operator double(), {path});
+    }
+    if (source.type_index < kMLCStaticObjectBegin) {
+      MLC_THROW(ValueError) << "Unsupported type: " << source;
+    }
+    Node ret = ::mlc::Lib::IRPrint(source.operator Object *(), this, path);
     ret->source_paths->push_back(path);
     return ret;
   }

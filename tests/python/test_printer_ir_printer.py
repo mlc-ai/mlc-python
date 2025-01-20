@@ -41,3 +41,31 @@ def f(a, b, c):
   return e
 """.strip()
     )
+
+
+def test_print_none() -> None:
+    printer = mlcp.IRPrinter()
+    path = mlcp.ObjectPath.root()
+    node = printer(None, path)
+    assert node.to_python() == "None"
+
+
+def test_print_int() -> None:
+    printer = mlcp.IRPrinter()
+    path = mlcp.ObjectPath.root()
+    node = printer(42, path)
+    assert node.to_python() == "42"
+
+
+def test_print_str() -> None:
+    printer = mlcp.IRPrinter()
+    path = mlcp.ObjectPath.root()
+    node = printer("hey", path)
+    assert node.to_python() == '"hey"'
+
+
+def test_print_bool() -> None:
+    printer = mlcp.IRPrinter()
+    path = mlcp.ObjectPath.root()
+    node = printer(True, path)
+    assert node.to_python() == "True"

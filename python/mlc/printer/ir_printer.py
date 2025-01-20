@@ -1,12 +1,42 @@
 import contextlib
 from collections.abc import Generator
-from typing import Any, Optional, TypeVar
+from typing import Any, Optional, TypeVar, Union
 
 import mlc.dataclasses as mlcd
 from mlc.core import Func, Object, ObjectPath
 
-from .ast import Expr, Node, PrinterConfig, Stmt
+from .ast import Expr, Literal, Node, PrinterConfig, Stmt
 from .cprint import cprint
+
+
+def Int(value: int, source_paths: Optional[list[ObjectPath]] = None) -> Literal:
+    if source_paths is None:
+        source_paths = []
+    return Literal(value, source_paths=source_paths)
+
+
+def Float(value: float, source_paths: Optional[list[ObjectPath]] = None) -> Literal:
+    if source_paths is None:
+        source_paths = []
+    return Literal(value, source_paths=source_paths)
+
+
+def Str(value: str, source_paths: Optional[list[ObjectPath]] = None) -> Literal:
+    if source_paths is None:
+        source_paths = []
+    return Literal(value, source_paths=source_paths)
+
+
+def Bool(value: bool, source_paths: Optional[list[ObjectPath]] = None) -> Literal:
+    if source_paths is None:
+        source_paths = []
+    return Literal(value, source_paths=source_paths)
+
+
+def None_(source_paths: Optional[list[ObjectPath]] = None) -> Literal:
+    if source_paths is None:
+        source_paths = []
+    return Literal(None, source_paths=source_paths)
 
 
 @mlcd.c_class("mlc.printer.VarInfo")
@@ -72,7 +102,7 @@ class IRPrinter(Object):
     def frame_pop(self) -> None:
         IRPrinter._C(b"frame_pop", self)
 
-    def __call__(self, obj: Node, path: ObjectPath) -> Node:
+    def __call__(self, obj: Union[Node, int, str, bool, float, None], path: ObjectPath) -> Node:
         return IRPrinter._C(b"__call__", self, obj, path)
 
     @contextlib.contextmanager
