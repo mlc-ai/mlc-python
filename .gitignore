@@ -2,3 +2,4 @@
 *.dSYM
 build
 build-cpp-tests
+python/mlc/_version.py

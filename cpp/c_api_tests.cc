@@ -311,9 +311,8 @@ struct FieldSetter {
 
 MLC_REGISTER_FUNC("mlc.testing.FieldGet").set_body([](ObjectRef root, const char *target_name) {
   Any ret;
-  MLCTypeInfo *info = ::mlc::Lib::GetTypeInfo(root.GetTypeIndex());
   try {
-    ::mlc::core::VisitFields(root.get(), info, FieldGetter{target_name, &ret});
+    ::mlc::core::VisitFields(root.get(), nullptr, FieldGetter{target_name, &ret});
   } catch (FieldFoundException &) {
     return ret;
   }
@@ -322,9 +321,8 @@ MLC_REGISTER_FUNC("mlc.testing.FieldGet").set_body([](ObjectRef root, const char
 });
 
 MLC_REGISTER_FUNC("mlc.testing.FieldSet").set_body([](ObjectRef root, const char *target_name, Any src) {
-  MLCTypeInfo *info = ::mlc::Lib::GetTypeInfo(root.GetTypeIndex());
   try {
-    ::mlc::core::VisitFields(root.get(), info, FieldSetter{target_name, src});
+    ::mlc::core::VisitFields(root.get(), nullptr, FieldSetter{target_name, src});
   } catch (FieldFoundException &) {
     return;
   }

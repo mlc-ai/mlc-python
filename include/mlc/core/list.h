@@ -157,7 +157,24 @@ struct UList : public ObjectRef {
       .FieldReadOnly("data", &MLCList::data)
       .StaticFn("__init__", FromAnyTuple)
       .MemFn("__str__", &UListObj::__str__)
-      .MemFn("__iter_at__", &::mlc::core::ListBase::Accessor<UListObj>::At);
+      .MemFn("__iter_at__", &::mlc::core::ListBase::Accessor<UListObj>::At)
+      .MemFn("_append", &UListObj::push_back)
+      .MemFn("_insert", [](UListObj *self, int64_t i, Any data) { self->insert(i, data); })
+      .MemFn("_extend",
+             [](int32_t num_args, const AnyView *args, Any *) {
+               if (!args[0].IsInstance<UListObj>()) {
+                 MLC_THROW(TypeError) << "First argument must be a list";
+               }
+               UListObj *self = args[0];
+               self->insert(self->size(), args + 1, args + num_args);
+             })
+      .MemFn("_pop",
+             [](UListObj *self, int64_t i) {
+               Any ret = self->operator[](i);
+               self->erase(i);
+               return ret;
+             })
+      .MemFn("_clear", &UListObj::clear);
 };
 
 template <typename T> struct ListObj : protected UListObj {

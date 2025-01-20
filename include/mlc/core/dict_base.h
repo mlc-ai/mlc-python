@@ -39,8 +39,8 @@ struct DictBase : public MLCDict {
     inline static void WithCapacity(TDictObj *self, int64_t new_cap);
     inline static KVPair *InsertOrLookup(TDictObj *self, Any key);
     inline static KVPair *TryInsertOrLookup(TDictObj *self, MLCAny *key);
-    inline static void Erase(TDictObj *self, const Any &key);
-    inline static void Erase(TDictObj *self, int64_t index);
+    inline static Any Erase(TDictObj *self, const Any &key);
+    inline static void _Erase(TDictObj *self, int64_t index);
     inline static Any &At(TDictObj *self, const Any &key);
     inline static const Any &At(const TDictObj *self, const Any &key);
     inline static Any &Bracket(TDictObj *self, const Any &key) {
@@ -52,6 +52,8 @@ struct DictBase : public MLCDict {
     inline static BlockIter Prev(const TDictObj *self, BlockIter iter);
     inline static void New(int32_t num_args, const AnyView *args, Any *any_ret);
     inline static Any GetItem(TDictObj *self, Any key) { return self->at(key); }
+    inline static void SetItem(TDictObj *self, Any key, Any value) { (*self)[key] = value; }
+    inline static Any DelItem(TDictObj *self, Any key) { return Erase(self, key); }
     inline static Any GetKey(TDictObj *self, int64_t i) { return IterStateMut{self, i}.At().first; }
     inline static Any GetValue(TDictObj *self, int64_t i) { return IterStateMut{self, i}.At().second; }
     inline static int64_t Advance(TDictObj *self, int64_t i) { return IterStateMut{self, i}.Add().i; }
@@ -298,17 +300,19 @@ inline DictBase::KVPair *DictBase::Accessor<TDictObj>::TryInsertOrLookup(TDictOb
 }
 
 template <typename TDictObj> //
-inline void DictBase::Accessor<TDictObj>::Erase(TDictObj *self, const Any &key) {
+inline Any DictBase::Accessor<TDictObj>::Erase(TDictObj *self, const Any &key) {
   BlockIter iter = TSelf::Lookup(self, key);
   if (!iter.IsNone()) {
-    TSelf::Erase(self, iter.i);
-  } else {
-    MLC_THROW(KeyError) << key;
+    Any ret = static_cast<Any &>(iter.Data().second);
+    TSelf::_Erase(self, iter.i);
+    return ret;
   }
+  MLC_THROW(KeyError) << key;
+  MLC_UNREACHABLE();
 }
 
 template <typename TDictObj> //
-inline void DictBase::Accessor<TDictObj>::Erase(TDictObj *self, int64_t index) {
+inline void DictBase::Accessor<TDictObj>::_Erase(TDictObj *self, int64_t index) {
   DictBase *self_base = static_cast<DictBase *>(self);
   BlockIter iter = BlockIter::FromIndex(self_base, index);
   if (uint64_t offset = iter.Offset(); offset != 0) {

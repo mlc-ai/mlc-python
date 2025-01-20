@@ -27,25 +27,46 @@ class List(Object, Sequence[T], metaclass=ListMeta):
         return self.size
 
     @overload
-    def __getitem__(self, index: int) -> T: ...
+    def __getitem__(self, i: int) -> T: ...
 
     @overload
-    def __getitem__(self, index: slice) -> Sequence[T]: ...
+    def __getitem__(self, i: slice) -> Sequence[T]: ...
 
-    def __getitem__(self, index: int | slice) -> T | Sequence[T]:
-        if isinstance(index, int):
-            length = len(self)
-            if not -length <= index < length:
-                raise IndexError(f"list index out of range: {index}")
-            if index < 0:
-                index += length
-            return List._C(b"__iter_at__", self, index)
-        elif isinstance(index, slice):
+    def __getitem__(self, i: int | slice) -> T | Sequence[T]:
+        if isinstance(i, int):
+            i = _normalize_index(i, len(self))
+            return List._C(b"__iter_at__", self, i)
+        elif isinstance(i, slice):
             # Implement slicing
-            start, stop, step = index.indices(len(self))
+            start, stop, step = i.indices(len(self))
             return List([self[i] for i in range(start, stop, step)])
         else:
-            raise TypeError(f"list indices must be integers or slices, not {type(index).__name__}")
+            raise TypeError(f"list indices must be integers or slices, not {type(i).__name__}")
 
     def __iter__(self) -> Iterator[T]:
         return iter(self[i] for i in range(len(self)))
+
+    def insert(self, i: int, x: T) -> None:
+        i = _normalize_index(i, len(self) + 1)
+        return List._C(b"_insert", self, i, x)
+
+    def append(self, x: T) -> None:
+        return List._C(b"_append", self, x)
+
+    def pop(self, i: int = -1) -> T:
+        i = _normalize_index(i, len(self))
+        return List._C(b"_pop", self, i)
+
+    def clear(self) -> None:
+        return List._C(b"_clear", self)
+
+    def extend(self, iterable: Iterable[T]) -> None:
+        return List._C(b"_extend", self, *iterable)
+
+
+def _normalize_index(i: int, length: int) -> int:
+    if not -length <= i < length:
+        raise IndexError(f"list index out of range: {i}")
+    if i < 0:
+        i += length
+    return i

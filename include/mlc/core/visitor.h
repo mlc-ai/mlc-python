@@ -15,6 +15,12 @@ namespace core {
 void ReportTypeFieldError(const char *type_key, MLCTypeField *field);
 
 template <typename Visitor> inline void VisitFields(Object *root, MLCTypeInfo *info, Visitor &&visitor) {
+  if (root == nullptr) {
+    MLC_THROW(ValueError) << "Root is nullptr";
+  }
+  if (info == nullptr) {
+    info = Lib::GetTypeInfo(root->GetTypeIndex());
+  }
   MLCTypeField *fields = info->fields;
   MLCTypeField *field = fields;
   for (; field->name != nullptr; ++field) {
@@ -90,6 +96,12 @@ template <typename Visitor> inline void VisitFields(Object *root, MLCTypeInfo *i
 }
 
 template <typename Visitor> inline void VisitStructure(Object *root, MLCTypeInfo *info, Visitor &&visitor) {
+  if (root == nullptr) {
+    MLC_THROW(ValueError) << "Root is nullptr";
+  }
+  if (info == nullptr) {
+    info = Lib::GetTypeInfo(root->GetTypeIndex());
+  }
   if (info->structure_kind == 0) {
     MLC_THROW(TypeError) << "Structure is not defined for type: " << info->type_key;
   }

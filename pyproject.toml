@@ -1,6 +1,6 @@
 [project]
 name = "mlc-python"
-version = "0.1.1"
+dynamic = ["version"]
 dependencies = [
     'numpy >= 1.22',
     'ml-dtypes >= 0.1',
@@ -8,7 +8,7 @@ dependencies = [
     'colorama',
     'setuptools ; platform_system == "Windows"',
 ]
-description = ""
+description = "Python-first Development for AI Compilers"
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -38,10 +38,14 @@ dev = [
 ]
 
 [build-system]
-requires = ["scikit-build-core>=0.9.8", "cython"]
+requires = ["scikit-build-core>=0.9.8", "cython", "setuptools-scm"]
 build-backend = "scikit_build_core.build"
 
+[tool.setuptools_scm]
+version_file = "python/mlc/_version.py"
+
 [tool.scikit-build]
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
 build.targets = ["mlc_py", "mlc_registry"]
 build.verbose = true
 cmake.build-type = "RelWithDebInfo"
