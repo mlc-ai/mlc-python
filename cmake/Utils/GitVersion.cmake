@@ -1,0 +1,36 @@
+find_package(Git)
+
+if (GIT_EXECUTABLE)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --tags --dirty --match "v*"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE _GIT_OUTPUT
+    RESULT_VARIABLE _GIT_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  if (NOT _GIT_ERROR)
+    string(REGEX REPLACE "^v" "" MLC_VERSION_RAW "${_GIT_OUTPUT}")
+  endif()
+else()
+  message(ERROR "Git not found, cannot determine version. Falling back to 0.0.0-0-unknown.")
+endif()
+
+if(NOT DEFINED MLC_VERSION_RAW)
+  set(MLC_VERSION_RAW 0.0.0-0-unknown)
+  message(WARNING "Failed to determine MLC_VERSION_RAW from Git tags. Using default version \"${MLC_VERSION_RAW}\".")
+endif()
+
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)(-([0-9]+)-([a-z0-9]+))?" MLC_VERSION_MATCH ${MLC_VERSION_RAW})
+set(MLC_VERSION_MAJOR ${CMAKE_MATCH_1})
+set(MLC_VERSION_MINOR ${CMAKE_MATCH_2})
+set(MLC_VERSION_PATCH ${CMAKE_MATCH_3})
+set(MLC_VERSION_COMMIT_NUM ${CMAKE_MATCH_5})
+set(MLC_VERSION_COMMIT_SHA ${CMAKE_MATCH_6})
+
+if (NOT MLC_VERSION_COMMIT_NUM)
+  set(MLC_VERSION_GIT ${MLC_VERSION_MAJOR}.${MLC_VERSION_MINOR}.${MLC_VERSION_PATCH})
+else()
+  # Increment `MLC_VERSION_PATCH` by 1
+  math(EXPR MLC_VERSION_PATCH "${MLC_VERSION_PATCH}+1")
+  set(MLC_VERSION_GIT ${MLC_VERSION_MAJOR}.${MLC_VERSION_MINOR}.${MLC_VERSION_PATCH}.dev${MLC_VERSION_COMMIT_NUM}+${MLC_VERSION_COMMIT_SHA})
+endif()

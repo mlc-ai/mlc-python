@@ -14,9 +14,9 @@ def test_throw_exception_from_c() -> None:
         assert "in test_throw_exception_from_c" in msg[1]
         assert "ValueError: This is an error message" in msg[-1]
         if mlc._cython.SYSTEM != "Darwin":
-            # FIXME: for some reason, `c_api_tests.cc` is not in the traceback on macOS
+            # FIXME: for some reason, `c_api.cc` is not in the traceback on macOS
             # TODO: fix macOS libbacktrace integration on macOS
-            assert "c_api_tests.cc" in msg[-3]
+            assert "c_api.cc" in msg[-3]
 
 
 def test_throw_exception_from_ffi() -> None:
@@ -49,9 +49,9 @@ def test_throw_exception_from_ffi_in_c() -> None:
         assert "in test_throw_exception_from_ffi_in_c" in msg[1]
         assert "ValueError: This is a ValueError" in msg[-1]
         if mlc._cython.SYSTEM != "Darwin":
-            # FIXME: for some reason, `c_api_tests.cc` is not in the traceback on macOS
+            # FIXME: for some reason, `c_api.cc` is not in the traceback on macOS
             # TODO: fix macOS libbacktrace integration on macOS
-            idx_c_api_tests = next(i for i, line in enumerate(msg) if "c_api_tests.cc" in line)
+            idx_c_api_tests = next(i for i, line in enumerate(msg) if "c_api.cc" in line)
             idx_handle_error = next(
                 i for i, line in enumerate(msg) if "_func_safe_call_impl" in line
             )

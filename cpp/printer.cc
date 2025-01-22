@@ -1029,7 +1029,7 @@ inline void PythonDocPrinter::PrintTypedDoc(const DocString &doc) {
 } // namespace mlc
 
 namespace mlc {
-
+namespace registry {
 mlc::Str DocToPythonScript(mlc::printer::Node node, mlc::printer::PrinterConfig cfg) {
   if (cfg->num_context_lines < 0) {
     constexpr int32_t kMaxInt32 = 2147483647;
@@ -1043,9 +1043,5 @@ mlc::Str DocToPythonScript(mlc::printer::Node node, mlc::printer::PrinterConfig 
   }
   return result;
 }
-
-Str ToPython(const ObjectRef &obj, const mlc::printer::PrinterConfig &cfg) {
-  return ::mlc::printer::ToPython(obj, cfg);
-}
-
+} // namespace registry
 } // namespace mlc

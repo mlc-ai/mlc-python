@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABCMeta
 from collections.abc import Iterable, Iterator, Sequence
-from typing import TypeVar, overload
+from typing import Any, TypeVar, overload
 
 from mlc._cython import MetaNoSlots, Ptr, c_class_core
 
@@ -62,6 +62,18 @@ class List(Object, Sequence[T], metaclass=ListMeta):
 
     def extend(self, iterable: Iterable[T]) -> None:
         return List._C(b"_extend", self, *iterable)
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, List) and self._mlc_address == other._mlc_address:
+            return True
+        if not isinstance(other, (list, tuple, List)):
+            return False
+        if len(self) != len(other):
+            return False
+        return all(a == b for a, b in zip(self, other))
+
+    def __ne__(self, other: Any) -> bool:
+        return not (self == other)
 
 
 def _normalize_index(i: int, length: int) -> int:

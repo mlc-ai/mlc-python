@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from typing import Any, TypeVar
 
@@ -18,7 +20,7 @@ class Func(Object):
         return func_call(self, args)
 
     @staticmethod
-    def get(name: str, allow_missing: bool = False) -> "Func":
+    def get(name: str, allow_missing: bool = False) -> Func:
         ret = func_get(name)
         if (not allow_missing) and (ret is None):
             raise ValueError(f"Can't find global function: {name}")
@@ -40,4 +42,9 @@ def json_loads(s: str) -> Any:
     return _json_loads(s)
 
 
+def build_info() -> dict[str, Any]:
+    return _build_info()
+
+
 _json_loads = Func.get("mlc.core.JSONLoads")
+_build_info = Func.get("mlc.core.BuildInfo")

@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from abc import ABCMeta
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, ValuesView
-from typing import TypeVar, overload
+from typing import Any, TypeVar, overload
 
 from mlc._cython import MetaNoSlots, Ptr, c_class_core
 
@@ -123,6 +123,16 @@ class Dict(Object, Mapping[K, V], metaclass=DictMeta):
             return self[key]
         except KeyError:
             return default
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Dict) and self._mlc_address == other._mlc_address:
+            return True
+        if not isinstance(other, (Dict, dict)) or len(self) != len(other):
+            return False
+        return all(v == other.get(k, Unspecified) for k, v in self.items())
+
+    def __ne__(self, other: Any) -> bool:
+        return not (self == other)
 
 
 class _DictKeysView(KeysView[K]):
