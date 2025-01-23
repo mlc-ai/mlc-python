@@ -245,6 +245,7 @@ def translate_exception_to_c(exception: Exception) -> tuple[bytes, int, bytes]:
             bytes_info.append(str_py2c(code.co_filename))
             tb = tb.tb_next
         bytes_info.append(str_py2c(str(exception)))
+        bytes_info = [b if b else b"<null>" for b in bytes_info]
         bytes_info.reverse()
         bytes_info.append(b"")
         return b"\0".join(bytes_info)
