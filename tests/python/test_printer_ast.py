@@ -469,6 +469,17 @@ def test_print_stmt_block_doc(stmts: list[mlcp.ast.Stmt], expected: str) -> None
             ),
             "x, (y, z) = z",
         ),
+        (
+            mlcp.ast.Assign(
+                mlcp.ast.Tuple([]),
+                mlcp.ast.Operation(
+                    mlcp.ast.OperationKind.Add,
+                    [mlcp.ast.Id("x"), mlcp.ast.Id("y")],
+                ),
+                None,
+            ),
+            "x + y",
+        ),
     ],
     ids=itertools.count(),
 )
