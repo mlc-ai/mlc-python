@@ -77,3 +77,30 @@ def test_dict_setdefault() -> None:
     assert a.setdefault(2, -4) == 4
     assert a.setdefault(5, 25) == 25
     assert dict(a) == {1: 1, 2: 4, 3: 9, 4: 16, 5: 25}
+
+
+def test_dict_eq() -> None:
+    a = Dict({i: i * i for i in range(1, 5)})
+    b = {i: i * i for i in range(1, 5)}
+    assert a == b
+    assert b == a
+    assert a == Dict(b)
+    assert Dict(b) == a
+    assert not a.eq_ptr(Dict(b))
+    assert not Dict(b).eq_ptr(a)
+    assert a == a  # noqa: PLR0124
+    assert a.eq_ptr(a)
+
+
+def test_dict_ne_0() -> None:
+    a = Dict({i: i * i for i in range(1, 5)})
+    b = {i: i * i for i in range(1, 6)}
+    assert a != b
+    assert b != a
+
+
+def test_dict_ne_1() -> None:
+    a = Dict({i: i * i for i in range(1, 6)})
+    b = {i: i * i for i in range(1, 5)}
+    assert a != b
+    assert b != a

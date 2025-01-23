@@ -32,6 +32,9 @@ class Object(PyAny):
     def hash_s(self) -> int:
         return PyAny._mlc_hash_s(self)  # type: ignore[attr-defined]
 
+    def eq_ptr(self, other: typing.Any) -> bool:
+        return isinstance(other, Object) and self._mlc_address == other._mlc_address
+
     def __copy__(self: Object) -> Object:
         return PyAny._mlc_copy_shallow(self)  # type: ignore[attr-defined]
 
@@ -41,8 +44,14 @@ class Object(PyAny):
     def __hash__(self) -> int:
         return hash((type(self), self._mlc_address))
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Object) and self._mlc_address == other._mlc_address
+    def __eq__(self, other: typing.Any) -> bool:
+        return self.eq_ptr(other)
 
-    def __ne__(self, other: object) -> bool:
+    def __ne__(self, other: typing.Any) -> bool:
         return not self == other
+
+    def swap(self, other: typing.Any) -> None:
+        if type(self) == type(other):
+            self._mlc_swap(other)
+        else:
+            raise TypeError(f"Cannot different types: `{type(self)}` and `{type(other)}`")

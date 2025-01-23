@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.15)
 
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/GitVersion.cmake)
+
+message(STATUS "MLC VERSION: ${MLC_VERSION_GIT}")
+
 project(
-  mlc
-  VERSION 0.1.1
+  MLC
+  VERSION ${MLC_VERSION_MAJOR}.${MLC_VERSION_MINOR}.${MLC_VERSION_PATCH}
   DESCRIPTION "MLC-Python"
   LANGUAGES C CXX
 )
@@ -11,7 +15,7 @@ option(MLC_BUILD_TESTS "Build tests. This option will enable a test target `mlc_
 option(MLC_BUILD_PY "Build Python bindings." OFF)
 option(MLC_BUILD_REGISTRY
   "Support for objects with non-static type indices. When turned on, \
-  targets linked against `mlc` will allow objects that comes with non-pre-defined type indices, \
+  targets linked against `MLC` will allow objects that comes with non-pre-defined type indices, \
   so that the object hierarchy could expand without limitation. \
   This will require the downstream targets to link against target `mlc_registry` to be effective."
   OFF
@@ -40,9 +44,7 @@ target_include_directories(mlc INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 if (MLC_BUILD_REGISTRY)
   add_library(mlc_registry_objs OBJECT
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/c_api.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cpp/c_api_tests.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/printer.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cpp/json.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/structure.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/traceback.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/traceback_win.cc"
@@ -57,6 +59,21 @@ if (MLC_BUILD_REGISTRY)
     VISIBILITY_INLINES_HIDDEN ON
     PREFIX "lib"
   )
+
+  string(TIMESTAMP MLC_BUILD_TIME "%Y-%m-%dT%H:%M:%S")
+  set_property(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/cpp/c_api.cc"
+    APPEND
+    PROPERTY COMPILE_DEFINITIONS
+    MLC_VERSION_GIT="${MLC_VERSION_GIT}"
+    MLC_VERSION_MAJOR="${MLC_VERSION_MAJOR}"
+    MLC_VERSION_MINOR="${MLC_VERSION_MINOR}"
+    MLC_VERSION_PATCH="${MLC_VERSION_PATCH}"
+    MLC_VERSION_COMMIT_NUM="${MLC_VERSION_COMMIT_NUM}"
+    MLC_VERSION_COMMIT_SHA="${MLC_VERSION_COMMIT_SHA}"
+    MLC_BUILD_TIME="${MLC_BUILD_TIME}"
+  )
+
   add_cxx_warning(mlc_registry_objs)
   target_link_libraries(mlc_registry_objs PRIVATE dlpack_header)
   target_include_directories(mlc_registry_objs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")

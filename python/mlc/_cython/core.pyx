@@ -337,6 +337,11 @@ cdef class PyAny:
     def _mlc_json(self):
         return func_call(_SERIALIZE, (self,))
 
+    def _mlc_swap(self, PyAny other):
+        cdef MLCAny tmp = self._mlc_any
+        self._mlc_any = other._mlc_any
+        other._mlc_any = tmp
+
     @staticmethod
     def _mlc_from_json(mlc_json):
         return func_call(_DESERIALIZE, (mlc_json,))

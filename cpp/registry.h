@@ -15,7 +15,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace mlc { // C++ APIs
+namespace mlc {
+namespace registry {
+
 Any JSONLoads(AnyView json_str);
 Any JSONDeserialize(AnyView json_str);
 Str JSONSerialize(AnyView source);
@@ -24,10 +26,7 @@ int64_t StructuralHash(AnyView root);
 Any CopyShallow(AnyView root);
 Any CopyDeep(AnyView root);
 Str DocToPythonScript(mlc::printer::Node node, mlc::printer::PrinterConfig cfg);
-} // namespace mlc
-
-namespace mlc {
-namespace registry {
+UDict BuildInfo();
 
 struct DSOLibrary {
   ~DSOLibrary() { Unload(); }
@@ -638,14 +637,15 @@ inline TypeTable *TypeTable::New() {
   self->SetFunc("mlc.base.DataTypeFromStr", Func([self](const char *str) { return self->DataTypeFromStr(str); }).get());
   self->SetFunc("mlc.base.DeviceTypeRegister",
                 Func([self](const char *name) { return self->DeviceTypeRegister(name); }).get());
-  self->SetFunc("mlc.core.JSONLoads", Func(::mlc::JSONLoads).get());
-  self->SetFunc("mlc.core.JSONSerialize", Func(::mlc::JSONSerialize).get());
-  self->SetFunc("mlc.core.JSONDeserialize", Func(::mlc::JSONDeserialize).get());
-  self->SetFunc("mlc.core.StructuralEqual", Func(::mlc::StructuralEqual).get());
-  self->SetFunc("mlc.core.StructuralHash", Func(::mlc::StructuralHash).get());
-  self->SetFunc("mlc.core.CopyShallow", Func(::mlc::CopyShallow).get());
-  self->SetFunc("mlc.core.CopyDeep", Func(::mlc::CopyDeep).get());
-  self->SetFunc("mlc.printer.DocToPythonScript", Func(::mlc::DocToPythonScript).get());
+  self->SetFunc("mlc.core.JSONLoads", Func(::mlc::registry::JSONLoads).get());
+  self->SetFunc("mlc.core.JSONSerialize", Func(::mlc::registry::JSONSerialize).get());
+  self->SetFunc("mlc.core.JSONDeserialize", Func(::mlc::registry::JSONDeserialize).get());
+  self->SetFunc("mlc.core.StructuralEqual", Func(::mlc::registry::StructuralEqual).get());
+  self->SetFunc("mlc.core.StructuralHash", Func(::mlc::registry::StructuralHash).get());
+  self->SetFunc("mlc.core.CopyShallow", Func(::mlc::registry::CopyShallow).get());
+  self->SetFunc("mlc.core.CopyDeep", Func(::mlc::registry::CopyDeep).get());
+  self->SetFunc("mlc.core.BuildInfo", Func(::mlc::registry::BuildInfo).get());
+  self->SetFunc("mlc.printer.DocToPythonScript", Func(::mlc::registry::DocToPythonScript).get());
   self->SetFunc("mlc.printer.ToPython", Func(::mlc::printer::ToPython).get());
 
   MLC_TYPE_TABLE_INIT_TYPE_BEGIN(std::nullptr_t, self);

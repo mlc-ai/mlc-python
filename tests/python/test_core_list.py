@@ -135,3 +135,31 @@ def test_list_extend_generator() -> None:
     a = List([0])
     a.extend(x for x in range(1, 4))
     assert list(a) == [0, 1, 2, 3]
+
+
+def test_list_eq() -> None:
+    a = List([1, 2, 3])
+    b = List(a)
+    assert a == list(a)
+    assert a == tuple(a)
+    assert list(a) == a
+    assert tuple(a) == a
+    assert a == b
+    assert b == a
+    assert not a.eq_ptr(b)
+    assert not b.eq_ptr(a)
+    assert a.eq_ptr(a)
+    assert a == a  # noqa: PLR0124
+
+
+def test_list_ne() -> None:
+    a = List([1, 2, 3])
+    b = [1, 2]
+    assert a != b
+    assert b != a
+    b = List([1, 2, 4])
+    assert a != b
+    assert b != a
+    b = List([1, 2, 3, 4])
+    assert a != b
+    assert b != a
