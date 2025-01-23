@@ -7,6 +7,12 @@ def test_var_print() -> None:
     assert mlcp.to_python(a) == "a"
 
 
+def test_var_print_name_normalize() -> None:
+    a = Var(name="a/0/b")
+    assert mlcp.to_python(a) == "a_0_b"
+    assert mlcp.to_python(a) == "a_0_b"
+
+
 def test_add_print() -> None:
     a = Var(name="a")
     b = Var(name="b")

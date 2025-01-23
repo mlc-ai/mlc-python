@@ -54,10 +54,14 @@ struct IRPrinterObj : public Object {
       Optional<Str> name = (*it).second->name;
       return Id(name.value());
     }
-    // Legalize characters in the name
-    for (char &c : name_hint) {
-      if (c != '_' && !std::isalnum(c)) {
-        c = '_';
+    bool needs_normalize =
+        std::any_of(name_hint->begin(), name_hint->end(), [](char c) { return c != '_' && !std::isalnum(c); });
+    if (needs_normalize) {
+      name_hint = Str(name_hint->c_str());
+      for (char &c : name_hint) {
+        if (c != '_' && !std::isalnum(c)) {
+          c = '_';
+        }
       }
     }
     // Find a unique name

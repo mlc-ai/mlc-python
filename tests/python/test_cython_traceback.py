@@ -2,21 +2,21 @@ import traceback
 from io import StringIO
 
 import mlc
+import pytest
 
 
 def test_throw_exception_from_c() -> None:
     func = mlc.Func.get("mlc.testing.throw_exception_from_c")
-    try:
+    with pytest.raises(ValueError) as exc_info:
         func()
-    except ValueError:
-        msg = traceback.format_exc().strip().splitlines()
-        assert "Traceback (most recent call last)" in msg[0]
-        assert "in test_throw_exception_from_c" in msg[1]
-        assert "ValueError: This is an error message" in msg[-1]
-        if mlc._cython.SYSTEM != "Darwin":
-            # FIXME: for some reason, `c_api.cc` is not in the traceback on macOS
-            # TODO: fix macOS libbacktrace integration on macOS
-            assert "c_api.cc" in msg[-3]
+
+    msg = traceback.format_exception(exc_info.type, exc_info.value, exc_info.tb)
+    msg = "".join(msg).strip().splitlines()
+    assert "Traceback (most recent call last)" in msg[0]
+    assert "in test_throw_exception_from_c" in msg[1]
+    assert "ValueError: This is an error message" in msg[-1]
+    if mlc._cython.SYSTEM != "Darwin":
+        assert "c_api.cc" in msg[-3]
 
 
 def test_throw_exception_from_ffi() -> None:
@@ -41,18 +41,26 @@ def test_throw_exception_from_ffi_in_c() -> None:
 
         _inner()
 
-    try:
+    with pytest.raises(ValueError) as exc_info:
         mlc.Func.get("mlc.testing.throw_exception_from_ffi_in_c")(throw_ValueError)
-    except ValueError:
-        msg = traceback.format_exc().strip().splitlines()
-        assert "Traceback (most recent call last)" in msg[0]
-        assert "in test_throw_exception_from_ffi_in_c" in msg[1]
-        assert "ValueError: This is a ValueError" in msg[-1]
-        if mlc._cython.SYSTEM != "Darwin":
-            # FIXME: for some reason, `c_api.cc` is not in the traceback on macOS
-            # TODO: fix macOS libbacktrace integration on macOS
-            idx_c_api_tests = next(i for i, line in enumerate(msg) if "c_api.cc" in line)
-            idx_handle_error = next(
-                i for i, line in enumerate(msg) if "_func_safe_call_impl" in line
-            )
-            assert idx_c_api_tests < idx_handle_error
+
+    msg = traceback.format_exception(exc_info.type, exc_info.value, exc_info.tb)
+    msg = "".join(msg).strip().splitlines()
+    assert "Traceback (most recent call last)" in msg[0]
+    assert "in test_throw_exception_from_ffi_in_c" in msg[1]
+    assert "ValueError: This is a ValueError" in msg[-1]
+    if mlc._cython.SYSTEM != "Darwin":
+        idx_c_api_tests = next(i for i, line in enumerate(msg) if "c_api.cc" in line)
+        idx_handle_error = next(i for i, line in enumerate(msg) if "_func_safe_call_impl" in line)
+        assert idx_c_api_tests < idx_handle_error
+
+
+def test_throw_NotImplementedError_from_ffi_in_c() -> None:
+    def throw_ValueError() -> None:
+        def _inner() -> None:
+            raise NotImplementedError
+
+        _inner()
+
+    with pytest.raises(NotImplementedError):
+        mlc.Func.get("mlc.testing.throw_exception_from_ffi_in_c")(throw_ValueError)
