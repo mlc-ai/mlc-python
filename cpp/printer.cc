@@ -877,8 +877,18 @@ inline void PythonDocPrinter::PrintTypedDoc(const StmtBlock &doc) {
 }
 
 inline void PythonDocPrinter::PrintTypedDoc(const Assign &doc) {
+  bool lhs_empty = false;
   if (const auto *tuple_doc = doc->lhs->TryCast<TupleObj>()) {
-    PrintJoinedDocs(tuple_doc->values, ", ");
+    if (tuple_doc->values.size() == 0) {
+      lhs_empty = true;
+      if (doc->annotation.defined()) {
+        MLC_THROW(ValueError) << "ValueError: `Assign.annotation` should be None when `Assign.lhs` is empty, "
+                                 "but got: "
+                              << doc->annotation.value();
+      }
+    } else {
+      PrintJoinedDocs(tuple_doc->values, ", ");
+    }
   } else {
     PrintDoc(doc->lhs);
   }
@@ -888,7 +898,9 @@ inline void PythonDocPrinter::PrintTypedDoc(const Assign &doc) {
     PrintDoc(doc->annotation.value());
   }
   if (doc->rhs.defined()) {
-    output_ << " = ";
+    if (!lhs_empty) {
+      output_ << " = ";
+    }
     if (const auto *tuple_doc = doc->rhs.TryCast<TupleObj>()) {
       if (tuple_doc->values.size() > 1) {
         PrintJoinedDocs(tuple_doc->values, ", ");
