@@ -83,6 +83,7 @@ typedef enum {
   kMLCError = 1003,
   kMLCFunc = 1004,
   kMLCStr = 1005,
+  kMLCOpaque = 1007,
   kMLCCoreEnd = 1100,
   // }
   // kMLCTyping [1100: 1200) {
@@ -175,6 +176,13 @@ typedef struct {
   int64_t size;
   void *data;
 } MLCDict;
+
+typedef struct {
+  MLCAny _mlc_header;
+  void *handle;
+  MLCDeleterType handle_deleter;
+  const char *opaque_type_name;
+} MLCOpaque;
 
 typedef struct {
   MLCAny _mlc_header;

@@ -4,6 +4,7 @@
 #include "./dict.h"
 #include "./list.h"
 #include "./object.h"
+#include "mlc/c_api.h"
 #include <functional>
 #include <mlc/base/all.h>
 #include <unordered_map>
@@ -271,10 +272,13 @@ inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeIn
         FieldExtractor{&state, current}(nullptr, &kv.first);
         FieldExtractor{&state, current}(nullptr, &kv.second);
       }
-    } else if (int32_t type_index = current->type_info->type_index;
-               type_index == kMLCStr || type_index == kMLCFunc || type_index == kMLCError) {
     } else {
-      VisitFields(current->obj, current->type_info, FieldExtractor{&state, current});
+      int32_t type_index = current->type_info->type_index;
+      if (type_index == kMLCStr || type_index == kMLCFunc || type_index == kMLCError || type_index == kMLCOpaque) {
+        continue;
+      } else {
+        VisitFields(current->obj, current->type_info, FieldExtractor{&state, current});
+      }
     }
   }
   if (on_visit == nullptr) {

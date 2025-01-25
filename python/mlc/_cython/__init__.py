@@ -35,6 +35,8 @@ from .core import (  # type: ignore[import-not-found]
     func_init,
     func_register,
     make_mlc_init,
+    opaque_init,
+    register_opauqe_type,
     str_c2py,
     str_py2c,
     type_add_method,

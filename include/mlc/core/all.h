@@ -7,6 +7,7 @@
 #include "./list.h"         // IWYU pragma: export
 #include "./object.h"       // IWYU pragma: export
 #include "./object_path.h"  // IWYU pragma: export
+#include "./opaque.h"       // IWYU pragma: export
 #include "./reflection.h"   // IWYU pragma: export
 #include "./str.h"          // IWYU pragma: export
 #include "./typing.h"       // IWYU pragma: export

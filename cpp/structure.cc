@@ -158,6 +158,10 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
         }
       } else if (lhs_type_index == kMLCFunc || lhs_type_index == kMLCError) {
         throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", new_path);
+      } else if (lhs_type_index == kMLCOpaque) {
+        std::ostringstream err;
+        err << "Cannot compare `mlc.Opaque` of type: " << lhs->Cast<OpaqueObj>()->opaque_type_name;
+        throw SEqualError(err.str().c_str(), new_path);
       } else {
         bool visited = false;
         MLCTypeInfo *type_info = Lib::GetTypeInfo(lhs_type_index);
@@ -399,6 +403,10 @@ inline uint64_t StructuralHashImpl(Object *obj) {
         EnqueuePOD(tasks, hash_value);
       } else if (type_index == kMLCFunc || type_index == kMLCError) {
         throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", ObjectPath::Root());
+      } else if (type_index == kMLCOpaque) {
+        std::ostringstream err;
+        err << "Cannot compare `mlc.Opaque` of type: " << obj->Cast<OpaqueObj>()->opaque_type_name;
+        throw SEqualError(err.str().c_str(), ObjectPath::Root());
       } else {
         MLCTypeInfo *type_info = Lib::GetTypeInfo(type_index);
         tasks->emplace_back(Task{obj, type_info, false, bind_free_vars, type_info->type_key_hash});
@@ -656,6 +664,8 @@ inline Any CopyDeepImpl(AnyView source) {
       UDict::FromAnyTuple(static_cast<int32_t>(fields.size()), fields.data(), &ret);
     } else if (object->IsInstance<StrObj>() || object->IsInstance<ErrorObj>() || object->IsInstance<FuncObj>()) {
       ret = object;
+    } else if (object->IsInstance<OpaqueObj>()) {
+      MLC_THROW(TypeError) << "Cannot copy `mlc.Opaque` of type: " << object->Cast<OpaqueObj>()->opaque_type_name;
     } else {
       fields.clear();
       VisitFields(object, type_info, Copier{&orig2copy, &fields});
@@ -791,6 +801,8 @@ inline mlc::Str Serialize(Any any) {
       }
     } else if (object->IsInstance<FuncObj>() || object->IsInstance<ErrorObj>()) {
       MLC_THROW(TypeError) << "Unserializable type: " << object->GetTypeKey();
+    } else if (object->IsInstance<OpaqueObj>()) {
+      MLC_THROW(TypeError) << "Cannot serialize `mlc.Opaque` of type: " << object->Cast<OpaqueObj>()->opaque_type_name;
     } else {
       VisitFields(object, type_info, emitter);
     }
