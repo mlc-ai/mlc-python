@@ -7,3 +7,4 @@ from .func import Func, build_info, json_loads
 from .list import List
 from .object import Object
 from .object_path import ObjectPath
+from .opaque import Opaque

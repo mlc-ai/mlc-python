@@ -128,6 +128,7 @@ struct AtomicType : public Type {
 
 struct PtrTypeObj : protected MLCTypingPtr {
   explicit PtrTypeObj(Type ty) : MLCTypingPtr{} { this->TyMut() = ty; }
+  ~PtrTypeObj() { this->TyMut().~Type(); }
   ::mlc::Str __str__() const {
     std::ostringstream os;
     os << "Ptr[" << this->Ty() << "]";
@@ -156,6 +157,7 @@ struct PtrType : public Type {
 
 struct OptionalObj : protected MLCTypingOptional {
   explicit OptionalObj(Type ty) : MLCTypingOptional{} { this->TyMutable() = ty; }
+  ~OptionalObj() { this->TyMutable().~Type(); }
   ::mlc::Str __str__() const {
     std::ostringstream os;
     os << this->Ty() << " | None";
@@ -184,6 +186,7 @@ struct Optional : public Type {
 
 struct ListObj : protected MLCTypingList {
   explicit ListObj(Type ty) : MLCTypingList{} { this->TyMutable() = ty; }
+  ~ListObj() { this->TyMutable().~Type(); }
   ::mlc::Str __str__() const {
     std::ostringstream os;
     os << "list[" << this->Ty() << "]";
@@ -214,6 +217,10 @@ struct DictObj : protected MLCTypingDict {
   explicit DictObj(Type ty_k, Type ty_v) : MLCTypingDict{} {
     this->TyKMut() = ty_k;
     this->TyVMut() = ty_v;
+  }
+  ~DictObj() {
+    this->TyKMut().~Type();
+    this->TyVMut().~Type();
   }
   ::mlc::Str __str__() const {
     std::ostringstream os;

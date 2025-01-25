@@ -235,6 +235,7 @@ MLC_REGISTER_FUNC("mlc.testing.cxx_ptr").set_body([](void *x) -> void * { return
 MLC_REGISTER_FUNC("mlc.testing.cxx_dtype").set_body([](DLDataType x) { return x; });
 MLC_REGISTER_FUNC("mlc.testing.cxx_device").set_body([](DLDevice x) { return x; });
 MLC_REGISTER_FUNC("mlc.testing.cxx_raw_str").set_body([](const char *x) { return x; });
+MLC_REGISTER_FUNC("mlc.testing.cxx_obj").set_body([](Object *x) { return x; });
 
 /**************** Reflection ****************/
 

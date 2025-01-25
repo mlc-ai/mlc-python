@@ -9,6 +9,7 @@ from .core import (
     List,
     Object,
     ObjectPath,
+    Opaque,
     build_info,
     json_loads,
     typing,

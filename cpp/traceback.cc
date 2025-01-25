@@ -60,6 +60,7 @@ MLCByteArray TracebackImpl() {
     if (!EndsWith(filename, "core.pyx") &&       //
         !EndsWith(filename, "func.h") &&         //
         !EndsWith(filename, "func_details.h") && //
+        !EndsWith(filename, "visitor.h") &&      //
         !EndsWith(filename, "mlc/core/all.h") && //
         !EndsWith(filename, "mlc/base/all.h")    //
     ) {

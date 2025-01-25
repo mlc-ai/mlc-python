@@ -64,6 +64,7 @@ cdef extern from "mlc/c_api.h" nogil:
         kMLCError = 1003
         kMLCFunc = 1004
         kMLCStr = 1005
+        kMLCOpaque = 1007
         kMLCCoreEnd = 1100
         # }
         # kMLCTyping [1100: 1200) {
@@ -136,6 +137,12 @@ cdef extern from "mlc/c_api.h" nogil:
         int64_t capacity
         int64_t size
         void* data
+
+    ctypedef struct MLCOpaque:
+        MLCAny _mlc_header
+        void* handle
+        MLCDeleterType handle_deleter
+        const char* opaque_type_name
 
     ctypedef struct MLCTypingAny:
         MLCAny _mlc_header
@@ -520,6 +527,8 @@ cdef inline object _any_c2py_no_inc_ref(const MLCAny x):
         str_ret = Str.__new__(Str, str_c2py(mlc_str.data[:mlc_str.length]))
         str_ret._mlc_any = x
         return str_ret
+    elif type_index == kMLCOpaque:
+        return <object>((<MLCOpaque*>(x.v.v_obj)).handle)
     elif (type_cls := _list_get(TYPE_INDEX_TO_INFO, type_index)) is not None:
         type_cls = type_cls.type_cls
         any_ret = type_cls.__new__(type_cls)
@@ -550,6 +559,8 @@ cdef inline object _any_c2py_inc_ref(MLCAny x):
         str_ret._mlc_any = x
         _check_error(_C_AnyIncRef(&x))
         return str_ret
+    elif type_index == kMLCOpaque:
+        return <object>((<MLCOpaque*>(x.v.v_obj)).handle)
     elif (type_cls := _list_get(TYPE_INDEX_TO_INFO, type_index)) is not None:
         type_cls = type_cls.type_cls
         any_ret = type_cls.__new__(type_cls)
@@ -567,6 +578,26 @@ cdef inline PyAny _pyany_inc_ref(MLCAny x):
     cdef PyAny ret = PyAny()
     ret._mlc_any = x
     _check_error(_C_AnyIncRef(&ret._mlc_any))
+    return ret
+
+cdef inline PyAny _pyany_from_opaque(object x):
+    cdef PyAny ret = PyAny()
+    cdef bytes type_name = str_py2c(type(x).__module__ + "." + type(x).__name__)
+    cdef MLCAny args[3]
+    if not isinstance(x, _OPAQUE_TYPES):
+        raise TypeError(
+            f"MLC does not recognize type: {type(x)}. "
+            "If it's intentional, please register using `mlc.Opaque.register(type)`."
+        )
+    args[0] = _MLCAnyPtr(<uint64_t>(<void*>x))
+    args[1] = _MLCAnyPtr(<uint64_t>(<void*>_pyobj_deleter))
+    args[2] = _MLCAnyRawStr(type_name)
+    Py_INCREF(x)
+    try:
+        _func_call_impl_with_c_args(_OPAQUE_INIT, 3, args, &ret._mlc_any)
+    except:  # no-cython-lint
+        Py_DECREF(x)
+        raise
     return ret
 
 # Section 6. Conversion Python objects => MLCAny
@@ -601,6 +632,10 @@ cdef inline MLCAny _any_py2c(object x, list temporary_storage):
         y = _any_py2c_list(tuple(x), temporary_storage)
     elif isinstance(x, dict):
         y = _any_py2c_dict(_flatten_dict_to_tuple(x), temporary_storage)
+    elif isinstance(x, _OPAQUE_TYPES):
+        x = _pyany_from_opaque(x)
+        y = (<PyAny>x)._mlc_any
+        temporary_storage.append(x)
     else:
         raise TypeError(f"MLC does not recognize type: {type(x)}")
     return y
@@ -1310,9 +1345,14 @@ cpdef object func_call(PyAny func, tuple py_args):
     return _any_c2py_no_inc_ref(c_ret)
 
 cpdef void func_init(PyAny self, object callable):
-    cdef PyAny func = _pyany_from_func(callable)
-    self._mlc_any = func._mlc_any
-    func._mlc_any = _MLCAnyNone()
+    cdef PyAny ret = _pyany_from_func(callable)
+    self._mlc_any = ret._mlc_any
+    ret._mlc_any = _MLCAnyNone()
+
+cpdef void opaque_init(PyAny self, object callable):
+    cdef PyAny ret = _pyany_from_opaque(callable)
+    self._mlc_any = ret._mlc_any
+    ret._mlc_any = _MLCAnyNone()
 
 cpdef void func_register(str name, bint allow_override, object func):
     cdef PyAny mlc_func = _pyany_from_func(func)
@@ -1443,6 +1483,11 @@ cpdef object type_index2cached_py_type_info(int32_t type_index):
     return TYPE_INDEX_TO_INFO[type_index]
 
 
+def register_opauqe_type(object new_type) -> None:
+    global _OPAQUE_TYPES
+    _OPAQUE_TYPES += (new_type,)
+
+
 def make_mlc_init(list fields):
     cdef tuple _setters = tuple(field.setter for field in fields)
 
@@ -1512,3 +1557,5 @@ cdef MLCFunc* _DTYPE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDataType, Fal
 cdef MLCFunc* _DEVICE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDevice, False)
 cdef MLCFunc* _LIST_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCList, False)
 cdef MLCFunc* _DICT_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDict, False)
+cdef MLCFunc* _OPAQUE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCOpaque, False)
+cdef tuple _OPAQUE_TYPES = ()
