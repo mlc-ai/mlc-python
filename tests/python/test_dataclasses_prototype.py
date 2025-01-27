@@ -53,7 +53,8 @@ def test_prototype_cxx() -> None:
     expected = """
 namespace mlc {
 namespace testing {
-struct py_classObj : public ::mlc::Object {
+struct py_classObj {
+  MLCAny _mlc_header;
   bool bool_;
   int64_t i8;
   int64_t i16;

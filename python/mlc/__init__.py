@@ -10,6 +10,7 @@ from .core import (
     Object,
     ObjectPath,
     Opaque,
+    Tensor,
     build_info,
     json_loads,
     typing,

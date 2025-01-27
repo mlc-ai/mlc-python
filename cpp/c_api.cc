@@ -31,6 +31,9 @@ UDict BuildInfo() {
 #ifdef MLC_BUILD_TIME
     ret["BUILD_TIME"] = MLC_BUILD_TIME;
 #endif
+#ifdef MLC_IS_BIG_ENDIAN
+    ret["IS_BIG_ENDIAN"] = MLC_IS_BIG_ENDIAN;
+#endif
     return ret;
   }();
   return build_info;

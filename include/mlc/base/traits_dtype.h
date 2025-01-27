@@ -14,6 +14,12 @@ inline bool DataTypeEqual(DLDataType a, DLDataType b) {
 }
 inline const char *DataTypeCode2Str(int32_t type_code) { return ::mlc::Lib::DataTypeCodeToStr(type_code); }
 
+inline int32_t DataTypeSize(DLDataType dtype) {
+  int32_t bits = static_cast<int32_t>(dtype.bits);
+  int32_t lanes = static_cast<int32_t>(dtype.lanes);
+  return ((bits + 7) / 8) * lanes;
+}
+
 template <> struct TypeTraits<DLDataType> {
   static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
   static constexpr const char *type_str = "dtype";
@@ -63,6 +69,7 @@ template <> struct TypeTraits<DLDataType> {
 };
 
 inline DLDataType DataTypeFromStr(const char *source) { return ::mlc::Lib::DataTypeFromStr(source); }
+inline std::string DataTypeToStr(DLDataType dtype) { return TypeTraits<DLDataType>::__str__(dtype); }
 
 } // namespace base
 } // namespace mlc

@@ -8,3 +8,4 @@ from .list import List
 from .object import Object
 from .object_path import ObjectPath
 from .opaque import Opaque
+from .tensor import Tensor

@@ -274,7 +274,8 @@ inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeIn
       }
     } else {
       int32_t type_index = current->type_info->type_index;
-      if (type_index == kMLCStr || type_index == kMLCFunc || type_index == kMLCError || type_index == kMLCOpaque) {
+      if (type_index == kMLCStr || type_index == kMLCFunc || type_index == kMLCError || type_index == kMLCOpaque ||
+          type_index == kMLCTensor) {
         continue;
       } else {
         VisitFields(current->obj, current->type_info, FieldExtractor{&state, current});

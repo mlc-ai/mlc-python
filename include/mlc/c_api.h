@@ -83,6 +83,7 @@ typedef enum {
   kMLCError = 1003,
   kMLCFunc = 1004,
   kMLCStr = 1005,
+  kMLCTensor = 1006,
   kMLCOpaque = 1007,
   kMLCCoreEnd = 1100,
   // }
@@ -176,6 +177,12 @@ typedef struct {
   int64_t size;
   void *data;
 } MLCDict;
+
+typedef struct {
+  MLCAny _mlc_header;
+  DLTensor tensor;
+  void *manager_ctx;
+} MLCTensor;
 
 typedef struct {
   MLCAny _mlc_header;

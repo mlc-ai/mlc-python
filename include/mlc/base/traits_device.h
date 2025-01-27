@@ -66,6 +66,8 @@ inline DLDevice DeviceFromStr(const std::string &source) {
   MLC_UNREACHABLE();
 }
 
+inline std::string DeviceToStr(DLDevice device) { return TypeTraits<DLDevice>::__str__(device); }
+
 } // namespace base
 } // namespace mlc
 

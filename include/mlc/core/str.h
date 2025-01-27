@@ -117,6 +117,10 @@ struct StrStd : public StrObj {
 struct StrPad : public StrObj {
   using Allocator = ::mlc::DefaultObjectAllocator<StrPad>;
 
+  MLC_INLINE StrPad(int64_t N) : StrObj() {
+    this->MLCStr::length = N;
+    this->MLCStr::data = reinterpret_cast<char *>(this) + sizeof(StrObj);
+  }
   MLC_INLINE StrPad(const char *str, size_t N) : StrObj() {
     char *str_copy = reinterpret_cast<char *>(this) + sizeof(StrObj);
     std::memcpy(str_copy, str, N);

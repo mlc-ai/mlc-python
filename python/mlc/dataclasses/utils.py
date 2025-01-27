@@ -377,8 +377,9 @@ def prototype_cxx(type_info: type | TypeInfo) -> str:
     # Step 2. Object class
     for ns in namespaces[:-1]:
         print(f"namespace {ns} {{", file=io)
-    print(f"struct {cls_name}Obj : public ::mlc::Object {{", file=io)
+    print(f"struct {cls_name}Obj {{", file=io)
     # Step 2.1. Fields
+    print("  MLCAny _mlc_header;", file=io)
     for name, ty in fields:
         print(f"  {ty} {name};", file=io)
     # Step 2.2. Constructor
