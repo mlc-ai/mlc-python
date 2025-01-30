@@ -10,6 +10,7 @@
 #include "./opaque.h"       // IWYU pragma: export
 #include "./reflection.h"   // IWYU pragma: export
 #include "./str.h"          // IWYU pragma: export
+#include "./tensor.h"       // IWYU pragma: export
 #include "./typing.h"       // IWYU pragma: export
 #include "./utils.h"        // IWYU pragma: export
 #include "./visitor.h"      // IWYU pragma: export
@@ -146,12 +147,12 @@ inline Any Lib::IRPrint(AnyView obj, AnyView printer, AnyView path) {
   return ret;
 }
 inline int32_t Lib::FuncSetGlobal(const char *name, FuncObj *func, bool allow_override) {
-  ::MLCFuncSetGlobal(nullptr, name, Any(func), allow_override);
+  ::MLCFuncSetGlobal(_lib, name, Any(func), allow_override);
   return 0;
 }
 inline FuncObj *Lib::FuncGetGlobal(const char *name, bool allow_missing) {
   Any ret;
-  ::MLCFuncGetGlobal(nullptr, name, &ret);
+  ::MLCFuncGetGlobal(_lib, name, &ret);
   if (!ret.defined() && !allow_missing) {
     MLC_THROW(KeyError) << "Missing global function: " << name;
   }

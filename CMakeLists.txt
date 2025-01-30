@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/GitVersion.cmake)
+include(TestBigEndian)
 
-message(STATUS "MLC VERSION: ${MLC_VERSION_GIT}")
+message(STATUS "Found MLC_VERSION_GIT: ${MLC_VERSION_GIT}")
 
 project(
   MLC
@@ -21,11 +22,14 @@ option(MLC_BUILD_REGISTRY
   OFF
 )
 
-include(cmake/Utils/CxxWarning.cmake)
-include(cmake/Utils/Sanitizer.cmake)
-include(cmake/Utils/Library.cmake)
-include(cmake/Utils/AddLibbacktrace.cmake)
-include(cmake/Utils/DebugSymbol.cmake)
+TEST_BIG_ENDIAN(MLC_IS_BIG_ENDIAN)
+message(STATUS "Found MLC_IS_BIG_ENDIAN: ${MLC_IS_BIG_ENDIAN}")
+
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/CxxWarning.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/Sanitizer.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/Library.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/AddLibbacktrace.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/DebugSymbol.cmake)
 
 ########## Target: `dlpack_header` ##########
 
@@ -72,6 +76,13 @@ if (MLC_BUILD_REGISTRY)
     MLC_VERSION_COMMIT_NUM="${MLC_VERSION_COMMIT_NUM}"
     MLC_VERSION_COMMIT_SHA="${MLC_VERSION_COMMIT_SHA}"
     MLC_BUILD_TIME="${MLC_BUILD_TIME}"
+    MLC_IS_BIG_ENDIAN="${MLC_IS_BIG_ENDIAN}"
+  )
+  set_property(
+    SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/cpp/structure.cc"
+    APPEND
+    PROPERTY COMPILE_DEFINITIONS
+    MLC_IS_BIG_ENDIAN=${MLC_IS_BIG_ENDIAN}
   )
 
   add_cxx_warning(mlc_registry_objs)

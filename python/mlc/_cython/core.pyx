@@ -2,10 +2,10 @@
 import ctypes
 import itertools
 from libcpp.vector cimport vector
-from libc.stdint cimport int32_t, int64_t, uint64_t, uint8_t, uint16_t, int8_t, int16_t
+from libc.stdint cimport int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t
 from libc.stdlib cimport malloc, free
 from numbers import Integral, Number
-from cpython cimport Py_DECREF, Py_INCREF
+from cpython cimport Py_DECREF, Py_INCREF, PyCapsule_IsValid, PyCapsule_GetPointer, PyCapsule_SetName
 from . import base
 
 Ptr = base.Ptr
@@ -46,6 +46,17 @@ cdef extern from "mlc/c_api.h" nogil:
         void* manager_ctx
         MLCDeleterType deleter
 
+    ctypedef struct DLPackVersion:
+        uint32_t major
+        uint32_t minor
+
+    ctypedef struct DLManagedTensorVersioned:
+        DLPackVersion version
+        void *manager_ctx
+        MLCDeleterType deleter
+        uint64_t flags
+        DLTensor dl_tensor
+
     cdef enum MLCTypeIndex:
         kMLCNone = 0
         kMLCBool = 1
@@ -64,6 +75,7 @@ cdef extern from "mlc/c_api.h" nogil:
         kMLCError = 1003
         kMLCFunc = 1004
         kMLCStr = 1005
+        kMLCTensor = 1006
         kMLCOpaque = 1007
         kMLCCoreEnd = 1100
         # }
@@ -137,6 +149,11 @@ cdef extern from "mlc/c_api.h" nogil:
         int64_t capacity
         int64_t size
         void* data
+
+    ctypedef struct MLCTensor:
+        MLCAny _mlc_header
+        DLTensor tensor
+        void* manager_ctx
 
     ctypedef struct MLCOpaque:
         MLCAny _mlc_header
@@ -600,6 +617,42 @@ cdef inline PyAny _pyany_from_opaque(object x):
         raise
     return ret
 
+cdef inline PyAny _pyany_from_dlpack(object array):
+    # NOTE: MLC is agnostic of underlying runtime, device or stream, and always
+    # tries to avoid copying data. This is why:
+    # 1) only `stream=None` is assumed;
+    # 2) method `array.__dlpack_device__` is never invoked
+    # 3) flag `copy=False` is always passed to `array.__dlpack__`
+    cdef PyAny ret = PyAny()
+    cdef MLCAny args[1]
+    cdef object capsule = None
+
+    if hasattr(array, "__dlpack__"):
+        try:
+            capsule = array.__dlpack__(copy=False)
+        except:  # no-cython-lint
+            capsule = array.__dlpack__()
+    else:
+        capsule = array
+
+    if PyCapsule_IsValid(capsule, _DLPACK_CAPSULE_NAME):
+        args[0] = _MLCAnyPtr(<uint64_t>(PyCapsule_GetPointer(capsule, _DLPACK_CAPSULE_NAME)))
+        PyCapsule_SetName(capsule, _DLPACK_CAPSULE_NAME_USED)
+        _func_call_impl_with_c_args(_TENSOR_INIT, 1, args, &ret._mlc_any)
+    elif PyCapsule_IsValid(capsule, _DLPACK_CAPSULE_NAME_VER):
+        args[0] = _MLCAnyPtr(<uint64_t>(PyCapsule_GetPointer(capsule, _DLPACK_CAPSULE_NAME_VER)))
+        PyCapsule_SetName(capsule, _DLPACK_CAPSULE_NAME_VER_USED)
+        _func_call_impl_with_c_args(_TENSOR_INIT_VER, 1, args, &ret._mlc_any)
+    else:
+        raise ValueError(f"Invalid DLPack capsule: {capsule}")
+    return ret
+
+cdef inline DLTensor* _pyany_to_dl_tensor(PyAny x):
+    cdef MLCTensor* mlc_tensor = <MLCTensor*>(x._mlc_any.v.v_obj)
+    if x._mlc_any.type_index != kMLCTensor:
+        raise TypeError(f"Expected MLC tensor, got: {x}")
+    return &(mlc_tensor[0].tensor)
+
 # Section 6. Conversion Python objects => MLCAny
 
 cdef inline MLCAny _any_py2c(object x, list temporary_storage):
@@ -632,6 +685,10 @@ cdef inline MLCAny _any_py2c(object x, list temporary_storage):
         y = _any_py2c_list(tuple(x), temporary_storage)
     elif isinstance(x, dict):
         y = _any_py2c_dict(_flatten_dict_to_tuple(x), temporary_storage)
+    elif hasattr(x, "__dlpack__"):
+        x = _pyany_from_dlpack(x)
+        y = (<PyAny>x)._mlc_any
+        temporary_storage.append(x)
     elif isinstance(x, _OPAQUE_TYPES):
         x = _pyany_from_opaque(x)
         y = (<PyAny>x)._mlc_any
@@ -1354,6 +1411,56 @@ cpdef void opaque_init(PyAny self, object callable):
     self._mlc_any = ret._mlc_any
     ret._mlc_any = _MLCAnyNone()
 
+cpdef void tensor_init(PyAny self, object value):
+    cdef PyAny ret = _pyany_from_dlpack(value)
+    self._mlc_any = ret._mlc_any
+    ret._mlc_any = _MLCAnyNone()
+
+cpdef object tensor_data(PyAny self):
+    cdef DLTensor* tensor = _pyany_to_dl_tensor(self)
+    cdef void* data = tensor[0].data
+    return _Ptr(data)
+
+cpdef int32_t tensor_ndim(PyAny self):
+    cdef DLTensor* tensor = _pyany_to_dl_tensor(self)
+    cdef int32_t ndim = tensor[0].ndim
+    return ndim
+
+cpdef tuple tensor_shape(PyAny self):
+    cdef DLTensor* tensor = _pyany_to_dl_tensor(self)
+    cdef int32_t ndim = tensor[0].ndim
+    cdef int64_t *shape = tensor[0].shape
+    cdef list ret = []
+    for i in range(ndim):
+        ret.append(shape[i])
+    return tuple(ret)
+
+cpdef tuple tensor_strides(PyAny self):
+    cdef DLTensor* tensor = _pyany_to_dl_tensor(self)
+    cdef int32_t ndim = tensor[0].ndim
+    cdef int64_t *strides = tensor[0].strides
+    cdef list ret = []
+    if strides is NULL:
+        return None
+    for i in range(ndim):
+        ret.append(strides[i])
+    return tuple(ret)
+
+cpdef PyAny tensor_dtype(PyAny self):
+    cdef DLTensor* tensor = _pyany_to_dl_tensor(self)
+    cdef DLDataType dtype = tensor[0].dtype
+    return _DataType(dtype)
+
+cpdef PyAny tensor_device(PyAny self):
+    cdef DLTensor* tensor = _pyany_to_dl_tensor(self)
+    cdef DLDevice device = tensor[0].device
+    return _Device(device)
+
+cpdef uint64_t tensor_byte_offset(PyAny self):
+    cdef DLTensor* tensor = _pyany_to_dl_tensor(self)
+    cdef uint64_t byte_offset = tensor[0].byte_offset
+    return byte_offset
+
 cpdef void func_register(str name, bint allow_override, object func):
     cdef PyAny mlc_func = _pyany_from_func(func)
     _check_error(_C_FuncSetGlobal(NULL, str_py2c(name), mlc_func._mlc_any, allow_override))
@@ -1533,6 +1640,11 @@ def type_create(int32_t parent_type_index, str type_key):
     return type_info
 
 
+cdef const char* _DLPACK_CAPSULE_NAME = "dltensor"
+cdef const char* _DLPACK_CAPSULE_NAME_USED = "used_dltensor"
+cdef const char* _DLPACK_CAPSULE_NAME_VER = "dltensor_versioned"
+cdef const char* _DLPACK_CAPSULE_NAME_VER_USED = "used_dltensor_versioned"
+
 cdef list TYPE_INDEX_TO_INFO = [None]  # mapping: (type_index: int) ==> (type_info: base.TypeInfo)
 cdef PyAny _SERIALIZE = func_get_untyped("mlc.core.JSONSerialize")  # Any -> str
 cdef PyAny _DESERIALIZE = func_get_untyped("mlc.core.JSONDeserialize")  # str -> Any
@@ -1558,4 +1670,6 @@ cdef MLCFunc* _DEVICE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDevice, Fals
 cdef MLCFunc* _LIST_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCList, False)
 cdef MLCFunc* _DICT_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCDict, False)
 cdef MLCFunc* _OPAQUE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCOpaque, False)
+cdef MLCFunc* _TENSOR_INIT = _vtable_get_func_ptr(_vtable_get_global(b"__init_DLManagedTensor"), kMLCTensor, False)
+cdef MLCFunc* _TENSOR_INIT_VER = _vtable_get_func_ptr(_vtable_get_global(b"__init_DLManagedTensorVersioned"), kMLCTensor, False)  # no-cython-lint
 cdef tuple _OPAQUE_TYPES = ()

@@ -27,6 +27,10 @@ Any CopyShallow(AnyView root);
 Any CopyDeep(AnyView root);
 Str DocToPythonScript(mlc::printer::Node node, mlc::printer::PrinterConfig cfg);
 UDict BuildInfo();
+Tensor TensorFromBytes(const StrObj *);
+Str TensorToBytes(const TensorObj *);
+Tensor TensorFromBase64(const StrObj *);
+Str TensorToBase64(const TensorObj *);
 
 struct DSOLibrary {
   ~DSOLibrary() { Unload(); }
@@ -645,6 +649,10 @@ inline TypeTable *TypeTable::New() {
   self->SetFunc("mlc.core.CopyShallow", Func(::mlc::registry::CopyShallow).get());
   self->SetFunc("mlc.core.CopyDeep", Func(::mlc::registry::CopyDeep).get());
   self->SetFunc("mlc.core.BuildInfo", Func(::mlc::registry::BuildInfo).get());
+  self->SetFunc("mlc.core.TensorToBytes", Func(::mlc::registry::TensorToBytes).get());
+  self->SetFunc("mlc.core.TensorFromBytes", Func(::mlc::registry::TensorFromBytes).get());
+  self->SetFunc("mlc.core.TensorToBase64", Func(::mlc::registry::TensorToBase64).get());
+  self->SetFunc("mlc.core.TensorFromBase64", Func(::mlc::registry::TensorFromBase64).get());
   self->SetFunc("mlc.printer.DocToPythonScript", Func(::mlc::registry::DocToPythonScript).get());
   self->SetFunc("mlc.printer.ToPython", Func(::mlc::printer::ToPython).get());
 

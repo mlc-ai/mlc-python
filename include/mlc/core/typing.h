@@ -1,7 +1,6 @@
 #ifndef MLC_CORE_TYPING_H_
 #define MLC_CORE_TYPING_H_
 
-#include "./func.h"
 #include "./object.h"
 #include "./str.h"
 #include <mlc/base/all.h>
