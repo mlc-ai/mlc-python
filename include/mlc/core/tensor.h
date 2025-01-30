@@ -46,6 +46,20 @@ struct TensorObj : public MLCTensor {
     return func({source});
   }
 
+  DLManagedTensor *DLPack() {
+    ::mlc::base::IncRef(&this->_mlc_header);
+    // N.B. This leaks memory if the resulting DLManagedTensor's deleter is not called.
+    DLManagedTensor *ret = new DLManagedTensor();
+    ret->dl_tensor = this->tensor;
+    ret->manager_ctx = this;
+    ret->deleter = +[](DLManagedTensor *dl) {
+      TensorObj *self = static_cast<TensorObj *>(dl->manager_ctx);
+      ::mlc::base::DecRef(&self->_mlc_header);
+      delete dl;
+    };
+    return ret;
+  }
+
   ::mlc::Str __str__() const {
     std::ostringstream oss;
     oss << "<mlc.Tensor";

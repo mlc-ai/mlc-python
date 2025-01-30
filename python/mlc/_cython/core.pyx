@@ -5,7 +5,7 @@ from libcpp.vector cimport vector
 from libc.stdint cimport int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t
 from libc.stdlib cimport malloc, free
 from numbers import Integral, Number
-from cpython cimport Py_DECREF, Py_INCREF, PyCapsule_IsValid, PyCapsule_GetPointer, PyCapsule_SetName
+from cpython cimport Py_DECREF, Py_INCREF, PyCapsule_IsValid, PyCapsule_GetPointer, PyCapsule_SetName, PyCapsule_New
 from . import base
 
 Ptr = base.Ptr
@@ -1461,6 +1461,22 @@ cpdef uint64_t tensor_byte_offset(PyAny self):
     cdef uint64_t byte_offset = tensor[0].byte_offset
     return byte_offset
 
+cdef void pycapsule_deleter(object dltensor) noexcept:
+    cdef DLManagedTensor* ptr
+    cdef DLManagedTensorVersioned *ptr_ver
+    if PyCapsule_IsValid(dltensor, _DLPACK_CAPSULE_NAME):
+        ptr = <DLManagedTensor*>(PyCapsule_GetPointer(dltensor, _DLPACK_CAPSULE_NAME))
+        ptr.deleter(ptr)
+    elif PyCapsule_IsValid(dltensor, _DLPACK_CAPSULE_NAME_VER):
+        ptr_ver = <DLManagedTensorVersioned*>(PyCapsule_GetPointer(dltensor, _DLPACK_CAPSULE_NAME_VER))
+        ptr_ver.deleter(ptr_ver)
+    else:
+        pass
+
+cpdef object tensor_to_dlpack(PyAny self):
+    cdef DLManagedTensor* dl_managed_tensor = <DLManagedTensor*><uint64_t>(func_call(_TENSOR_TO_DLPACK, (self,)).value)
+    return PyCapsule_New(dl_managed_tensor, _DLPACK_CAPSULE_NAME, pycapsule_deleter)
+
 cpdef void func_register(str name, bint allow_override, object func):
     cdef PyAny mlc_func = _pyany_from_func(func)
     _check_error(_C_FuncSetGlobal(NULL, str_py2c(name), mlc_func._mlc_any, allow_override))
@@ -1652,6 +1668,7 @@ cdef PyAny _STRUCUTRAL_EQUAL = func_get_untyped("mlc.core.StructuralEqual")
 cdef PyAny _STRUCUTRAL_HASH = func_get_untyped("mlc.core.StructuralHash")
 cdef PyAny _COPY_SHALLOW = func_get_untyped("mlc.core.CopyShallow")
 cdef PyAny _COPY_DEEP = func_get_untyped("mlc.core.CopyDeep")
+cdef PyAny _TENSOR_TO_DLPACK = func_get_untyped("mlc.core.TensorToDLPack")
 
 cdef MLCVTableHandle _VTABLE_STR = _vtable_get_global(b"__str__")
 cdef MLCVTableHandle _VTABLE_ANY_TO_REF = _vtable_get_global(b"__any_to_ref__")
