@@ -47,6 +47,7 @@ from .core import (  # type: ignore[import-not-found]
     tensor_ndim,
     tensor_shape,
     tensor_strides,
+    tensor_to_dlpack,
     type_add_method,
     type_cast,
     type_create,
