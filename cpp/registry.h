@@ -27,10 +27,11 @@ Any CopyShallow(AnyView root);
 Any CopyDeep(AnyView root);
 Str DocToPythonScript(mlc::printer::Node node, mlc::printer::PrinterConfig cfg);
 UDict BuildInfo();
-Tensor TensorFromBytes(const StrObj *);
-Str TensorToBytes(const TensorObj *);
-Tensor TensorFromBase64(const StrObj *);
-Str TensorToBase64(const TensorObj *);
+
+Str TensorToBytes(const TensorObj *src);
+Str TensorToBase64(const TensorObj *src);
+Tensor TensorFromBytes(AnyView any);
+Tensor TensorFromBase64(AnyView any);
 
 struct DSOLibrary {
   ~DSOLibrary() { Unload(); }

@@ -1,4 +1,3 @@
-#include "mlc/base/traits_dtype.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -290,7 +289,7 @@ static const std::array<uint8_t, 256> kBase64DecTable = []() {
 
 Str Base64Encode(const uint8_t *data, int64_t len) {
   constexpr int BITS_PER_CHAR = 6;
-  Str ret(::mlc::core::StrPad::Allocator::NewWithPad<uint8_t>(((len + 2) / 3) * 4, 0));
+  Str ret(::mlc::core::StrPad::Allocator::NewWithPad<uint8_t>(((len + 2) / 3) * 4 + 1, 0));
   uint8_t *out = reinterpret_cast<uint8_t *>(ret.get()->::MLCStr::data);
   int64_t &out_len = ret.get()->::MLCStr::length;
   for (int64_t i = 0; i < len; i += 3) {
@@ -323,14 +322,16 @@ Str Base64Encode(const uint8_t *data, int64_t len) {
       }
     }
   }
+  out[out_len] = '\0';
   return ret;
 }
 
 Str Base64Decode(const uint8_t *data, int64_t len) {
   if (len % 4 != 0) {
-    MLC_THROW(ValueError) << "Base64Decode: Input length not multiple of 4.";
+    MLC_THROW(ValueError) << "Base64Decode: Input length not multiple of 4: length = " << len
+                          << ", data = " << reinterpret_cast<const char *>(data);
   }
-  Str ret(::mlc::core::StrPad::Allocator::NewWithPad<uint8_t>((len / 4) * 3, 0));
+  Str ret(::mlc::core::StrPad::Allocator::NewWithPad<uint8_t>((len / 4) * 3 + 1, 0));
   uint8_t *out = reinterpret_cast<uint8_t *>(ret.get()->::MLCStr::data);
   int64_t &result_len = ret.get()->::MLCStr::length;
   for (int64_t i = 0; i < len; i += 4) {
@@ -359,6 +360,7 @@ Str Base64Decode(const uint8_t *data, int64_t len) {
       out[result_len++] = byte_val;
     }
   }
+  out[result_len] = '\0';
   return ret;
 }
 
@@ -1155,7 +1157,7 @@ Str TensorToBytes(const DLTensor *src) {
   int64_t numel = ::mlc::core::ShapeToNumel(ndim, src->shape);
   int32_t elem_size = ::mlc::base::DataTypeSize(src->dtype);
   int64_t total_bytes = 8 + 4 + 4 + 8 * ndim + numel * elem_size;
-  Str ret(::mlc::core::StrPad::Allocator::NewWithPad<uint8_t>(total_bytes, total_bytes));
+  Str ret(::mlc::core::StrPad::Allocator::NewWithPad<uint8_t>(total_bytes + 1, total_bytes));
   uint8_t *data_ptr = reinterpret_cast<uint8_t *>(ret->data());
   int64_t tail = 0;
   WriteElem<8>(data_ptr, &tail, static_cast<uint64_t>(kMLCTensorMagic));
@@ -1165,6 +1167,10 @@ Str TensorToBytes(const DLTensor *src) {
     WriteElem<8>(data_ptr, &tail, src->shape[i]);
   }
   WriteElemMany(data_ptr, &tail, static_cast<uint8_t *>(src->data), elem_size, numel);
+  data_ptr[tail] = '\0';
+  if (tail != total_bytes) {
+    MLC_THROW(InternalError) << "SaveDLPack: Internal error in serialization.";
+  }
   return ret;
 }
 
@@ -1302,8 +1308,9 @@ inline mlc::Str Serialize(Any any) {
   };
 
   std::unordered_map<Object *, int32_t> topo_indices;
+  std::vector<TensorObj *> tensors;
   std::ostringstream os;
-  auto on_visit = [&topo_indices, get_json_type_index = &get_json_type_index, os = &os,
+  auto on_visit = [&topo_indices, get_json_type_index = &get_json_type_index, os = &os, &tensors,
                    is_first_object = true](Object *object, MLCTypeInfo *type_info) mutable -> void {
     int32_t &topo_index = topo_indices[object];
     if (topo_index == 0) {
@@ -1331,10 +1338,11 @@ inline mlc::Str Serialize(Any any) {
         emitter(nullptr, &kv.first);
         emitter(nullptr, &kv.second);
       }
+    } else if (TensorObj *tensor = object->TryCast<TensorObj>()) {
+      (*os) << ", " << tensors.size();
+      tensors.push_back(tensor);
     } else if (object->IsInstance<FuncObj>() || object->IsInstance<ErrorObj>()) {
       MLC_THROW(TypeError) << "Unserializable type: " << object->GetTypeKey();
-    } else if (object->IsInstance<TensorObj>()) {
-      // TODO: tensors
     } else if (object->IsInstance<OpaqueObj>()) {
       MLC_THROW(TypeError) << "Cannot serialize `mlc.Opaque` of type: " << object->Cast<OpaqueObj>()->opaque_type_name;
     } else {
@@ -1375,11 +1383,24 @@ inline mlc::Str Serialize(Any any) {
     }
     os << '"' << type_keys[i] << '\"';
   }
-  os << "]}";
+  os << "]";
+  if (!tensors.empty()) {
+    os << ", \"tensors\": [";
+    for (size_t i = 0; i < tensors.size(); ++i) {
+      if (i > 0) {
+        os << ", ";
+      }
+      Str b64 = tensors[i]->ToBase64();
+      os << '"' << b64->data() << '"';
+    }
+    os << "]";
+  }
+  os << "}";
   return os.str();
 }
 
 inline Any Deserialize(const char *json_str, int64_t json_str_len) {
+  int32_t json_type_index_tensor = -1;
   // Step 0. Parse JSON string
   UDict json_obj = JSONLoads(json_str, json_str_len);
   // Step 1. type_key => constructors
@@ -1388,7 +1409,12 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len) {
   constructors.reserve(type_keys.size());
   for (Str type_key : type_keys) {
     int32_t type_index = Lib::GetTypeIndex(type_key->data());
-    FuncObj *func = Lib::_init(type_index);
+    FuncObj *func = nullptr;
+    if (type_index != kMLCTensor) {
+      func = Lib::_init(type_index);
+    } else {
+      json_type_index_tensor = static_cast<int32_t>(constructors.size());
+    }
     constructors.push_back(func);
   }
   auto invoke_init = [&constructors](UList args) {
@@ -1398,13 +1424,29 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len) {
                           &ret);
     return ret;
   };
-  // Step 2. Translate JSON object to objects
+  // Step 2. Handle tensors
+  std::vector<Tensor> tensors;
+  if (json_obj->count("tensors")) {
+    UList tensors_b64 = json_obj->at("tensors");
+    while (!tensors_b64->empty()) {
+      Tensor tensor = Tensor::FromBase64(tensors_b64->back());
+      tensors.push_back(tensor);
+      tensors_b64->pop_back();
+    }
+    json_obj->erase("tensors");
+    std::reverse(tensors.begin(), tensors.end());
+  }
+  // Step 3. Translate JSON object to objects
   UList values = json_obj->at("values");
   for (int64_t i = 0; i < values->size(); ++i) {
     Any obj = values[i];
     if (obj.type_index == kMLCList) {
       UList list = obj.operator UList();
       int32_t json_type_index = list[0];
+      if (json_type_index == json_type_index_tensor) {
+        values[i] = tensors[list[1].operator int32_t()];
+        continue;
+      }
       for (int64_t j = 1; j < list.size(); ++j) {
         Any arg = list[j];
         if (arg.type_index == kMLCInt) {
@@ -1487,22 +1529,37 @@ Any JSONDeserialize(AnyView json_str) {
 
 Str JSONSerialize(AnyView source) { return ::mlc::Serialize(source); }
 
-Tensor TensorFromBytes(const StrObj *src) {
-  return ::mlc::TensorFromBytes(reinterpret_cast<const uint8_t *>(src->::MLCStr::data), src->length());
-}
-
 Str TensorToBytes(const TensorObj *src) {
   return ::mlc::TensorToBytes(&src->tensor); //
-}
-
-Tensor TensorFromBase64(const StrObj *src) {
-  Str bytes = ::mlc::Base64Decode(reinterpret_cast<const uint8_t *>(src->data()), src->size());
-  return ::mlc::TensorFromBytes(reinterpret_cast<const uint8_t *>(bytes->data()), bytes->size());
 }
 
 Str TensorToBase64(const TensorObj *src) {
   Str bytes = ::mlc::TensorToBytes(&src->tensor);
   return ::mlc::Base64Encode(reinterpret_cast<uint8_t *>(bytes->data()), bytes->size());
+}
+
+Tensor TensorFromBytes(AnyView any) {
+  if (any.type_index == kMLCRawStr) {
+    const char *src = any;
+    int64_t len = std::strlen(src);
+    return ::mlc::TensorFromBytes(reinterpret_cast<const uint8_t *>(src), len);
+  } else {
+    Str src = any;
+    return ::mlc::TensorFromBytes(reinterpret_cast<const uint8_t *>(src->::MLCStr::data), src->length());
+  }
+}
+
+Tensor TensorFromBase64(AnyView any) {
+  if (any.type_index == kMLCRawStr) {
+    const char *src = any;
+    int64_t len = std::strlen(src);
+    Str bytes = ::mlc::Base64Decode(reinterpret_cast<const uint8_t *>(src), len);
+    return ::mlc::TensorFromBytes(reinterpret_cast<const uint8_t *>(bytes->data()), bytes->size());
+  } else {
+    Str src = any;
+    Str bytes = ::mlc::Base64Decode(reinterpret_cast<const uint8_t *>(src->::MLCStr::data), src->length());
+    return ::mlc::TensorFromBytes(reinterpret_cast<const uint8_t *>(bytes->data()), bytes->size());
+  }
 }
 
 } // namespace registry
