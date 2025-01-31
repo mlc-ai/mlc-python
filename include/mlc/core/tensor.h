@@ -27,22 +27,22 @@ struct TensorObj : public MLCTensor {
   ~TensorObj() { delete[] this->tensor.shape; }
 
   Str ToBytes() const {
-    static auto func = ::mlc::base::GetGlobalFuncCall<2>("mlc.core.TensorToBytes");
+    static auto func = ::mlc::base::GetGlobalFuncCall<1>("mlc.core.TensorToBytes");
     return func({this});
   }
 
   static Ref<TensorObj> FromBytes(const Str &source) {
-    static auto func = ::mlc::base::GetGlobalFuncCall<2>("mlc.core.TensorFromBytes");
+    static auto func = ::mlc::base::GetGlobalFuncCall<1>("mlc.core.TensorFromBytes");
     return func({source});
   }
 
   Str ToBase64() const {
-    static auto func = ::mlc::base::GetGlobalFuncCall<2>("mlc.core.TensorToBase64");
+    static auto func = ::mlc::base::GetGlobalFuncCall<1>("mlc.core.TensorToBase64");
     return func({this});
   }
 
   static Ref<TensorObj> FromBase64(const Str &source) {
-    static auto func = ::mlc::base::GetGlobalFuncCall<2>("mlc.core.TensorFromBase64");
+    static auto func = ::mlc::base::GetGlobalFuncCall<1>("mlc.core.TensorFromBase64");
     return func({source});
   }
 
@@ -125,7 +125,7 @@ private:
       if (shape[i] == 0) {
         return true;
       }
-      if (strides[i] != stride) {
+      if (shape[i] > 1 && strides[i] != stride) {
         return false;
       }
       stride *= shape[i];
@@ -171,8 +171,8 @@ private:
 
 struct Tensor : public ObjectRef {
   explicit Tensor(DLManagedTensor *tensor) : ObjectRef(TensorObj::Allocator::New(tensor)) {}
-  Tensor FromBytes(const Str &source) { return Tensor(TensorObj::FromBytes(source)); }
-  Tensor FromBase64(const Str &source) { return Tensor(TensorObj::FromBase64(source)); }
+  static Tensor FromBytes(const Str &source) { return Tensor(TensorObj::FromBytes(source)); }
+  static Tensor FromBase64(const Str &source) { return Tensor(TensorObj::FromBase64(source)); }
 
   const void *data() const { return this->get()->tensor.data; }
   DLDevice device() const { return this->get()->tensor.device; }
