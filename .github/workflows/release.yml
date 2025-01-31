@@ -28,7 +28,7 @@ jobs:
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel=="${{ env.MLC_CIBW_VERSION }}"
       - name: Build wheels
-        run: rm -rf .gitignore && python -m cibuildwheel --output-dir wheelhouse
+        run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_BUILD: ${{ env.MLC_CIBW_WIN_BUILD }}
       - name: Show package contents
@@ -51,7 +51,7 @@ jobs:
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==${{ env.MLC_CIBW_VERSION }}
       - name: Build wheels
-        run: rm -rf .gitignore && python -m cibuildwheel --output-dir wheelhouse
+        run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_BUILD: ${{ env.MLC_CIBW_MAC_BUILD }}
       - name: Show package contents
@@ -74,7 +74,7 @@ jobs:
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==${{ env.MLC_CIBW_VERSION }}
       - name: Build wheels
-        run: rm -rf .gitignore && python -m cibuildwheel --output-dir wheelhouse
+        run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_BUILD: ${{ env.MLC_CIBW_MAC_X86_BUILD }}
       - name: Show package contents
@@ -97,7 +97,7 @@ jobs:
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==${{ env.MLC_CIBW_VERSION }}
       - name: Build wheels
-        run: rm -rf .gitignore && python -m cibuildwheel --output-dir wheelhouse
+        run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_BUILD: ${{ env.MLC_CIBW_LINUX_BUILD }}
       - name: Show package contents
