@@ -1656,6 +1656,10 @@ def type_create(int32_t parent_type_index, str type_key):
     return type_info
 
 
+cpdef list type_table():
+    return list(TYPE_INDEX_TO_INFO)
+
+
 cdef const char* _DLPACK_CAPSULE_NAME = "dltensor"
 cdef const char* _DLPACK_CAPSULE_NAME_USED = "used_dltensor"
 cdef const char* _DLPACK_CAPSULE_NAME_VER = "dltensor_versioned"
