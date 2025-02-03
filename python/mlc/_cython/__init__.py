@@ -58,6 +58,7 @@ from .core import (  # type: ignore[import-not-found]
     type_key2py_type_info,
     type_register_fields,
     type_register_structure,
+    type_table,
 )
 
 LIB: _ctypes.CDLL = _core.LIB

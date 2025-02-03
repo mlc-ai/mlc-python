@@ -18,7 +18,7 @@ from .utils import (
     get_parent_type,
     inspect_dataclass_fields,
     method_init,
-    prototype_py,
+    prototype,
 )
 
 ClsType = typing.TypeVar("ClsType")
@@ -117,5 +117,5 @@ def _check_c_class(
     if warned:
         warnings.warn(
             f"One or multiple warnings in `{type_cls.__module__}.{type_cls.__qualname__}`. Its prototype is:\n"
-            + prototype_py(type_info)
+            + prototype(type_info, lang="py")
         )

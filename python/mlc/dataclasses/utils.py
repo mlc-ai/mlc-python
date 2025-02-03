@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import ctypes
 import dataclasses
+import functools
 import inspect
+import re
 import typing
 from collections.abc import Callable
 from io import StringIO
@@ -16,6 +18,7 @@ from mlc._cython import (
     TypeMethod,
     type_add_method,
     type_index2type_methods,
+    type_table,
 )
 from mlc.core import typing as mlc_typing
 
@@ -325,13 +328,9 @@ def add_vtable_methods_for_type_cls(type_cls: type, type_index: int) -> None:
             type_add_method(type_index, name, func, kind=0)
 
 
-def prototype_py(type_info: type | TypeInfo) -> str:
-    if not isinstance(type_info, TypeInfo):
-        if (type_info := getattr(type_info, "_mlc_type_info", None)) is None:  # type: ignore[assignment]
-            raise ValueError(f"Invalid type: {type_info}")
+def _prototype_py(type_info: TypeInfo) -> str:
     assert isinstance(type_info, TypeInfo)
     cls_name = type_info.type_key.rsplit(".", maxsplit=1)[-1]
-
     io = StringIO()
     print(f"@mlc.dataclasses.c_class({type_info.type_key!r})", file=io)
     print(f"class {cls_name}:", file=io)
@@ -352,12 +351,11 @@ def prototype_py(type_info: type | TypeInfo) -> str:
     return io.getvalue().rstrip()
 
 
-def prototype_cxx(type_info: type | TypeInfo) -> str:
-    if not isinstance(type_info, TypeInfo):
-        if (type_info := getattr(type_info, "_mlc_type_info", None)) is None:  # type: ignore[assignment]
-            raise ValueError(f"Invalid type: {type_info}")
+def _prototype_cxx(
+    type_info: TypeInfo,
+    export_macro: str = "_EXPORTS",
+) -> str:
     assert isinstance(type_info, TypeInfo)
-
     parent_type_info = type_info.get_parent()
     namespaces = type_info.type_key.split(".")
     cls_name = namespaces[-1]
@@ -388,22 +386,22 @@ def prototype_cxx(type_info: type | TypeInfo) -> str:
         if i != 0:
             print(", ", file=io, end="")
         print(f"{ty} {name}", file=io, end="")
-    print("): ", file=io, end="")
-    for i, (name, _) in enumerate(fields):
-        if i != 0:
-            print(", ", file=io, end="")
-        print(f"{name}({name})", file=io, end="")
+    print("): _mlc_header{}", file=io, end="")
+    for name, _ in fields:
+        print(f", {name}({name})", file=io, end="")
     print(" {}", file=io)
     # Step 2.3. Macro to define object type
     print(
-        f'  MLC_DEF_DYN_TYPE(_EXPORTS, {cls_name}Obj, {parent_obj_name}, "{type_info.type_key}");',
+        f'  MLC_DEF_DYN_TYPE({export_macro}, {cls_name}Obj, {parent_obj_name}, "{type_info.type_key}");',
         file=io,
     )
     print(f"}};  // struct {cls_name}Obj\n", file=io)
     # Step 3. Object reference class
     print(f"struct {cls_name} : public {parent_ref_name} {{", file=io)
     # Step 3.1. Define fields for reflection
-    print(f"  MLC_DEF_OBJ_REF(_EXPORTS, {cls_name}, {cls_name}Obj, {parent_ref_name})", file=io)
+    print(
+        f"  MLC_DEF_OBJ_REF({export_macro}, {cls_name}, {cls_name}Obj, {parent_ref_name})", file=io
+    )
     for name, _ in fields:
         print(f'    .Field("{name}", &{cls_name}Obj::{name})', file=io)
     # Step 3.2. Define `__init__` method for reflection
@@ -416,3 +414,34 @@ def prototype_cxx(type_info: type | TypeInfo) -> str:
     for ns in reversed(namespaces[:-1]):
         print(f"}}  // namespace {ns}", file=io)
     return io.getvalue().rstrip()
+
+
+def prototype(
+    match: str | type | TypeInfo | Callable[[TypeInfo], bool],
+    lang: Literal["c++", "py"] = "c++",
+    export_macro: str = "_EXPORTS",
+) -> str:
+    type_info_list: list[TypeInfo]
+    if (
+        isinstance(match, type)
+        and (type_info := getattr(match, "_mlc_type_info", None)) is not None
+    ):
+        assert isinstance(type_info, TypeInfo)
+        type_info_list = [type_info]
+    elif isinstance(match, TypeInfo):
+        type_info_list = [match]
+    elif isinstance(match, str):
+        pattern = re.compile(match)
+        type_info_list = [i for i in type_table() if i and pattern.fullmatch(i.type_key)]
+    elif callable(match):
+        type_info_list = [i for i in type_table() if i and match(i)]
+    else:
+        raise ValueError(f"Invalid `match`: {match}")
+    fn: Callable[[TypeInfo], str]
+    if lang == "c++":
+        fn = functools.partial(_prototype_cxx, export_macro=export_macro)
+    elif lang == "py":
+        fn = _prototype_py
+    else:
+        raise ValueError(f"Invalid `lang`: {lang}")
+    return "\n\n".join(fn(i) for i in type_info_list)
