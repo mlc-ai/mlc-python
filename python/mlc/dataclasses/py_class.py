@@ -141,9 +141,10 @@ def py_class(
         )
         setattr(type_cls, "_mlc_structure", struct)
 
-        # Step 5. Attach methods
+        # Step 5. Add `__init__` method
+        type_add_method(type_index, "__init__", _method_new(type_cls), 1)  # static
+        # Step 6. Attach methods
         fn: Callable[..., typing.Any]
-        type_add_method(type_index, "__init__", type_cls, 1)  # static
         if init:
             fn = method_init(super_type_cls, d_fields)
             attach_method(super_type_cls, type_cls, "__init__", fn, check_exists=True)
@@ -183,5 +184,16 @@ def _method_repr(
     def method(self: ClsType) -> str:
         fields = (f"{name}={getattr(self, name)!r}" for name in field_names)
         return f"{type_key}({', '.join(fields)})"
+
+    return method
+
+
+def _method_new(
+    type_cls: type[ClsType],
+) -> Callable[..., ClsType]:
+    def method(*args: typing.Any) -> ClsType:
+        obj = type_cls.__new__(type_cls)
+        obj._mlc_init(*args)  # type: ignore[attr-defined]
+        return obj
 
     return method
