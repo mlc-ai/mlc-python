@@ -136,10 +136,11 @@ private:
 
 struct TypeTable;
 
-struct VTable {
-  explicit VTable(TypeTable *type_table, std::string name) : type_table(type_table), name(std::move(name)), data() {}
+struct MLCVTable {
+  explicit MLCVTable(TypeTable *type_table, std::string name) : type_table(type_table), name(std::move(name)), data() {}
   void Set(int32_t type_index, FuncObj *func, int32_t override_mode);
   FuncObj *GetFunc(int32_t type_index, bool allow_ancestor) const;
+  void Call(int32_t num_args, MLCAny *args, MLCAny *ret) const;
 
 private:
   TypeTable *type_table;
@@ -269,7 +270,7 @@ struct TypeTable {
   std::vector<std::unique_ptr<TypeInfoWrapper>> type_table;
   std::unordered_map<std::string, MLCTypeInfo *> type_key_to_info;
   std::unordered_map<std::string, FuncObj *> global_funcs;
-  std::unordered_map<std::string, std::unique_ptr<VTable>> global_vtables;
+  std::unordered_map<std::string, std::unique_ptr<MLCVTable>> global_vtables;
   std::unordered_map<std::string, std::unique_ptr<DSOLibrary>> dso_libraries;
   std::unordered_map<std::string, DLDataType> dtype_presets{
       {"void", {kDLOpaqueHandle, 0, 0}},
@@ -414,18 +415,18 @@ struct TypeTable {
 
   FuncObj *GetVTable(int32_t type_index, const char *attr_key, bool allow_ancestor) {
     if (auto it = this->global_vtables.find(attr_key); it != this->global_vtables.end()) {
-      VTable *vtable = it->second.get();
+      MLCVTable *vtable = it->second.get();
       return vtable->GetFunc(type_index, allow_ancestor);
     } else {
       return nullptr;
     }
   }
 
-  VTable *GetGlobalVTable(const char *name) {
+  MLCVTable *GetGlobalVTable(const char *name) {
     if (auto it = this->global_vtables.find(name); it != this->global_vtables.end()) {
       return it->second.get();
     } else {
-      std::unique_ptr<VTable> &vtable = this->global_vtables[name] = std::make_unique<VTable>(this, name);
+      std::unique_ptr<MLCVTable> &vtable = this->global_vtables[name] = std::make_unique<MLCVTable>(this, name);
       return vtable.get();
     }
   }
@@ -713,7 +714,7 @@ inline TypeTable *TypeTable::New() {
 #undef MLC_TYPE_TABLE_INIT_TYPE_BEGIN
 #undef MLC_TYPE_TABLE_INIT_TYPE_END
 
-inline void VTable::Set(int32_t type_index, FuncObj *func, int32_t override_mode) {
+inline void MLCVTable::Set(int32_t type_index, FuncObj *func, int32_t override_mode) {
   auto [it, success] = this->data.try_emplace(type_index, nullptr);
   if (!success) {
     if (override_mode == 0) {
@@ -740,7 +741,7 @@ inline void VTable::Set(int32_t type_index, FuncObj *func, int32_t override_mode
   this->type_table->pool.AddObj(func);
 }
 
-inline FuncObj *VTable::GetFunc(int32_t type_index, bool allow_ancestor) const {
+inline FuncObj *MLCVTable::GetFunc(int32_t type_index, bool allow_ancestor) const {
   if (auto it = this->data.find(type_index); it != this->data.end()) {
     return it->second;
   }
@@ -755,6 +756,20 @@ inline FuncObj *VTable::GetFunc(int32_t type_index, bool allow_ancestor) const {
     }
   }
   return nullptr;
+}
+
+inline void MLCVTable::Call(int32_t num_args, MLCAny *args, MLCAny *ret) const {
+  constexpr bool allow_ancestor = false;
+  if (num_args == 0) {
+    MLC_THROW(ValueError) << "Calling a vtable requires at least one argument";
+  }
+  int32_t type_index = args[0].type_index;
+  FuncObj *func = this->GetFunc(type_index, allow_ancestor);
+  if (func == nullptr) {
+    MLC_THROW(KeyError) << "VTable `" << name
+                        << "` doesn't have type registered: " << this->type_table->GetTypeInfo(type_index)->type_key;
+  }
+  ::mlc::base::FuncCall(func, num_args, args, ret);
 }
 
 } // namespace registry

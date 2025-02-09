@@ -284,6 +284,9 @@ MLC_API int32_t MLCTypeRegisterStructure(MLCTypeTableHandle self, int32_t type_i
                                          int64_t num_sub_structures, int32_t *sub_structure_indices,
                                          int32_t *sub_structure_kinds);
 MLC_API int32_t MLCTypeAddMethod(MLCTypeTableHandle self, int32_t type_index, MLCTypeMethod method);
+MLC_API int32_t MLCVTableCreate(MLCTypeTableHandle self, const char *key, MLCVTableHandle *ret);
+MLC_API int32_t MLCVTableDelete(MLCVTableHandle self);
+MLC_API int32_t MLCVTableCall(MLCVTableHandle vtable, int32_t num_args, MLCAny *args, MLCAny *ret);
 MLC_API int32_t MLCVTableGetGlobal(MLCTypeTableHandle self, const char *key, MLCVTableHandle *ret);
 MLC_API int32_t MLCVTableGetFunc(MLCVTableHandle vtable, int32_t type_index, int32_t allow_ancestor, MLCAny *ret);
 MLC_API int32_t MLCVTableSetFunc(MLCVTableHandle vtable, int32_t type_index, MLCFunc *func, int32_t override_mode);

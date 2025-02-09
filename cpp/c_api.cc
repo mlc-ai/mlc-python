@@ -54,7 +54,7 @@ thread_local Any last_error;
 
 MLC_API MLCAny MLCGetLastError() {
   MLCAny ret;
-  *static_cast<Any *>(&ret) = std::move(last_error);
+  static_cast<Any &>(ret) = std::move(last_error);
   return ret;
 }
 
@@ -99,6 +99,20 @@ MLC_API int32_t MLCTypeAddMethod(MLCTypeTableHandle _self, int32_t type_index, M
   MLC_SAFE_CALL_END(&last_error);
 }
 
+MLC_API int32_t MLCVTableCreate(MLCTypeTableHandle _self, const char *key, MLCVTableHandle *ret) {
+  MLC_SAFE_CALL_BEGIN();
+  *ret = new mlc::registry::MLCVTable(TypeTable::Get(_self), key);
+  MLC_SAFE_CALL_END(&last_error);
+}
+
+MLC_API int32_t MLCVTableDelete(MLCVTableHandle self) {
+  MLC_SAFE_CALL_BEGIN();
+  if (self) {
+    delete static_cast<mlc::registry::MLCVTable *>(self);
+  }
+  MLC_SAFE_CALL_END(&last_error);
+}
+
 MLC_API int32_t MLCVTableGetGlobal(MLCTypeTableHandle _self, const char *key, MLCVTableHandle *ret) {
   MLC_SAFE_CALL_BEGIN();
   *ret = TypeTable::Get(_self)->GetGlobalVTable(key);
@@ -106,16 +120,23 @@ MLC_API int32_t MLCVTableGetGlobal(MLCTypeTableHandle _self, const char *key, ML
 }
 
 MLC_API int32_t MLCVTableGetFunc(MLCVTableHandle vtable, int32_t type_index, int32_t allow_ancestor, MLCAny *ret) {
-  using ::mlc::registry::VTable;
+  using ::mlc::registry::MLCVTable;
   MLC_SAFE_CALL_BEGIN();
-  *static_cast<Any *>(ret) = static_cast<VTable *>(vtable)->GetFunc(type_index, allow_ancestor);
+  *static_cast<Any *>(ret) = static_cast<MLCVTable *>(vtable)->GetFunc(type_index, allow_ancestor);
   MLC_SAFE_CALL_END(&last_error);
 }
 
 MLC_API int32_t MLCVTableSetFunc(MLCVTableHandle vtable, int32_t type_index, MLCFunc *func, int32_t override_mode) {
-  using ::mlc::registry::VTable;
+  using ::mlc::registry::MLCVTable;
   MLC_SAFE_CALL_BEGIN();
-  static_cast<VTable *>(vtable)->Set(type_index, static_cast<FuncObj *>(func), override_mode);
+  static_cast<MLCVTable *>(vtable)->Set(type_index, static_cast<FuncObj *>(func), override_mode);
+  MLC_SAFE_CALL_END(&last_error);
+}
+
+MLC_API int32_t MLCVTableCall(MLCVTableHandle vtable, int32_t num_args, MLCAny *args, MLCAny *ret) {
+  using ::mlc::registry::MLCVTable;
+  MLC_SAFE_CALL_BEGIN();
+  static_cast<MLCVTable *>(vtable)->Call(num_args, args, ret);
   MLC_SAFE_CALL_END(&last_error);
 }
 
