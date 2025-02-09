@@ -104,8 +104,8 @@ inline void FuncCall(const void *self, int32_t num_args, const MLCAny *args, MLC
   const MLCFunc *func = static_cast<const MLCFunc *>(self);
   if (func->call && reinterpret_cast<void *>(func->safe_call) == reinterpret_cast<void *>(FuncObj::SafeCallImpl)) {
     func->call(func, num_args, args, ret);
-  } else {
-    MLC_CHECK_ERR(func->safe_call(func, num_args, args, ret), ret);
+  } else if (int32_t err_code = func->safe_call(func, num_args, args, ret)) {
+    FuncCallCheckError(err_code, ret);
   }
 }
 template <int32_t num_args> inline auto GetGlobalFuncCall(const char *name) {

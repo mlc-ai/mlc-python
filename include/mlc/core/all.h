@@ -147,12 +147,12 @@ inline Any Lib::IRPrint(AnyView obj, AnyView printer, AnyView path) {
   return ret;
 }
 inline int32_t Lib::FuncSetGlobal(const char *name, FuncObj *func, bool allow_override) {
-  MLC_CHECK_ERR(::MLCFuncSetGlobal(_lib, name, Any(func), allow_override), nullptr);
+  MLC_CHECK_ERR(::MLCFuncSetGlobal(_lib, name, Any(func), allow_override));
   return 0;
 }
 inline FuncObj *Lib::FuncGetGlobal(const char *name, bool allow_missing) {
   Any ret;
-  MLC_CHECK_ERR(::MLCFuncGetGlobal(_lib, name, &ret), &ret);
+  MLC_CHECK_ERR(::MLCFuncGetGlobal(_lib, name, &ret));
   if (!ret.defined() && !allow_missing) {
     MLC_THROW(KeyError) << "Missing global function: " << name;
   }
@@ -205,12 +205,12 @@ template <typename R, typename... Args> inline R VTable::operator()(Args... args
   AnyViewArray<N> stack_args;
   Any ret;
   stack_args.Fill(std::forward<Args>(args)...);
-  MLC_CHECK_ERR(::MLCVTableCall(self, N, stack_args.v, &ret), &ret);
+  MLC_CHECK_ERR(::MLCVTableCall(self, N, stack_args.v, &ret));
+  return ret;
 }
 template <typename Obj> inline VTable &VTable::Set(Func func) {
   constexpr bool override_mode = false;
-  int32_t type_index = Obj::_type_index;
-  MLC_CHECK_ERR(::MLCVTableSetFunc(this->self, type_index, func.get(), override_mode), nullptr);
+  MLC_CHECK_ERR(::MLCVTableSetFunc(this->self, Obj::_type_index, func.get(), override_mode));
   return *this;
 }
 

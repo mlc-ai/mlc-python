@@ -77,9 +77,9 @@
   }                                                                                                                    \
   MLC_UNREACHABLE()
 
-#define MLC_CHECK_ERR(Call, Ret)                                                                                       \
+#define MLC_CHECK_ERR(Call)                                                                                            \
   if (int32_t err_code = (Call)) {                                                                                     \
-    ::mlc::base::FuncCallCheckError(err_code, (Ret));                                                                  \
+    ::mlc::base::FuncCallCheckError(err_code, nullptr);                                                                \
   }
 
 namespace mlc {

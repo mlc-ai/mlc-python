@@ -53,8 +53,8 @@ thread_local Any last_error;
 } // namespace
 
 MLC_API MLCAny MLCGetLastError() {
-  MLCAny ret;
-  static_cast<Any &>(ret) = std::move(last_error);
+  MLCAny ret = static_cast<MLCAny &>(last_error);
+  static_cast<MLCAny &>(last_error) = MLCAny();
   return ret;
 }
 
