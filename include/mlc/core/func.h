@@ -79,27 +79,33 @@ struct FuncRegistryHelper {
   const char *name;
 };
 
-MLC_INLINE void HandleSafeCallError(int32_t err_code, MLCAny *ret) noexcept(false) {
-  if (err_code == -1) { // string errors
-    MLC_THROW(InternalError) << "Error: " << *static_cast<Any *>(ret);
-  } else if (err_code == -2) { // error objects
-    throw Exception(static_cast<Any *>(ret)->operator Ref<ErrorObj>()->AppendWith(MLC_TRACEBACK_HERE()));
-  } else { // error code
-    MLC_THROW(InternalError) << "Error code: " << err_code;
-  }
-  MLC_UNREACHABLE();
-}
 } // namespace core
 } // namespace mlc
 
 namespace mlc {
 namespace base {
-MLC_INLINE void FuncCall(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret) {
+inline void FuncCallCheckError(int32_t err_code, MLCAny *ret) noexcept(false) {
+  Any err;
+  if (ret != nullptr) {
+    err = static_cast<Any &&>(*ret);
+  } else {
+    static_cast<MLCAny &>(err) = ::MLCGetLastError();
+  }
+  if (err_code == -1) { // string errors
+    MLC_THROW(InternalError) << "Error: " << err;
+  } else if (err_code == -2) { // error objects
+    throw Exception(err.operator Ref<ErrorObj>()->AppendWith(MLC_TRACEBACK_HERE()));
+  } else { // error code
+    MLC_THROW(InternalError) << "Error code: " << err_code;
+  }
+  MLC_UNREACHABLE();
+}
+inline void FuncCall(const void *self, int32_t num_args, const MLCAny *args, MLCAny *ret) {
   const MLCFunc *func = static_cast<const MLCFunc *>(self);
   if (func->call && reinterpret_cast<void *>(func->safe_call) == reinterpret_cast<void *>(FuncObj::SafeCallImpl)) {
     func->call(func, num_args, args, ret);
-  } else if (int32_t err_code = func->safe_call(func, num_args, args, ret)) {
-    ::mlc::core::HandleSafeCallError(err_code, ret);
+  } else {
+    MLC_CHECK_ERR(func->safe_call(func, num_args, args, ret), ret);
   }
 }
 template <int32_t num_args> inline auto GetGlobalFuncCall(const char *name) {

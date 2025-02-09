@@ -100,12 +100,14 @@ struct _Reflect {
                                                  reinterpret_cast<MLCFunc *>(func_any_to_ref.v.v_obj), //
                                                  kStaticFn});
       }
-      MLCTypeRegisterFields(nullptr, this->type_index, this->fields.size(), this->fields.data());
-      MLCTypeRegisterStructure(nullptr, this->type_index, static_cast<int32_t>(this->structure_kind),
-                               this->sub_structure_indices.size(), this->sub_structure_indices.data(),
-                               this->sub_structure_kinds.data());
+      MLC_CHECK_ERR(::MLCTypeRegisterFields(nullptr, this->type_index, this->fields.size(), this->fields.data()),
+                    nullptr);
+      MLC_CHECK_ERR(::MLCTypeRegisterStructure(nullptr, this->type_index, static_cast<int32_t>(this->structure_kind),
+                                               this->sub_structure_indices.size(), this->sub_structure_indices.data(),
+                                               this->sub_structure_kinds.data()),
+                    nullptr);
       for (const MLCTypeMethod &method : this->methods) {
-        MLCTypeAddMethod(nullptr, this->type_index, method);
+        MLC_CHECK_ERR(::MLCTypeAddMethod(nullptr, this->type_index, method), nullptr);
       }
     }
     return 0;

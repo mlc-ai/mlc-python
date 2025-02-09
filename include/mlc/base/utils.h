@@ -77,6 +77,11 @@
   }                                                                                                                    \
   MLC_UNREACHABLE()
 
+#define MLC_CHECK_ERR(Call, Ret)                                                                                       \
+  if (int32_t err_code = (Call)) {                                                                                     \
+    ::mlc::base::FuncCallCheckError(err_code, (Ret));                                                                  \
+  }
+
 namespace mlc {
 namespace base {
 
@@ -108,6 +113,7 @@ struct ErrorBuilder {
 
 StrObj *StrCopyFromCharArray(const char *source, size_t length);
 void FuncCall(const void *func, int32_t num_args, const MLCAny *args, MLCAny *ret);
+void FuncCallCheckError(int32_t err_code, MLCAny *ret) noexcept(false);
 template <typename Callable> Any CallableToAny(Callable &&callable);
 template <typename DerivedType, typename SelfType = Object> bool IsInstanceOf(const MLCAny *self);
 

@@ -5,6 +5,26 @@
 
 namespace mlc {
 
+struct VTable {
+  VTable(const VTable &) = delete;
+  VTable &operator=(const VTable &) = delete;
+  VTable(VTable &&other) noexcept : self(other.self) { other.self = nullptr; }
+  VTable &operator=(VTable &&other) noexcept {
+    this->Swap(other);
+    return *this;
+  }
+  ~VTable() { MLC_CHECK_ERR(::MLCVTableDelete(self), nullptr); }
+
+  template <typename R, typename... Args> R operator()(Args... args) const;
+  template <typename Obj> VTable &Set(Func func);
+
+private:
+  friend struct Lib;
+  VTable(MLCVTableHandle self) : self(self) {}
+  void Swap(VTable &other) { std::swap(self, other.self); }
+  MLCVTableHandle self;
+};
+
 struct Lib {
   static int32_t FuncSetGlobal(const char *name, FuncObj *func, bool allow_override = false);
   static FuncObj *FuncGetGlobal(const char *name, bool allow_missing = false);
@@ -19,14 +39,19 @@ struct Lib {
   static void DataTypeRegister(const char *name, int32_t dtype_bits);
 
   static FuncObj *_init(int32_t type_index) { return VTableGetFunc(init, type_index, "__init__"); }
+  static VTable MakeVTable(const char *name) {
+    MLCVTableHandle vtable = nullptr;
+    MLC_CHECK_ERR(::MLCVTableCreate(_lib, name, &vtable), nullptr);
+    return VTable(vtable);
+  }
   MLC_INLINE static MLCTypeInfo *GetTypeInfo(int32_t type_index) {
-    MLCTypeInfo *type_info;
-    MLCTypeIndex2Info(_lib, type_index, &type_info);
+    MLCTypeInfo *type_info = nullptr;
+    MLC_CHECK_ERR(::MLCTypeIndex2Info(_lib, type_index, &type_info), nullptr);
     return type_info;
   }
   MLC_INLINE static MLCTypeInfo *GetTypeInfo(const char *type_key) {
-    MLCTypeInfo *type_info;
-    MLCTypeKey2Info(_lib, type_key, &type_info);
+    MLCTypeInfo *type_info = nullptr;
+    MLC_CHECK_ERR(::MLCTypeKey2Info(_lib, type_key, &type_info), nullptr);
     return type_info;
   }
   MLC_INLINE static const char *GetTypeKey(int32_t type_index) {
@@ -52,14 +77,14 @@ struct Lib {
   }
   MLC_INLINE static MLCTypeInfo *TypeRegister(int32_t parent_type_index, int32_t type_index, const char *type_key) {
     MLCTypeInfo *info = nullptr;
-    MLCTypeRegister(_lib, parent_type_index, type_key, type_index, &info);
+    MLC_CHECK_ERR(::MLCTypeRegister(_lib, parent_type_index, type_key, type_index, &info), nullptr);
     return info;
   }
 
 private:
   static FuncObj *VTableGetFunc(MLCVTableHandle vtable, int32_t type_index, const char *vtable_name) {
     MLCAny func{};
-    MLCVTableGetFunc(vtable, type_index, true, &func);
+    MLC_CHECK_ERR(::MLCVTableGetFunc(vtable, type_index, true, &func), &func);
     if (!::mlc::base::IsTypeIndexPOD(func.type_index)) {
       ::mlc::base::DecRef(func.v.v_obj);
     }
@@ -74,13 +99,13 @@ private:
     return ret;
   }
   static MLCVTableHandle VTableGetGlobal(const char *name) {
-    MLCVTableHandle ret;
-    MLCVTableGetGlobal(_lib, name, &ret);
+    MLCVTableHandle ret = nullptr;
+    MLC_CHECK_ERR(::MLCVTableGetGlobal(_lib, name, &ret), nullptr);
     return ret;
   }
   static MLC_SYMBOL_HIDE inline MLCTypeTableHandle _lib = []() {
     MLCTypeTableHandle ret = nullptr;
-    ::MLCHandleGetGlobal(&ret);
+    MLC_CHECK_ERR(::MLCHandleGetGlobal(&ret), nullptr);
     return ret;
   }();
   static MLC_SYMBOL_HIDE inline MLCVTableHandle cxx_str = VTableGetGlobal("__cxx_str__");

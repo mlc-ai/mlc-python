@@ -147,12 +147,12 @@ inline Any Lib::IRPrint(AnyView obj, AnyView printer, AnyView path) {
   return ret;
 }
 inline int32_t Lib::FuncSetGlobal(const char *name, FuncObj *func, bool allow_override) {
-  ::MLCFuncSetGlobal(_lib, name, Any(func), allow_override);
+  MLC_CHECK_ERR(::MLCFuncSetGlobal(_lib, name, Any(func), allow_override), nullptr);
   return 0;
 }
 inline FuncObj *Lib::FuncGetGlobal(const char *name, bool allow_missing) {
   Any ret;
-  ::MLCFuncGetGlobal(_lib, name, &ret);
+  MLC_CHECK_ERR(::MLCFuncGetGlobal(_lib, name, &ret), &ret);
   if (!ret.defined() && !allow_missing) {
     MLC_THROW(KeyError) << "Missing global function: " << name;
   }
@@ -199,6 +199,19 @@ inline void Lib::DataTypeRegister(const char *name, int32_t dtype_bits) {
   AnyView arg[2]{name, dtype_bits};
   Any ret;
   ::mlc::base::FuncCall(func_dtype_register, 2, arg, &ret);
+}
+template <typename R, typename... Args> inline R VTable::operator()(Args... args) const {
+  constexpr size_t N = sizeof...(Args);
+  AnyViewArray<N> stack_args;
+  Any ret;
+  stack_args.Fill(std::forward<Args>(args)...);
+  MLC_CHECK_ERR(::MLCVTableCall(self, N, stack_args.v, &ret), &ret);
+}
+template <typename Obj> inline VTable &VTable::Set(Func func) {
+  constexpr bool override_mode = false;
+  int32_t type_index = Obj::_type_index;
+  MLC_CHECK_ERR(::MLCVTableSetFunc(this->self, type_index, func.get(), override_mode), nullptr);
+  return *this;
 }
 
 } // namespace mlc
