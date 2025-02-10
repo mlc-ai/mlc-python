@@ -190,12 +190,16 @@ template <typename FuncType, typename> MLC_INLINE FuncObj *FuncObj::Allocator::N
 inline Ref<FuncObj> FuncObj::FromForeign(void *self, MLCDeleterType deleter, MLCFuncSafeCallType safe_call) {
   if (deleter == nullptr) {
     return Ref<FuncObj>::New([self, safe_call](int32_t num_args, const MLCAny *args, MLCAny *ret) {
-      MLC_CHECK_ERR(safe_call(self, num_args, args, ret), ret);
+      if (int32_t err_code = safe_call(self, num_args, args, ret)) {
+        ::mlc::base::FuncCallCheckError(err_code, ret);
+      }
     });
   } else {
     return Ref<FuncObj>::New(
         [self = std::shared_ptr<void>(self, deleter), safe_call](int32_t num_args, const MLCAny *args, MLCAny *ret) {
-          MLC_CHECK_ERR(safe_call(self.get(), num_args, args, ret), ret);
+          if (int32_t err_code = safe_call(self.get(), num_args, args, ret)) {
+            ::mlc::base::FuncCallCheckError(err_code, ret);
+          }
         });
   }
 }
