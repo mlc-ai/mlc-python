@@ -163,3 +163,21 @@ def test_list_ne() -> None:
     b = List([1, 2, 3, 4])
     assert a != b
     assert b != a
+
+
+def test_list_setitem() -> None:
+    a = List([1, 4, 9, 16])
+    a[1] = 8
+    assert tuple(a) == (1, 8, 9, 16)
+    a[-2] = 12
+    assert tuple(a) == (1, 8, 12, 16)
+    a[-4] = 2
+    assert tuple(a) == (2, 8, 12, 16)
+
+    with pytest.raises(IndexError) as e:
+        a[4] = 20
+    assert str(e.value) == "list assignment index out of range: 4"
+
+    with pytest.raises(IndexError) as e:
+        a[-5] = 20
+    assert str(e.value) == "list assignment index out of range: -5"

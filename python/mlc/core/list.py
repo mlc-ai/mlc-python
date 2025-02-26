@@ -43,6 +43,14 @@ class List(Object, Sequence[T], metaclass=ListMeta):
         else:
             raise TypeError(f"list indices must be integers or slices, not {type(i).__name__}")
 
+    def __setitem__(self, index: int, value: T) -> None:
+        length = len(self)
+        if not -length <= index < length:
+            raise IndexError(f"list assignment index out of range: {index}")
+        if index < 0:
+            index += length
+        List._C(b"__setitem__", self, index, value)
+
     def __iter__(self) -> Iterator[T]:
         return iter(self[i] for i in range(len(self)))
 
