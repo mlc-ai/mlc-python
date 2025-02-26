@@ -44,6 +44,7 @@ struct ListBase : public MLCList {
   template <typename TListObj> struct Accessor {
     MLC_INLINE static void New(int32_t num_args, const AnyView *args, Any *ret);
     MLC_INLINE static Any At(TListObj *self, int64_t i);
+    MLC_INLINE static void SetItem(TListObj *self, int64_t i, Any value);
   };
 };
 
@@ -178,6 +179,11 @@ MLC_INLINE void ListBase::Accessor<TListObj>::New(int32_t num_args, const AnyVie
 template <typename TListObj> //
 MLC_INLINE Any ListBase::Accessor<TListObj>::At(TListObj *self, int64_t i) {
   return self->operator[](i);
+}
+
+template <typename TListObj> //
+MLC_INLINE void ListBase::Accessor<TListObj>::SetItem(TListObj *self, int64_t i, Any value) {
+  self->operator[](i) = std::move(value);
 }
 
 } // namespace core

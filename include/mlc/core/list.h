@@ -174,7 +174,8 @@ struct UList : public ObjectRef {
                self->erase(i);
                return ret;
              })
-      .MemFn("_clear", &UListObj::clear);
+      .MemFn("_clear", &UListObj::clear)
+      .MemFn("__setitem__", &::mlc::core::ListBase::Accessor<UListObj>::SetItem);
 };
 
 template <typename T> struct ListObj : protected UListObj {
