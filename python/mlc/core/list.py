@@ -54,6 +54,20 @@ class List(Object, Sequence[T], metaclass=ListMeta):
     def __iter__(self) -> Iterator[T]:
         return iter(self[i] for i in range(len(self)))
 
+    def __add__(self, other: Sequence[T]) -> List[T]:
+        if not isinstance(other, (list, tuple, List)):
+            return NotImplemented
+        result = List(self)
+        result.extend(other)
+        return result
+
+    def __radd__(self, other: Sequence[T]) -> List[T]:
+        if not isinstance(other, (list, tuple)):
+            return NotImplemented
+        result = List(other)
+        result.extend(self)
+        return result
+
     def insert(self, i: int, x: T) -> None:
         i = _normalize_index(i, len(self) + 1)
         return List._C(b"_insert", self, i, x)

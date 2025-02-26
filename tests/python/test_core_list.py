@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any
 
 import pytest
@@ -181,3 +182,19 @@ def test_list_setitem() -> None:
     with pytest.raises(IndexError) as e:
         a[-5] = 20
     assert str(e.value) == "list assignment index out of range: -5"
+
+
+@pytest.mark.parametrize(
+    "a, b",
+    [
+        (List([1, 2, 3]), [4, 5, 6]),
+        (List([1, 2, 3]), (4, 5, 6)),
+        (List([1, 2, 3]), List([4, 5, 6])),
+        ([1, 2, 3], List([4, 5, 6])),
+        ((1, 2, 3), List([4, 5, 6])),
+    ],
+)
+def test_list_concat(a: Sequence[int], b: Sequence[int]) -> None:
+    c = a + b  # type: ignore[operator]
+    assert isinstance(c, List)
+    assert c == [1, 2, 3, 4, 5, 6]
