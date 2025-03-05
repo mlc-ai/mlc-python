@@ -389,6 +389,10 @@ cdef class PyAny:
     def _mlc_copy_deep(PyAny x) -> PyAny:
         return func_call(_COPY_DEEP, (x,))
 
+    @staticmethod
+    def _mlc_copy_replace(*args) -> PyAny:
+        return func_call(_COPY_REPLACE, args)
+
     @classmethod
     def _C(cls, bytes name, *args):
         cdef int32_t type_index = cls._mlc_type_info.type_index
@@ -1672,6 +1676,7 @@ cdef PyAny _STRUCUTRAL_EQUAL = func_get_untyped("mlc.core.StructuralEqual")
 cdef PyAny _STRUCUTRAL_HASH = func_get_untyped("mlc.core.StructuralHash")
 cdef PyAny _COPY_SHALLOW = func_get_untyped("mlc.core.CopyShallow")
 cdef PyAny _COPY_DEEP = func_get_untyped("mlc.core.CopyDeep")
+cdef PyAny _COPY_REPLACE = func_get_untyped("mlc.core.CopyReplace")
 cdef PyAny _TENSOR_TO_DLPACK = func_get_untyped("mlc.core.TensorToDLPack")
 
 cdef MLCVTableHandle _VTABLE_STR = _vtable_get_global(b"__str__")

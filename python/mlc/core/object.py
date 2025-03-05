@@ -41,6 +41,13 @@ class Object(PyAny):
     def __deepcopy__(self: Object, memo: dict[int, Object] | None) -> Object:
         return PyAny._mlc_copy_deep(self)
 
+    def __replace__(self: Object, /, **changes: typing.Any) -> Object:
+        unpacked: list[typing.Any] = [self]
+        for key, value in changes.items():
+            unpacked.append(key)
+            unpacked.append(value)
+        return PyAny._mlc_copy_replace(*unpacked)
+
     def __hash__(self) -> int:
         return hash((type(self), self._mlc_address))
 

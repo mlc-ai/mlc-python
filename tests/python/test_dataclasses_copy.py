@@ -270,3 +270,15 @@ def test_copy_deep_dataclass(test_obj: CustomInit) -> None:
     assert src != dst
     assert src.a == dst.a
     assert src.b == dst.b
+
+
+def test_copy_replace_dataclass(test_obj: CustomInit) -> None:
+    src = test_obj
+    dst = mlc.dataclasses.replace(src, a=2)
+    assert src != dst
+    assert src.a != dst.a
+    assert src.b == dst.b
+    assert src.a == 1
+    assert src.b == "hello"
+    assert dst.a == 2
+    assert dst.b == "hello"

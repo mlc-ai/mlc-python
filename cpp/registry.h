@@ -25,6 +25,7 @@ bool StructuralEqual(AnyView lhs, AnyView rhs, bool bind_free_vars, bool assert_
 int64_t StructuralHash(AnyView root);
 Any CopyShallow(AnyView root);
 Any CopyDeep(AnyView root);
+void CopyReplace(int32_t num_args, const AnyView *args, Any *ret);
 Str DocToPythonScript(mlc::printer::Node node, mlc::printer::PrinterConfig cfg);
 UDict BuildInfo();
 
@@ -650,6 +651,7 @@ inline TypeTable *TypeTable::New() {
   self->SetFunc("mlc.core.StructuralHash", Func(::mlc::registry::StructuralHash).get());
   self->SetFunc("mlc.core.CopyShallow", Func(::mlc::registry::CopyShallow).get());
   self->SetFunc("mlc.core.CopyDeep", Func(::mlc::registry::CopyDeep).get());
+  self->SetFunc("mlc.core.CopyReplace", Func(::mlc::registry::CopyReplace).get());
   self->SetFunc("mlc.core.BuildInfo", Func(::mlc::registry::BuildInfo).get());
   self->SetFunc("mlc.core.TensorToBytes", Func(::mlc::registry::TensorToBytes).get());
   self->SetFunc("mlc.core.TensorFromBytes", Func(::mlc::registry::TensorFromBytes).get());
