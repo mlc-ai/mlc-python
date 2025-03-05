@@ -97,6 +97,9 @@ class List(Object, Sequence[T], metaclass=ListMeta):
     def __ne__(self, other: Any) -> bool:
         return not (self == other)
 
+    def __delitem__(self, i: int) -> None:
+        self.pop(i)
+
 
 def _normalize_index(i: int, length: int) -> int:
     if not -length <= i < length:
