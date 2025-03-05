@@ -8,10 +8,9 @@ from mlc import DataType, Device, List
 @pytest.mark.parametrize("index", [-5, 4])
 def test_list_index_out_of_bound(index: int) -> None:
     a = List[int](i * i for i in range(4))
-    try:
+    with pytest.raises(IndexError) as e:
         a[index]
-    except IndexError as e:
-        assert str(e) == f"list index out of range: {index}"
+    assert str(e.value) == f"list index out of range: {index}"
 
 
 def test_list_init_with_list() -> None:
@@ -198,3 +197,35 @@ def test_list_concat(a: Sequence[int], b: Sequence[int]) -> None:
     c = a + b  # type: ignore[operator]
     assert isinstance(c, List)
     assert c == [1, 2, 3, 4, 5, 6]
+
+
+@pytest.mark.parametrize(
+    "seq, i",
+    [
+        ([1, 2, 3], 0),
+        ([1, 2, 3], 1),
+        ([1, 2, 3], 2),
+        ([1, 2, 3], -1),
+        ([1, 2, 3], -2),
+        ([1, 2, 3], -3),
+    ],
+)
+def test_list_delitem(seq: list[int], i: int) -> None:
+    a = List(seq)
+    del a[i]
+    del seq[i]
+    assert list(a) == list(seq)
+
+
+@pytest.mark.parametrize(
+    "seq, i",
+    [
+        ([1, 2, 3], 3),
+        ([1, 2, 3], -4),
+    ],
+)
+def test_list_delitem_out_of_by(seq: list[int], i: int) -> None:
+    a = List(seq)
+    with pytest.raises(IndexError) as e:
+        del a[i]
+    assert str(e.value) == f"list index out of range: {i}"
