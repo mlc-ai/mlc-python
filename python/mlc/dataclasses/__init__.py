@@ -5,5 +5,6 @@ from .utils import (
     add_vtable_method,
     field,
     prototype,
+    replace,
     vtable_method,
 )

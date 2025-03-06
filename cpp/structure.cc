@@ -952,7 +952,9 @@ inline Any CopyShallowImpl(AnyView source) {
     return UList(list->begin(), list->end());
   } else if (UDictObj *dict = source.TryCast<UDictObj>()) {
     return UDict(dict->begin(), dict->end());
-  } else if (source.IsInstance<StrObj>() || source.IsInstance<ErrorObj>() || source.IsInstance<FuncObj>()) {
+  } else if (source.IsInstance<StrObj>() || source.IsInstance<ErrorObj>() || source.IsInstance<FuncObj>() ||
+             source.IsInstance<TensorObj>()) {
+    // TODO: do we want to shallow copy these types at all?
     return source;
   }
   struct Copier {
@@ -985,6 +987,62 @@ inline Any CopyShallowImpl(AnyView source) {
   Any ret;
   ::mlc::base::FuncCall(init_func, static_cast<int32_t>(fields.size()), fields.data(), &ret);
   return ret;
+}
+
+inline void CopyReplaceImpl(int32_t num_args, const AnyView *args, Any *ret) {
+  if (num_args <= 0) {
+    MLC_THROW(InternalError) << "InternalError: `CopyReplace` requires at least one argument";
+  }
+  AnyView source = args[0];
+  int32_t type_index = source.type_index;
+  if (::mlc::base::IsTypeIndexPOD(type_index)) {
+    MLC_THROW(TypeError) << "TypeError: `__replace__` doesn't work on a POD type: " << source;
+  } else if (source.IsInstance<StrObj>() || source.IsInstance<ErrorObj>() || source.IsInstance<FuncObj>() ||
+             source.IsInstance<UListObj>() || source.IsInstance<UDictObj>() || source.IsInstance<TensorObj>()) {
+    MLC_THROW(TypeError) << "TypeError: `__replace__` doesn't work on type: " << source.GetTypeKey();
+  }
+  struct Copier {
+    MLC_INLINE void operator()(MLCTypeField *f, const Any *any) { AddField(f->name, AnyView(*any)); }
+    MLC_INLINE void operator()(MLCTypeField *f, ObjectRef *obj) { AddField(f->name, AnyView(*obj)); }
+    MLC_INLINE void operator()(MLCTypeField *f, Optional<ObjectRef> *opt) { AddField(f->name, AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *f, Optional<bool> *opt) { AddField(f->name, AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *f, Optional<int64_t> *opt) { AddField(f->name, AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *f, Optional<double> *opt) { AddField(f->name, AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *f, Optional<DLDevice> *opt) { AddField(f->name, AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *f, Optional<DLDataType> *opt) { AddField(f->name, AnyView(*opt)); }
+    MLC_INLINE void operator()(MLCTypeField *f, bool *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, int8_t *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, int16_t *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, int32_t *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, int64_t *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, float *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, double *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, DLDataType *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, DLDevice *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, Optional<void *> *v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, void **v) { AddField(f->name, AnyView(*v)); }
+    MLC_INLINE void operator()(MLCTypeField *f, const char **v) { AddField(f->name, AnyView(*v)); }
+
+    void AddField(std::string_view name, AnyView v) {
+      if (auto it = replacements->find(name); it != replacements->end()) {
+        fields->push_back(it->second);
+      } else {
+        fields->push_back(v);
+      }
+    }
+    std::vector<AnyView> *fields;
+    std::unordered_map<std::string_view, AnyView> *replacements;
+  };
+  std::unordered_map<std::string_view, AnyView> replacements;
+  for (int32_t i = 1; i < num_args; i += 2) {
+    const char *name = args[i];
+    replacements[name] = args[i + 1];
+  }
+  FuncObj *init_func = Lib::_init(type_index);
+  MLCTypeInfo *type_info = Lib::GetTypeInfo(type_index);
+  std::vector<AnyView> fields;
+  VisitFields(source.operator Object *(), type_info, Copier{&fields, &replacements});
+  ::mlc::base::FuncCall(init_func, static_cast<int32_t>(fields.size()), fields.data(), ret);
 }
 
 inline Any CopyDeepImpl(AnyView source) {
@@ -1508,6 +1566,7 @@ int64_t StructuralHash(AnyView root) {
 
 Any CopyShallow(AnyView source) { return CopyShallowImpl(source); }
 Any CopyDeep(AnyView source) { return CopyDeepImpl(source); }
+void CopyReplace(int32_t num_args, const AnyView *args, Any *ret) { CopyReplaceImpl(num_args, args, ret); }
 
 Any JSONLoads(AnyView json_str) {
   if (json_str.type_index == kMLCRawStr) {

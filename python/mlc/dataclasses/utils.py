@@ -445,3 +445,7 @@ def prototype(
     else:
         raise ValueError(f"Invalid `lang`: {lang}")
     return "\n\n".join(fn(i) for i in type_info_list)
+
+
+def replace(obj: Any, /, **changes: Any) -> Any:
+    return obj.__replace__(**changes)
