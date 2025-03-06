@@ -1,4 +1,3 @@
-#include "mlc/core/list.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
