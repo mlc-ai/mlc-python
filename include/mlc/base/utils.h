@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <mlc/backtrace/c_api.h>
 #include <sstream>
 #include <type_traits>
 #if MLC_DEBUG_MODE == 1

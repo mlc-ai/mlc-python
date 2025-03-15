@@ -1,0 +1,47 @@
+if(APPLE)
+    find_program(DSYMUTIL_PROGRAM dsymutil)
+    mark_as_advanced(DSYMUTIL_PROGRAM)
+endif()
+
+function(add_cxx_warning target_name)
+    # GNU, Clang, or AppleClang
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+        target_compile_options(${target_name} PRIVATE "-Werror" "-Wall" "-Wextra" "-Wpedantic")
+        return()
+    endif()
+    # MSVC
+    if(MSVC)
+        target_compile_options(${target_name} PRIVATE "/W4" "/WX")
+        return()
+    endif()
+    message(FATAL_ERROR "Unsupported compiler: ${CMAKE_CXX_COMPILER_ID}")
+endfunction()
+
+function(add_debug_symbol_apple _target _directory)
+    if(APPLE)
+        add_custom_command(TARGET ${_target} POST_BUILD
+            COMMAND ${DSYMUTIL_PROGRAM} ARGS $<TARGET_FILE:${_target}>
+            COMMENT "Running dsymutil" VERBATIM
+        )
+        install(FILES $<TARGET_FILE:${_target}>.dSYM DESTINATION ${_directory})
+    endif(APPLE)
+endfunction()
+
+function(add_sanitizer_address target_name)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+        include(CheckCXXCompilerFlag)
+        set(_saved_CRF ${CMAKE_REQUIRED_FLAGS})
+        set(CMAKE_REQUIRED_FLAGS "-fsanitize=address")
+        check_cxx_source_compiles("int main() { return 0; }" COMPILER_SUPPORTS_ASAN)
+        set(CMAKE_REQUIRED_FLAGS ${_saved_CRF})
+        get_target_property(_saved_type ${target_name} TYPE)
+        if(${_saved_type} STREQUAL "INTERFACE_LIBRARY")
+            set(_saved_type INTERFACE)
+        else()
+            set(_saved_type PRIVATE)
+        endif()
+        target_link_options(${target_name} ${_saved_type} "-fsanitize=address")
+        target_compile_options(${target_name} ${_saved_type} "-fsanitize=address" "-fno-omit-frame-pointer" "-g")
+        return()
+    endif()
+endfunction()
