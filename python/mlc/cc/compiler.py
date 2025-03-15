@@ -139,7 +139,7 @@ def _windows_compile(
         str(mlc_config.probe_compiler()[0]),
         *options,
         f"/Fe:{temp_output!s}",
-        str(mlc_config.libdir() / "mlc_registry.lib"),
+        str(mlc_config.libdir() / "mlc.lib"),
     ]
     cmd.extend(f"/I{path!s}" for path in mlc_config.includedir())
     cmd.extend(str(source) for source in sources)
