@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/GitVersion.cmake)
-include(TestBigEndian)
 
 message(STATUS "Found MLC_VERSION_GIT: ${MLC_VERSION_GIT}")
 
@@ -22,36 +21,31 @@ option(MLC_BUILD_REGISTRY
   OFF
 )
 
-TEST_BIG_ENDIAN(MLC_IS_BIG_ENDIAN)
-message(STATUS "Found MLC_IS_BIG_ENDIAN: ${MLC_IS_BIG_ENDIAN}")
-
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/CxxWarning.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/Sanitizer.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/Library.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/AddLibbacktrace.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/DebugSymbol.cmake)
+include(TestBigEndian)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/CPM.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/CxxUtils.cmake)
+CPMAddPackage("gh:mlc-ai/mlc-backtrace@0.1.2")
+CPMAddPackage("gh:TheLartians/PackageProject.cmake@1.13.0")
 
 ########## Target: `dlpack_header` ##########
 
 add_library(dlpack_header INTERFACE)
 target_include_directories(dlpack_header INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include")
 
-########## Target: `mlc` ##########
+########## Target: `mlc_header` ##########
 
-add_library(mlc INTERFACE)
-target_link_libraries(mlc INTERFACE dlpack_header)
-target_compile_features(mlc INTERFACE cxx_std_17)
-target_include_directories(mlc INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+add_library(mlc_header INTERFACE)
+target_link_libraries(mlc_header INTERFACE dlpack_header)
+target_compile_features(mlc_header INTERFACE cxx_std_17)
+target_include_directories(mlc_header INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 ########## Target: `mlc_registry` ##########
 
-if (MLC_BUILD_REGISTRY)
+if(MLC_BUILD_REGISTRY)
   add_library(mlc_registry_objs OBJECT
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/c_api.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/printer.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/cpp/structure.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cpp/traceback.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cpp/traceback_win.cc"
   )
   set_target_properties(
     mlc_registry_objs PROPERTIES
@@ -65,6 +59,8 @@ if (MLC_BUILD_REGISTRY)
   )
 
   string(TIMESTAMP MLC_BUILD_TIME "%Y-%m-%dT%H:%M:%S")
+  TEST_BIG_ENDIAN(MLC_IS_BIG_ENDIAN)
+  message(STATUS "Found MLC_IS_BIG_ENDIAN: ${MLC_IS_BIG_ENDIAN}")
   set_property(
     SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/cpp/c_api.cc"
     APPEND
@@ -88,20 +84,42 @@ if (MLC_BUILD_REGISTRY)
   add_cxx_warning(mlc_registry_objs)
   target_link_libraries(mlc_registry_objs PRIVATE dlpack_header)
   target_include_directories(mlc_registry_objs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-  add_target_from_obj(mlc_registry mlc_registry_objs)
-  if (TARGET libbacktrace)
-    target_link_libraries(mlc_registry_objs PRIVATE libbacktrace)
-    target_link_libraries(mlc_registry_shared PRIVATE libbacktrace)
-    target_link_libraries(mlc_registry_static PRIVATE libbacktrace)
-    add_debug_symbol_apple(mlc_registry_shared "lib/")
-  endif ()
+  add_library(mlc_registry_static STATIC $<TARGET_OBJECTS:mlc_registry_objs>)
+  target_compile_definitions(mlc_registry_objs PRIVATE MLC_EXPORTS)
+  set_target_properties(
+    mlc_registry_static PROPERTIES
+    OUTPUT_NAME "mlc_registry_static"
+    PREFIX "lib"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+  )
+  add_library(mlc_registry_shared SHARED $<TARGET_OBJECTS:mlc_registry_objs>)
+  set_target_properties(
+    mlc_registry_shared PROPERTIES
+    OUTPUT_NAME "mlc_registry"
+    PREFIX "lib"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+  )
+  add_custom_target(mlc_registry)
+  add_dependencies(mlc_registry mlc_registry_static mlc_registry_shared)
+  if(MSVC)
+    set_target_properties(
+      mlc_registry_objs mlc_registry_shared mlc_registry_static
+      PROPERTIES
+      MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+    )
+  endif()
+  target_link_libraries(mlc_registry_objs PUBLIC mlc::mlc_backtrace-static)
+  target_link_libraries(mlc_registry_shared PUBLIC mlc::mlc_backtrace-static)
+  target_link_libraries(mlc_registry_static PUBLIC mlc::mlc_backtrace-static)
   install(TARGETS mlc_registry_static DESTINATION "lib/")
   install(TARGETS mlc_registry_shared DESTINATION "lib/")
-endif (MLC_BUILD_REGISTRY)
+endif(MLC_BUILD_REGISTRY)
 
 ########## Target: `mlc_py`  ##########
 
-if (MLC_BUILD_PY)
+if(MLC_BUILD_PY)
   find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
   file(GLOB _cython_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/python/mlc/_cython/*.pyx")
   set(_cython_outputs "")
@@ -119,17 +137,17 @@ if (MLC_BUILD_PY)
   endforeach()
   Python_add_library(mlc_py MODULE ${_cython_outputs} WITH_SOABI)
   set_target_properties(mlc_py PROPERTIES OUTPUT_NAME "core")
-  target_link_libraries(mlc_py PUBLIC mlc)
+  target_link_libraries(mlc_py PUBLIC mlc_header)
   install(TARGETS mlc_py DESTINATION _cython/)
-endif (MLC_BUILD_PY)
+endif(MLC_BUILD_PY)
 
 ########## Adding tests ##########
 
-if (${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})
-  if (MLC_BUILD_TESTS)
+if(${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})
+  if(MLC_BUILD_TESTS)
     enable_testing()
     message(STATUS "Enable Testing")
     include(cmake/Utils/AddGoogleTest.cmake)
     add_subdirectory(tests/cpp/)
   endif()
-endif ()
+endif()
