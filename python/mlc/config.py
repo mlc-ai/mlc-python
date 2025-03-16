@@ -12,11 +12,14 @@ def includedir() -> tuple[Path, ...]:
     path = Path(__file__).parent
     if path.parent.name == "python":
         path = path.parent.parent
+        mlc_include = path / "include"
+        mlc_backtrace_include = path / "3rdparty" / "mlc-backtrace" / "include"
+        dlpack_include = path / "3rdparty" / "dlpack" / "include"
     else:
-        path = path.parent
-    mlc_include = path / "include"
-    dlpack_include = path / "3rdparty" / "dlpack" / "include"
-    return mlc_include.resolve(), dlpack_include.resolve()
+        mlc_include = path / "include"
+        mlc_backtrace_include = path / "include"
+        dlpack_include = path / "include"
+    return mlc_include.resolve(), mlc_backtrace_include.resolve(), dlpack_include.resolve()
 
 
 def libdir() -> Path:

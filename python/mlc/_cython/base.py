@@ -283,9 +283,15 @@ def translate_exception_from_c(err: Error) -> Exception:
 
 
 def lib_path(core_path: str) -> tuple[Path, ctypes.CDLL]:
-    path = Path(core_path).parent.parent / "lib" / f"libmlc_registry{DSO_SUFFIX}"
-    if not path.exists():
-        raise FileNotFoundError(f"Cannot find the MLC registry library at {path}")
+    base = Path(core_path).parent.parent
+    for path in [
+        # only one candidate for now
+        base / "lib" / "mlc" / f"libmlc{DSO_SUFFIX}",
+    ]:
+        if path.exists():
+            break
+    else:
+        raise FileNotFoundError(f"Cannot find the MLC library at {path}")
     lib = ctypes.CDLL(str(path), ctypes.RTLD_GLOBAL)
     return path, lib
 

@@ -4,8 +4,9 @@ from mlc._cython import SYSTEM
 
 
 def test_includedir() -> None:
-    mlc_include, dlpack_include = cfg.includedir()
+    mlc_include, mlc_backtrace_include, dlpack_include = cfg.includedir()
     assert mlc_include.exists() and (mlc_include / "mlc").exists()
+    assert mlc_backtrace_include.exists() and (mlc_backtrace_include / "mlc" / "backtrace").exists()
     assert dlpack_include.exists() and (dlpack_include / "dlpack").exists()
 
 
@@ -13,14 +14,14 @@ def test_libdir() -> None:
     libdir = cfg.libdir()
     assert libdir.exists()
     if SYSTEM == "Windows":
-        assert (libdir / "libmlc_registry.dll").exists()
-        assert (libdir / "libmlc_registry_static.lib").exists()
+        assert (libdir / "libmlc.dll").exists()
+        assert (libdir / "libmlc-static.lib").exists()
     elif SYSTEM == "Darwin":
-        assert (libdir / "libmlc_registry.dylib").exists()
-        assert (libdir / "libmlc_registry_static.a").exists()
+        assert (libdir / "libmlc.dylib").exists()
+        assert (libdir / "libmlc-static.a").exists()
     else:
-        assert (libdir / "libmlc_registry.so").exists()
-        assert (libdir / "libmlc_registry_static.a").exists()
+        assert (libdir / "libmlc.so").exists()
+        assert (libdir / "libmlc-static.a").exists()
 
 
 @pytest.mark.xfail(

@@ -115,11 +115,6 @@ typedef struct {
   MLCAny *ptr;
 } MLCObjPtr;
 
-typedef struct {
-  int64_t num_bytes;
-  const char *bytes;
-} MLCByteArray;
-
 typedef union {
   bool v_bool;            // booleans
   int64_t v_int64;        // integers
@@ -292,7 +287,6 @@ MLC_API int32_t MLCVTableGetFunc(MLCVTableHandle vtable, int32_t type_index, int
 MLC_API int32_t MLCVTableSetFunc(MLCVTableHandle vtable, int32_t type_index, MLCFunc *func, int32_t override_mode);
 MLC_API int32_t MLCErrorCreate(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret);
 MLC_API int32_t MLCErrorGetInfo(MLCAny error, int32_t *num_strs, const char ***strs);
-MLC_API MLCByteArray MLCTraceback(const char *filename, const char *lineno, const char *func_name);
 MLC_API int32_t MLCExtObjCreate(int32_t num_bytes, int32_t type_index, MLCAny *ret);
 MLC_API void MLCExtObjDelete(void *objptr);
 #ifdef __cplusplus

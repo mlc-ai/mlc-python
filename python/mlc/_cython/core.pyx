@@ -120,10 +120,6 @@ cdef extern from "mlc/c_api.h" nogil:
     ctypedef struct MLCObjPtr:
         MLCAny *ptr
 
-    ctypedef struct MLCByteArray:
-        int64_t num_bytes
-        const char *bytes
-
     ctypedef struct MLCError:
         MLCAny _mlc_header
         const char *kind
@@ -235,7 +231,6 @@ ctypedef int32_t (*_T_VTableGetFunc)(MLCVTableHandle vtable, int32_t type_index,
 ctypedef int32_t (*_T_VTableSetFunc)(MLCVTableHandle vtable, int32_t type_index, MLCFunc *func, int32_t override_mode) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_ErrorCreate)(const char *kind, int64_t num_bytes, const char *bytes, MLCAny *ret) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_ErrorGetInfo)(MLCAny err, int32_t* num_strs, const char*** strs) noexcept nogil # no-cython-lint
-ctypedef MLCByteArray (*_T_Traceback)(const char *filename, const char *lineno, const char *func_name) noexcept nogil # no-cython-lint
 ctypedef int32_t (*_T_ExtObjCreate)(int32_t bytes, int32_t type_index, MLCAny *ret) noexcept nogil # no-cython-lint
 ctypedef void (*_T_ExtObjDelete)(void *objptr) noexcept nogil # no-cython-lint
 
@@ -262,7 +257,6 @@ cdef _T_VTableGetFunc _C_VTableGetFunc = <_T_VTableGetFunc>_sym(LIB.MLCVTableGet
 cdef _T_VTableSetFunc _C_VTableSetFunc = <_T_VTableSetFunc>_sym(LIB.MLCVTableSetFunc)
 cdef _T_ErrorCreate _C_ErrorCreate = <_T_ErrorCreate>_sym(LIB.MLCErrorCreate)
 cdef _T_ErrorGetInfo _C_ErrorGetInfo = <_T_ErrorGetInfo>_sym(LIB.MLCErrorGetInfo)
-cdef _T_Traceback _C_Traceback = <_T_Traceback>_sym(LIB.MLCTraceback)
 cdef _T_ExtObjCreate _C_ExtObjCreate = <_T_ExtObjCreate>_sym(LIB.MLCExtObjCreate)
 cdef _T_ExtObjDelete _C_ExtObjDelete = <_T_ExtObjDelete>_sym(LIB.MLCExtObjDelete)
 

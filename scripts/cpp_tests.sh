@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euxo pipefail
 
-BUILD_REGISTRY=ON
 BUILD_TYPE=RelWithDebInfo
 BUILD_DIR=build-cpp-tests/
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -11,7 +10,6 @@ else
 fi
 
 cmake -S . -B ${BUILD_DIR} \
-	-DMLC_BUILD_REGISTRY=${BUILD_REGISTRY} \
 	-DMLC_BUILD_TESTS=ON \
 	-DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
 	-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
