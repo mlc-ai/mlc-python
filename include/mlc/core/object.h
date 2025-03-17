@@ -76,13 +76,17 @@ struct Object {
 /******************* Section 2. Object Ref *******************/
 
 namespace mlc {
-#define MLC_DEF_OBJ_REF(IS_EXPORT, SelfType, ObjType, ParentType)                                                      \
-public:                                                                                                                \
-  [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kObjRef;                 \
-  using TSelf = SelfType;                                                                                              \
-  using TObj = ObjType;                                                                                                \
-  using TObjRef = SelfType;                                                                                            \
-                                                                                                                       \
+
+#define MLC_DEF_OBJ_REF_COW_()                                                                                         \
+  inline TObj *CopyOnWrite() {                                                                                         \
+    ::mlc::base::PtrBase *obj_ref = this;                                                                              \
+    if (::mlc::base::RefCount(obj_ref->ptr) > 1) {                                                                     \
+      Ref<TObj>::New(*reinterpret_cast<TObj *>(obj_ref->ptr)).Swap(*obj_ref);                                          \
+    }                                                                                                                  \
+    return reinterpret_cast<TObj *>(obj_ref->ptr);                                                                     \
+  }
+
+#define MLC_DEF_OBJ_REF_(IS_EXPORT, SelfType, ObjType, ParentType)                                                     \
 private:                                                                                                               \
   using TBase = ::mlc::base::PtrBase;                                                                                  \
   template <typename U> using DObj = std::enable_if_t<::mlc::base::IsDerivedFrom<U, TObj>>;                            \
@@ -103,10 +107,6 @@ public:                                                                         
   MLC_INLINE TSelf &operator=(TSelf &&other) { TSelf(std::move(other)).Swap(*this); return *this; }         \
   MLC_INLINE TSelf &Reset() { TBase::Reset(); return *this; }          \
   /* clang-format on */                                                                                                \
-  /***** Section 2. The `new` operator *****/                                                                          \
-  template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<TObj, Args...>>>                     \
-  MLC_INLINE explicit SelfType(Args &&...args)                                                                         \
-      : SelfType(::mlc::base::AllocatorOf<TObj>::New(std::forward<Args>(args)...)) {}                                  \
   /***** Section 3. From derived pointers *****/                                                                       \
   /* clang-format off */                                                                                                                                                                                                          \
   template <typename U, typename = DObj<U>> MLC_INLINE explicit SelfType(const U *src) : ParentType(::mlc::Null) { this->_Set(reinterpret_cast<const MLCAny *>(src)); TBase::IncRef(); TBase::CheckNull<TSelf>(); }               \
@@ -155,10 +155,44 @@ public:                                                                         
   MLC_INLINE bool has_value() const { return TBase::ptr != nullptr; }                                                  \
   MLC_INLINE bool operator==(std::nullptr_t) const { return TBase::ptr == nullptr; }                                   \
   MLC_INLINE bool operator!=(std::nullptr_t) const { return TBase::ptr != nullptr; }                                   \
+  MLC_INLINE bool same_as(const ObjectRef &other) const {                                                              \
+    return static_cast<const void *>(this->get()) == static_cast<const void *>(other.get());                           \
+  }                                                                                                                    \
   /***** Section 6. Runtime-type information *****/                                                                    \
   MLC_DEF_RTTI_METHODS(true, TBase::ptr, TBase::ptr)                                                                   \
   static inline const int32_t _type_reflect =                                                                          \
       ::mlc::core::Reflect<IS_EXPORT>(static_cast<int32_t>(TObj::_type_index)).Init<TObj>()
+
+#define MLC_DEF_OBJ_REF(IS_EXPORT, SelfType, ObjType, ParentType)                                                      \
+private:                                                                                                               \
+  template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<ObjType, Args...>>>                  \
+  MLC_INLINE static ObjType *New(Args &&...args) {                                                                     \
+    return ::mlc::base::AllocatorOf<ObjType>::New(std::forward<Args>(args)...);                                        \
+  }                                                                                                                    \
+                                                                                                                       \
+public:                                                                                                                \
+  [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kObjRef;                 \
+  using TSelf = SelfType;                                                                                              \
+  using TObj = ObjType;                                                                                                \
+  using TObjRef = SelfType;                                                                                            \
+  /***** The forward `new` operator *****/                                                                             \
+  template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<TObj, Args...>>>                     \
+  MLC_INLINE explicit SelfType(Args &&...args) : SelfType(TSelf::New(std::forward<Args>(args)...)) {}                  \
+  MLC_DEF_OBJ_REF_(IS_EXPORT, SelfType, ObjType, ParentType)
+
+#define MLC_DEF_OBJ_REF_NO_FWD_NEW(IS_EXPORT, SelfType, ObjType, ParentType)                                           \
+private:                                                                                                               \
+  template <typename... Args, typename = std::enable_if_t<std::is_constructible_v<ObjType, Args...>>>                  \
+  MLC_INLINE static ObjType *New(Args &&...args) {                                                                     \
+    return ::mlc::base::AllocatorOf<ObjType>::New(std::forward<Args>(args)...);                                        \
+  }                                                                                                                    \
+                                                                                                                       \
+public:                                                                                                                \
+  [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kObjRef;                 \
+  using TSelf = SelfType;                                                                                              \
+  using TObj = ObjType;                                                                                                \
+  using TObjRef = SelfType;                                                                                            \
+  MLC_DEF_OBJ_REF_(IS_EXPORT, SelfType, ObjType, ParentType)
 
 struct ObjectRef : protected ::mlc::core::ObjectRefDummyRoot {
   MLC_DEF_OBJ_REF(MLC_EXPORTS, ObjectRef, Object, ::mlc::core::ObjectRefDummyRoot)
