@@ -17,7 +17,7 @@ option(MLC_BUILD_PY "Build Python bindings." OFF)
 include(TestBigEndian)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/CPM.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/CxxUtils.cmake)
-CPMAddPackage("gh:mlc-ai/mlc-backtrace@0.1.4")
+CPMAddPackage("gh:mlc-ai/mlc-backtrace@0.1.5")
 CPMAddPackage("gh:potatomashed/PackageProject.cmake@1.13.1")
 
 ########## Target: `dlpack_header` ##########
