@@ -30,6 +30,8 @@ struct Lib {
   static FuncObj *FuncGetGlobal(const char *name, bool allow_missing = false);
   static ::mlc::Str CxxStr(AnyView obj);
   static ::mlc::Str Str(AnyView obj);
+  static int64_t StructuralHash(AnyView obj);
+  static bool StructuralEqual(AnyView a, AnyView b);
   static Any IRPrint(AnyView obj, AnyView printer, AnyView path);
   static const char *DeviceTypeToStr(int32_t device_type);
   static int32_t DeviceTypeFromStr(const char *source);
