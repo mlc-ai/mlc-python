@@ -140,6 +140,18 @@ inline ::mlc::Str Lib::Str(AnyView obj) {
   ::mlc::base::FuncCall(func, 1, &obj, &ret);
   return ret;
 }
+inline int64_t Lib::StructuralHash(AnyView obj) {
+  static FuncObj *func_hash_s = ::mlc::Lib::FuncGetGlobal("mlc.core.StructuralHash");
+  Any ret;
+  ::mlc::base::FuncCall(func_hash_s, 1, &obj, &ret);
+  return ret;
+}
+inline bool Lib::StructuralEqual(AnyView a, AnyView b) {
+  static FuncObj *func_eq_s = ::mlc::Lib::FuncGetGlobal("mlc.core.StructuralEqual");
+  Any ret;
+  ::mlc::base::FuncCall(func_eq_s, 2, std::array<AnyView, 2>{a, b}.data(), &ret);
+  return ret;
+}
 inline Any Lib::IRPrint(AnyView obj, AnyView printer, AnyView path) {
   FuncObj *func = Lib::VTableGetFunc(ir_print, obj.GetTypeIndex(), "__ir_print__");
   Any ret;
@@ -206,7 +218,11 @@ template <typename R, typename... Args> inline R VTable::operator()(Args... args
   Any ret;
   stack_args.Fill(std::forward<Args>(args)...);
   MLC_CHECK_ERR(::MLCVTableCall(self, N, stack_args.v, &ret));
-  return ret;
+  if constexpr (std::is_same_v<R, void>) {
+    return;
+  } else {
+    return ret;
+  }
 }
 template <typename Obj> inline VTable &VTable::Set(Func func) {
   constexpr bool override_mode = false;

@@ -186,6 +186,18 @@ struct Exception : public std::exception {
   void FormatExc(std::ostream &os) const;
   Ref<Object> data_;
 };
+struct ObjRefHash {
+  std::size_t operator()(const ObjectRef &obj) const { return std::hash<const void *>{}(obj.get()); }
+};
+struct ObjRefEqual {
+  bool operator()(const ObjectRef &a, const ObjectRef &b) const { return a.get() == b.get(); }
+};
+struct StructuralHash {
+  std::size_t operator()(const ObjectRef &obj) const { return ::mlc::Lib::StructuralHash(obj); }
+};
+struct StructuralEqual {
+  bool operator()(const ObjectRef &a, const ObjectRef &b) const { return ::mlc::Lib::StructuralEqual(a, b); }
+};
 } // namespace mlc
 
 #endif // MLC_CORE_OBJECT_H_
