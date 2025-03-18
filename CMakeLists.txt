@@ -20,11 +20,6 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utils/CxxUtils.cmake)
 CPMAddPackage("gh:mlc-ai/mlc-backtrace@0.1.5")
 CPMAddPackage("gh:potatomashed/PackageProject.cmake@1.13.1")
 
-########## Target: `dlpack_header` ##########
-
-add_library(dlpack_header INTERFACE)
-target_include_directories(dlpack_header INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include")
-
 ########## Target: `mlc` ##########
 
 string(TIMESTAMP MLC_BUILD_TIME "%Y-%m-%dT%H:%M:%S")
@@ -69,8 +64,8 @@ set_target_properties(
 )
 add_cxx_warning(mlc_objs)
 target_include_directories(mlc_objs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(mlc_objs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include")
 target_link_libraries(mlc_objs PUBLIC mlc::mlc_backtrace-static)
-target_link_libraries(mlc_objs PUBLIC dlpack_header)
 target_compile_definitions(mlc_objs PRIVATE MLC_EXPORTS)
 
 # target: `mlc-static`
@@ -95,7 +90,7 @@ packageProject(
   BINARY_DIR ${PROJECT_BINARY_DIR}
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include
   INCLUDE_DESTINATION include
-  DEPENDENCIES "mlc-backtrace 0.1.4"
+  DEPENDENCIES "mlc-backtrace 0.1.5"
   NAMESPACE mlc
   RUNTIME_DESTINATION "mlc"
   INSTALL_LIBDIR lib
@@ -125,7 +120,7 @@ packageProject(
   BINARY_DIR ${PROJECT_BINARY_DIR}
   INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include
   INCLUDE_DESTINATION include
-  DEPENDENCIES "mlc-backtrace 0.1.4"
+  DEPENDENCIES "mlc-backtrace 0.1.5"
   NAMESPACE mlc
   RUNTIME_DESTINATION "mlc"
   INSTALL_LIBDIR lib
@@ -158,7 +153,7 @@ if(MLC_BUILD_PY)
   Python_add_library(mlc_py MODULE ${_cython_outputs} WITH_SOABI)
   set_target_properties(mlc_py PROPERTIES OUTPUT_NAME "core")
   target_include_directories(mlc_py PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-  target_link_libraries(mlc_py PRIVATE dlpack_header)
+  target_include_directories(mlc_py PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include")
   install(TARGETS mlc_py DESTINATION _cython/)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/mlc/ DESTINATION include/mlc/)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include/dlpack/ DESTINATION include/dlpack/)

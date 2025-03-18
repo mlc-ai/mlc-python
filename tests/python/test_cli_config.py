@@ -4,10 +4,11 @@ from mlc._cython import SYSTEM
 
 
 def test_includedir() -> None:
-    mlc_include, mlc_backtrace_include, dlpack_include = cfg.includedir()
-    assert mlc_include.exists() and (mlc_include / "mlc").exists()
-    assert mlc_backtrace_include.exists() and (mlc_backtrace_include / "mlc" / "backtrace").exists()
-    assert dlpack_include.exists() and (dlpack_include / "dlpack").exists()
+    (include_dir,) = cfg.includedir()
+    assert include_dir.exists()
+    assert (include_dir / "mlc").exists()
+    assert (include_dir / "dlpack").exists()
+    assert (include_dir / "mlc" / "backtrace").exists()
 
 
 def test_libdir() -> None:
