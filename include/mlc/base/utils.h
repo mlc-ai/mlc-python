@@ -222,6 +222,18 @@ MLC_INLINE void DecRef(MLCAny *obj) {
   }
 }
 
+MLC_INLINE int32_t RefCount(MLCAny *obj) {
+  if (obj == nullptr) {
+    return 0;
+  }
+#ifdef _MSC_VER
+  return static_cast<int32_t>(_InterlockedCompareExchange(reinterpret_cast<volatile long *>(&obj->ref_cnt), 0, 0));
+#else
+  // acquire semantics to ensure visibility of the object
+  return static_cast<int32_t>(__atomic_load_n(&obj->ref_cnt, __ATOMIC_ACQUIRE));
+#endif
+}
+
 MLC_INLINE int32_t CountLeadingZeros(uint64_t x) {
 #if __cplusplus >= 202002L
   return std::countl_zero(x);

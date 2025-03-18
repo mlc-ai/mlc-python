@@ -107,6 +107,7 @@ public:
   using TObj = _TObj;
   using TSelf = Ref<TObj>;
   [[maybe_unused]] static constexpr ::mlc::base::TypeKind _type_kind = ::mlc::base::TypeKind::kRef;
+  using ::mlc::base::PtrBase::Swap;
 
 private:
   using TBase = ::mlc::base::PtrBase;
