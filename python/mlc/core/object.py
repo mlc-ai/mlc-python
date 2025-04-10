@@ -29,6 +29,14 @@ class Object(PyAny):
     ) -> bool:
         return PyAny._mlc_eq_s(self, other, bind_free_vars, assert_mode)  # type: ignore[attr-defined]
 
+    def eq_s_fail_reason(
+        self,
+        other: Object,
+        *,
+        bind_free_vars: bool = True,
+    ) -> tuple[bool, str]:
+        return PyAny._mlc_eq_s_fail_reason(self, other, bind_free_vars)
+
     def hash_s(self) -> int:
         return PyAny._mlc_hash_s(self)  # type: ignore[attr-defined]
 

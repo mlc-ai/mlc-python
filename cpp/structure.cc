@@ -1559,6 +1559,18 @@ bool StructuralEqual(AnyView lhs, AnyView rhs, bool bind_free_vars, bool assert_
   return false;
 }
 
+Optional<Str> StructuralEqualFailReason(AnyView lhs, AnyView rhs, bool bind_free_vars) {
+  try {
+    // TODO: support non objects
+    ::mlc::StructuralEqualImpl(lhs.operator Object *(), rhs.operator Object *(), bind_free_vars);
+  } catch (SEqualError &e) {
+    std::ostringstream os;
+    os << "Structural equality check failed at " << e.path << ": " << e.what();
+    return Str(os.str());
+  }
+  return Null;
+}
+
 int64_t StructuralHash(AnyView root) {
   // TODO: support non objects
   return static_cast<int64_t>(::mlc::StructuralHashImpl(root.operator Object *()));
