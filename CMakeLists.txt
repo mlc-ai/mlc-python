@@ -114,6 +114,7 @@ target_include_directories(mlc-shared PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(mlc-shared PUBLIC mlc::mlc_backtrace-static)
+add_debug_symbol_apple(mlc-shared "lib/mlc/")
 packageProject(
   NAME mlc-shared
   VERSION ${PROJECT_VERSION}
