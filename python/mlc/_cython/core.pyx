@@ -369,6 +369,10 @@ cdef class PyAny:
         return bool(func_call(_STRUCUTRAL_EQUAL, (lhs, rhs, bind_free_vars, assert_mode)))
 
     @staticmethod
+    def _mlc_eq_s_fail_reason(PyAny lhs, PyAny rhs, bint bind_free_vars):
+        return func_call(_STRUCUTRAL_EQUAL_FAIL_REASON, (lhs, rhs, bind_free_vars))
+
+    @staticmethod
     def _mlc_hash_s(PyAny x) -> object:
         cdef object ret = func_call(_STRUCUTRAL_HASH, (x,))
         if ret < 0:
@@ -1675,6 +1679,7 @@ cdef PyAny _SERIALIZE = func_get_untyped("mlc.core.JSONSerialize")  # Any -> str
 cdef PyAny _DESERIALIZE = func_get_untyped("mlc.core.JSONDeserialize")  # str -> Any
 cdef PyAny _STRUCUTRAL_EQUAL = func_get_untyped("mlc.core.StructuralEqual")
 cdef PyAny _STRUCUTRAL_HASH = func_get_untyped("mlc.core.StructuralHash")
+cdef PyAny _STRUCUTRAL_EQUAL_FAIL_REASON = func_get_untyped("mlc.core.StructuralEqualFailReason")
 cdef PyAny _COPY_SHALLOW = func_get_untyped("mlc.core.CopyShallow")
 cdef PyAny _COPY_DEEP = func_get_untyped("mlc.core.CopyDeep")
 cdef PyAny _COPY_REPLACE = func_get_untyped("mlc.core.CopyReplace")

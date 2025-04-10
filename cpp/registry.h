@@ -23,6 +23,7 @@ Any JSONDeserialize(AnyView json_str);
 Str JSONSerialize(AnyView source);
 bool StructuralEqual(AnyView lhs, AnyView rhs, bool bind_free_vars, bool assert_mode);
 int64_t StructuralHash(AnyView root);
+Optional<Str> StructuralEqualFailReason(AnyView lhs, AnyView rhs, bool bind_free_vars);
 Any CopyShallow(AnyView root);
 Any CopyDeep(AnyView root);
 void CopyReplace(int32_t num_args, const AnyView *args, Any *ret);
@@ -649,6 +650,7 @@ inline TypeTable *TypeTable::New() {
   self->SetFunc("mlc.core.JSONDeserialize", Func(::mlc::registry::JSONDeserialize).get());
   self->SetFunc("mlc.core.StructuralEqual", Func(::mlc::registry::StructuralEqual).get());
   self->SetFunc("mlc.core.StructuralHash", Func(::mlc::registry::StructuralHash).get());
+  self->SetFunc("mlc.core.StructuralEqualFailReason", Func(::mlc::registry::StructuralEqualFailReason).get());
   self->SetFunc("mlc.core.CopyShallow", Func(::mlc::registry::CopyShallow).get());
   self->SetFunc("mlc.core.CopyDeep", Func(::mlc::registry::CopyDeep).get());
   self->SetFunc("mlc.core.CopyReplace", Func(::mlc::registry::CopyReplace).get());

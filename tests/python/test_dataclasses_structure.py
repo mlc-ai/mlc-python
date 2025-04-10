@@ -80,6 +80,7 @@ def test_free_var_1() -> None:
     with pytest.raises(ValueError) as e:
         lhs.eq_s(rhs, bind_free_vars=False, assert_mode=True)
     assert str(e.value) == "Structural equality check failed at {root}: Unbound variable"
+    assert str(e.value) == lhs.eq_s_fail_reason(rhs, bind_free_vars=False)
 
 
 def test_free_var_2() -> None:
@@ -91,6 +92,7 @@ def test_free_var_2() -> None:
     with pytest.raises(ValueError) as e:
         lhs.eq_s(rhs, bind_free_vars=False, assert_mode=True)
     assert str(e.value) == "Structural equality check failed at {root}.a: Unbound variable"
+    assert str(e.value) == lhs.eq_s_fail_reason(rhs, bind_free_vars=False)
 
 
 def test_cyclic() -> None:
@@ -115,6 +117,7 @@ def test_tensor_type() -> None:
     with pytest.raises(ValueError) as e:
         t1.eq_s(t3, bind_free_vars=False, assert_mode=True)
     assert str(e.value) == "Structural equality check failed at {root}.dtype: float32 vs int32"
+    assert str(e.value) == t1.eq_s_fail_reason(t3, bind_free_vars=False)
     assert t1.hash_s() != t3.hash_s()
     # t1 != t4, shape mismatch
     with pytest.raises(ValueError) as e:
@@ -123,6 +126,7 @@ def test_tensor_type() -> None:
         str(e.value)
         == "Structural equality check failed at {root}.shape: List length mismatch: 3 vs 2"
     )
+    assert str(e.value) == t1.eq_s_fail_reason(t4, bind_free_vars=False)
     assert t1.hash_s() != t4.hash_s()
 
 
@@ -134,6 +138,7 @@ def test_constant() -> None:
     with pytest.raises(ValueError) as e:
         c1.eq_s(c3, bind_free_vars=False, assert_mode=True)
     assert str(e.value) == "Structural equality check failed at {root}.value: 1 vs 2"
+    assert str(e.value) == c1.eq_s_fail_reason(c3, bind_free_vars=False)
     assert c1.hash_s() == c2.hash_s()
     assert c1.hash_s() != c3.hash_s()
 
@@ -156,6 +161,7 @@ def test_let_1() -> None:
     with pytest.raises(ValueError) as e:
         lhs.eq_s(rhs, bind_free_vars=False, assert_mode=True)
     assert str(e.value) == "Structural equality check failed at {root}.rhs.a: Unbound variable"
+    assert str(e.value) == lhs.eq_s_fail_reason(rhs, bind_free_vars=False)
     assert lhs.hash_s() == rhs.hash_s()
 
 
@@ -174,6 +180,7 @@ def test_let_2() -> None:
     with pytest.raises(ValueError) as e:
         l1.eq_s(l3, bind_free_vars=True, assert_mode=True)
     assert str(e.value) == "Structural equality check failed at {root}.rhs.value: 1 vs 2"
+    assert str(e.value) == l1.eq_s_fail_reason(l3, bind_free_vars=True)
     assert l1.hash_s() == l2.hash_s()
     assert l1.hash_s() != l3.hash_s()
 
@@ -220,6 +227,7 @@ def test_non_scoped_compute_2() -> None:
         str(e.value) == "Structural equality check failed at {root}.b: Inconsistent binding. "
         "LHS has been bound to a different node while RHS is not bound"
     )
+    assert str(e.value) == lhs.eq_s_fail_reason(rhs, bind_free_vars=True)
     assert lhs.hash_s() != rhs.hash_s()
 
 
@@ -276,6 +284,7 @@ def test_func_2() -> None:
         str(e.value)
         == "Structural equality check failed at {root}.args: List length mismatch: 4 vs 3"
     )
+    assert str(e.value) == l1.eq_s_fail_reason(l3, bind_free_vars=False)
     assert l1.hash_s() == l2.hash_s()
     assert l1.hash_s() != l3.hash_s()
 
@@ -320,6 +329,7 @@ def test_func_stmts() -> None:
         == "Structural equality check failed at {root}.stmts[0].rhs.b: Inconsistent binding. "
         "LHS has been bound to a different node while RHS is not bound"
     )
+    assert str(e.value) == func_f.eq_s_fail_reason(func_g, bind_free_vars=False)
     assert func_f.hash_s() != func_g.hash_s()
 
 
@@ -332,6 +342,7 @@ def test_global_var() -> None:
     with pytest.raises(ValueError) as e:
         lhs.eq_s(rhs, bind_free_vars=True, assert_mode=True)
     assert str(e.value) == "Structural equality check failed at {root}.a.a.is_global: False vs True"
+    assert str(e.value) == lhs.eq_s_fail_reason(rhs, bind_free_vars=True)
     assert lhs.hash_s() != rhs.hash_s()
 
     lhs = x + y + z
