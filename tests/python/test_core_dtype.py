@@ -117,3 +117,9 @@ def test_dtype_register() -> None:
     dtype = DataType("float8_custom")
     assert dtype.code == code and dtype.bits == 8 and dtype.lanes == 1
     assert str(dtype) == "float8_custom"
+
+
+def test_dtype_init_from_triple() -> None:
+    i32 = DataType("int32")
+    i32x2 = DataType.from_triple(i32.code, i32.bits, lanes=2)
+    assert i32x2 == "int32x2"

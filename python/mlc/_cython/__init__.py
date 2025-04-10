@@ -28,6 +28,7 @@ from .base import (
 from .core import (  # type: ignore[import-not-found]
     device_as_pair,
     dtype_as_triple,
+    dtype_from_triple,
     error_get_info,
     error_pycode_fake,
     func_call,
