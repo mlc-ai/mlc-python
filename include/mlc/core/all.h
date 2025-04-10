@@ -146,10 +146,10 @@ inline int64_t Lib::StructuralHash(AnyView obj) {
   ::mlc::base::FuncCall(func_hash_s, 1, &obj, &ret);
   return ret;
 }
-inline bool Lib::StructuralEqual(AnyView a, AnyView b) {
+inline bool Lib::StructuralEqual(AnyView a, AnyView b, bool bind_free_vars, bool assert_mode) {
   static FuncObj *func_eq_s = ::mlc::Lib::FuncGetGlobal("mlc.core.StructuralEqual");
   Any ret;
-  ::mlc::base::FuncCall(func_eq_s, 2, std::array<AnyView, 2>{a, b}.data(), &ret);
+  ::mlc::base::FuncCall(func_eq_s, 4, std::array<AnyView, 4>{a, b, bind_free_vars, assert_mode}.data(), &ret);
   return ret;
 }
 inline Any Lib::IRPrint(AnyView obj, AnyView printer, AnyView path) {

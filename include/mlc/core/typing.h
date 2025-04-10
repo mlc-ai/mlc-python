@@ -253,10 +253,6 @@ struct Dict : public Type {
 
 } // namespace typing
 
-template <typename T> struct FakeObjectRef : public ObjectRef {
-  using TObj = T;
-};
-
 template <typename T> struct TypeAnnParser {
   static typing::Type Run() {
     using namespace mlc::base;
