@@ -66,8 +66,18 @@ def probe_compiler() -> tuple[Path, ...]:
     return tuple(dict.fromkeys(results))
 
 
+def display_build_info() -> None:
+    from mlc.core import Func
+
+    info = Func.get("mlc.core.BuildInfo")()
+    for k in sorted(info.keys()):
+        v = info[k]
+        print(f"{k}: {v}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="MLC Config Tool")
+    parser.add_argument("--build-info", action="store_true", help="Print build information")
     parser.add_argument("--includedir", action="store_true", help="Print the include directory")
     parser.add_argument("--libdir", action="store_true", help="Print the library directory")
     parser.add_argument("--probe-compiler", action="store_true", help="Probe the compiler")
@@ -79,6 +89,9 @@ def main() -> None:
 
     args = parser.parse_args()
     has_action = False
+    if args.build_info:
+        has_action = True
+        display_build_info()
     if args.includedir:
         has_action = True
         print(_tuple_path_to_str(includedir()))
