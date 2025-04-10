@@ -4,7 +4,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mlc._cython import DataTypeCode, PyAny, c_class_core, dtype_as_triple, dtype_normalize
+from mlc._cython import (
+    DataTypeCode,
+    PyAny,
+    c_class_core,
+    dtype_as_triple,
+    dtype_from_triple,
+    dtype_normalize,
+)
 
 if TYPE_CHECKING:
     import torch
@@ -18,6 +25,12 @@ class DataType(PyAny):
     @property
     def _dtype_triple(self) -> tuple[int, int, int]:
         return dtype_as_triple(self)
+
+    @staticmethod
+    def from_triple(code: DataTypeCode | int, bits: int, lanes: int) -> DataType:
+        if isinstance(code, DataTypeCode):
+            code = code.value
+        return dtype_from_triple(code, bits, lanes)
 
     @property
     def code(self) -> DataTypeCode | int:
@@ -36,9 +49,13 @@ class DataType(PyAny):
         return self._dtype_triple[2]
 
     def __eq__(self, other: object) -> bool:
+        if isinstance(other, str):
+            other = DataType(other)
         return isinstance(other, DataType) and self._dtype_triple == other._dtype_triple
 
     def __ne__(self, other: object) -> bool:
+        if isinstance(other, str):
+            other = DataType(other)
         return isinstance(other, DataType) and self._dtype_triple != other._dtype_triple
 
     def __hash__(self) -> int:

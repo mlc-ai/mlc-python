@@ -1507,6 +1507,13 @@ cpdef tuple dtype_as_triple(PyAny obj):
     cdef int32_t lanes = <int32_t>dtype.lanes
     return code, bits, lanes
 
+cpdef PyAny dtype_from_triple(int32_t code, int32_t bits, int32_t lanes):
+    cdef DLDataType dtype
+    dtype.code = code
+    dtype.bits = bits
+    dtype.lanes = lanes
+    return _DataType(dtype)
+
 cpdef tuple device_as_pair(PyAny obj):
     cdef DLDevice device = obj._mlc_any.v.v_device
     return <int32_t>device.device_type, <int32_t>device.device_id
