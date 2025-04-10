@@ -229,8 +229,10 @@ struct ObjRefEqual {
 struct StructuralHash {
   std::size_t operator()(const ObjectRef &obj) const { return ::mlc::Lib::StructuralHash(obj); }
 };
-struct StructuralEqual {
-  bool operator()(const ObjectRef &a, const ObjectRef &b) const { return ::mlc::Lib::StructuralEqual(a, b); }
+template <bool bind_free_vars> struct StructuralEqual {
+  bool operator()(const ObjectRef &a, const ObjectRef &b) const {
+    return ::mlc::Lib::StructuralEqual(a, b, bind_free_vars, false);
+  }
 };
 } // namespace mlc
 
