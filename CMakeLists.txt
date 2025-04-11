@@ -50,6 +50,14 @@ add_library(mlc_objs OBJECT
   "${CMAKE_CURRENT_SOURCE_DIR}/cpp/c_api.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/cpp/printer.cc"
   "${CMAKE_CURRENT_SOURCE_DIR}/cpp/structure.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cpp/sym/sym.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cpp/sym/text_format.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cpp/sym/analyzer_const_int_bound.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cpp/sym/analyzer_modular_set.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cpp/sym/analyzer_rewrite_simplify.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cpp/sym/analyzer_canonical_simplify.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cpp/sym/analyzer_interval_set.cc"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cpp/sym/analyzer_transitive_comparisons.cc"
 )
 set_target_properties(
   mlc_objs PROPERTIES
