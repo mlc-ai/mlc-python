@@ -400,7 +400,8 @@ def _prototype_cxx(
     print(f"struct {cls_name} : public {parent_ref_name} {{", file=io)
     # Step 3.1. Define fields for reflection
     print(
-        f"  MLC_DEF_OBJ_REF({export_macro}, {cls_name}, {cls_name}Obj, {parent_ref_name})", file=io
+        f"  MLC_DEF_OBJ_REF({export_macro}, {cls_name}, {cls_name}Obj, {parent_ref_name})",
+        file=io,
     )
     for name, _ in fields:
         print(f'    .Field("{name}", &{cls_name}Obj::{name})', file=io)
@@ -409,6 +410,10 @@ def _prototype_cxx(
     for i, (_, ty) in enumerate(fields):
         print(f", {ty}", file=io, end="")
     print(">);", file=io)
+    print(
+        f"  MLC_DEF_OBJ_REF_FWD_NEW({cls_name})",
+        file=io,
+    )
     print(f"}};  // struct {cls_name}", file=io)
     # Step 4. End namespace
     for ns in reversed(namespaces[:-1]):

@@ -28,6 +28,7 @@ def test_jit_load() -> None:
         .Field("y", &MyObj::y, /*frozen=*/true)
         .StaticFn("__init__", mlc::InitOf<MyObj, mlc::Str, int32_t>)
         .MemFn("YPlusOne", &MyObj::YPlusOne);
+    MLC_DEF_OBJ_REF_FWD_NEW(MyObjRef)
     };
     """)
 

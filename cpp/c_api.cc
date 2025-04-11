@@ -379,6 +379,7 @@ struct TestingCClass : public ObjectRef {
                                    Optional<DLDevice>, Optional<Func>, Optional<UList>, Optional<UDict>, Optional<Str>,
                                    Optional<List<Any>>, Optional<List<List<int>>>, Optional<Dict<Any, Any>>,
                                    Optional<Dict<Str, Any>>, Optional<Dict<Any, Str>>, Optional<Dict<Str, List<int>>>>);
+  MLC_DEF_OBJ_REF_FWD_NEW(TestingCClass)
 };
 
 /**************** Traceback ****************/

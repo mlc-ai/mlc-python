@@ -30,6 +30,9 @@ struct PrinterConfig : public ObjectRef {
       .Field("num_context_lines", &PrinterConfigObj::num_context_lines)
       .Field("path_to_underline", &PrinterConfigObj::path_to_underline)
       .StaticFn("__init__", InitOf<PrinterConfigObj, int32_t, int8_t, int32_t, mlc::List<ObjectPath>>);
+  explicit PrinterConfig(int32_t indent_spaces = 2, int8_t print_line_numbers = 0, int32_t num_context_lines = -1,
+                         mlc::List<ObjectPath> path_to_underline = {})
+      : PrinterConfig(PrinterConfig::New(indent_spaces, print_line_numbers, num_context_lines, path_to_underline)) {}
 };
 
 } // namespace printer
@@ -134,6 +137,9 @@ struct StmtBlock : public ::mlc::printer::Stmt {
       .Field("stmts", &StmtBlockObj::stmts)
       .StaticFn("__init__", ::mlc::InitOf<StmtBlockObj, ::mlc::List<::mlc::core::ObjectPath>,
                                           ::mlc::Optional<::mlc::Str>, ::mlc::List<::mlc::printer::Stmt>>);
+  explicit StmtBlock(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                     ::mlc::List<::mlc::printer::Stmt> stmts)
+      : StmtBlock(StmtBlock::New(source_paths, comment, stmts)) {}
 }; // struct StmtBlock
 
 } // namespace printer
@@ -162,6 +168,8 @@ struct Literal : public ::mlc::printer::Expr {
       .Field("source_paths", &LiteralObj::source_paths)
       .Field("value", &LiteralObj::value)
       .StaticFn("__init__", ::mlc::InitOf<LiteralObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Any>);
+  explicit Literal(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Any value)
+      : Literal(Literal::New(source_paths, value)) {}
 }; // struct Literal
 
 } // namespace printer
@@ -176,7 +184,6 @@ struct IdObj : public ::mlc::Object {
   ::mlc::Str name;
   explicit IdObj(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Str name)
       : source_paths(source_paths), name(name) {}
-  explicit IdObj(::mlc::Str name) : source_paths(), name(name) {}
   MLC_DEF_DYN_TYPE(MLC_EXPORTS, IdObj, ::mlc::printer::ExprObj, "mlc.printer.ast.Id");
 }; // struct IdObj
 
@@ -185,6 +192,8 @@ struct Id : public ::mlc::printer::Expr {
       .Field("source_paths", &IdObj::source_paths)
       .Field("name", &IdObj::name)
       .StaticFn("__init__", ::mlc::InitOf<IdObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Str>);
+  explicit Id(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Str name) : Id(Id::New(source_paths, name)) {}
+  explicit Id(::mlc::Str name) : Id({}, name) {}
 }; // struct Id
 
 } // namespace printer
@@ -210,6 +219,8 @@ struct Attr : public ::mlc::printer::Expr {
       .Field("name", &AttrObj::name)
       .StaticFn("__init__",
                 ::mlc::InitOf<AttrObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::printer::Expr, ::mlc::Str>);
+  explicit Attr(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::printer::Expr obj, ::mlc::Str name)
+      : Attr(Attr::New(source_paths, obj, name)) {}
 }; // struct Attr
 
 } // namespace printer
@@ -236,6 +247,9 @@ struct Index : public ::mlc::printer::Expr {
       .Field("idx", &IndexObj::idx)
       .StaticFn("__init__", ::mlc::InitOf<IndexObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::printer::Expr,
                                           ::mlc::List<::mlc::printer::Expr>>);
+  explicit Index(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::printer::Expr obj,
+                 ::mlc::List<::mlc::printer::Expr> idx)
+      : Index(Index::New(source_paths, obj, idx)) {}
 }; // struct Index
 
 } // namespace printer
@@ -270,6 +284,10 @@ struct Call : public ::mlc::printer::Expr {
           "__init__",
           ::mlc::InitOf<CallObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::printer::Expr,
                         ::mlc::List<::mlc::printer::Expr>, ::mlc::List<::mlc::Str>, ::mlc::List<::mlc::printer::Expr>>);
+  explicit Call(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::printer::Expr callee,
+                ::mlc::List<::mlc::printer::Expr> args, ::mlc::List<::mlc::Str> kwargs_keys,
+                ::mlc::List<::mlc::printer::Expr> kwargs_values)
+      : Call(Call::New(source_paths, callee, args, kwargs_keys, kwargs_values)) {}
 }; // struct Call
 
 } // namespace printer
@@ -332,6 +350,9 @@ struct Operation : public ::mlc::printer::Expr {
       .Field("operands", &OperationObj::operands)
       .StaticFn("__init__", ::mlc::InitOf<OperationObj, ::mlc::List<::mlc::core::ObjectPath>, int64_t,
                                           ::mlc::List<::mlc::printer::Expr>>);
+  explicit Operation(::mlc::List<::mlc::core::ObjectPath> source_paths, int64_t op,
+                     ::mlc::List<::mlc::printer::Expr> operands)
+      : Operation(Operation::New(source_paths, op, operands)) {}
 }; // struct Operation
 
 } // namespace printer
@@ -358,6 +379,9 @@ struct Lambda : public ::mlc::printer::Expr {
       .Field("body", &LambdaObj::body)
       .StaticFn("__init__", ::mlc::InitOf<LambdaObj, ::mlc::List<::mlc::core::ObjectPath>,
                                           ::mlc::List<::mlc::printer::Id>, ::mlc::printer::Expr>);
+  explicit Lambda(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::List<::mlc::printer::Id> args,
+                  ::mlc::printer::Expr body)
+      : Lambda(Lambda::New(source_paths, args, body)) {}
 }; // struct Lambda
 
 } // namespace printer
@@ -381,6 +405,8 @@ struct Tuple : public ::mlc::printer::Expr {
       .Field("values", &TupleObj::values)
       .StaticFn("__init__",
                 ::mlc::InitOf<TupleObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::List<::mlc::printer::Expr>>);
+  explicit Tuple(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::List<::mlc::printer::Expr> values)
+      : Tuple(Tuple::New(source_paths, values)) {}
 }; // struct Tuple
 
 } // namespace printer
@@ -404,6 +430,8 @@ struct List : public ::mlc::printer::Expr {
       .Field("values", &ListObj::values)
       .StaticFn("__init__",
                 ::mlc::InitOf<ListObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::List<::mlc::printer::Expr>>);
+  explicit List(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::List<::mlc::printer::Expr> values)
+      : List(List::New(source_paths, values)) {}
 }; // struct List
 
 } // namespace printer
@@ -430,6 +458,9 @@ struct Dict : public ::mlc::printer::Expr {
       .Field("values", &DictObj::values)
       .StaticFn("__init__", ::mlc::InitOf<DictObj, ::mlc::List<::mlc::core::ObjectPath>,
                                           ::mlc::List<::mlc::printer::Expr>, ::mlc::List<::mlc::printer::Expr>>);
+  explicit Dict(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::List<::mlc::printer::Expr> keys,
+                ::mlc::List<::mlc::printer::Expr> values)
+      : Dict(Dict::New(source_paths, keys, values)) {}
 }; // struct Dict
 
 } // namespace printer
@@ -459,6 +490,9 @@ struct Slice : public ::mlc::printer::Expr {
       .StaticFn("__init__",
                 ::mlc::InitOf<SliceObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::printer::Expr>,
                               ::mlc::Optional<::mlc::printer::Expr>, ::mlc::Optional<::mlc::printer::Expr>>);
+  explicit Slice(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::printer::Expr> start,
+                 ::mlc::Optional<::mlc::printer::Expr> stop, ::mlc::Optional<::mlc::printer::Expr> step)
+      : Slice(Slice::New(source_paths, start, stop, step)) {}
 }; // struct Slice
 
 } // namespace printer
@@ -491,6 +525,10 @@ struct Assign : public ::mlc::printer::Stmt {
       .StaticFn("__init__", ::mlc::InitOf<AssignObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>,
                                           ::mlc::printer::Expr, ::mlc::Optional<::mlc::printer::Expr>,
                                           ::mlc::Optional<::mlc::printer::Expr>>);
+  explicit Assign(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                  ::mlc::printer::Expr lhs, ::mlc::Optional<::mlc::printer::Expr> rhs,
+                  ::mlc::Optional<::mlc::printer::Expr> annotation)
+      : Assign(Assign::New(source_paths, comment, lhs, rhs, annotation)) {}
 }; // struct Assign
 
 } // namespace printer
@@ -524,6 +562,10 @@ struct If : public ::mlc::printer::Stmt {
           "__init__",
           ::mlc::InitOf<IfObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>, ::mlc::printer::Expr,
                         ::mlc::List<::mlc::printer::Stmt>, ::mlc::List<::mlc::printer::Stmt>>);
+  explicit If(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+              ::mlc::printer::Expr cond, ::mlc::List<::mlc::printer::Stmt> then_branch,
+              ::mlc::List<::mlc::printer::Stmt> else_branch)
+      : If(If::New(source_paths, comment, cond, then_branch, else_branch)) {}
 }; // struct If
 
 } // namespace printer
@@ -552,6 +594,9 @@ struct While : public ::mlc::printer::Stmt {
       .Field("body", &WhileObj::body)
       .StaticFn("__init__", ::mlc::InitOf<WhileObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>,
                                           ::mlc::printer::Expr, ::mlc::List<::mlc::printer::Stmt>>);
+  explicit While(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                 ::mlc::printer::Expr cond, ::mlc::List<::mlc::printer::Stmt> body)
+      : While(While::New(source_paths, comment, cond, body)) {}
 }; // struct While
 
 } // namespace printer
@@ -583,6 +628,9 @@ struct For : public ::mlc::printer::Stmt {
       .StaticFn("__init__",
                 ::mlc::InitOf<ForObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>,
                               ::mlc::printer::Expr, ::mlc::printer::Expr, ::mlc::List<::mlc::printer::Stmt>>);
+  explicit For(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+               ::mlc::printer::Expr lhs, ::mlc::printer::Expr rhs, ::mlc::List<::mlc::printer::Stmt> body)
+      : For(For::New(source_paths, comment, lhs, rhs, body)) {}
 }; // struct For
 
 } // namespace printer
@@ -615,6 +663,10 @@ struct With : public ::mlc::printer::Stmt {
       .StaticFn("__init__", ::mlc::InitOf<WithObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>,
                                           ::mlc::Optional<::mlc::printer::Expr>, ::mlc::printer::Expr,
                                           ::mlc::List<::mlc::printer::Stmt>>);
+  explicit With(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                ::mlc::Optional<::mlc::printer::Expr> lhs, ::mlc::printer::Expr rhs,
+                ::mlc::List<::mlc::printer::Stmt> body)
+      : With(With::New(source_paths, comment, lhs, rhs, body)) {}
 }; // struct With
 
 } // namespace printer
@@ -641,6 +693,9 @@ struct ExprStmt : public ::mlc::printer::Stmt {
       .Field("expr", &ExprStmtObj::expr)
       .StaticFn("__init__", ::mlc::InitOf<ExprStmtObj, ::mlc::List<::mlc::core::ObjectPath>,
                                           ::mlc::Optional<::mlc::Str>, ::mlc::printer::Expr>);
+  explicit ExprStmt(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                    ::mlc::printer::Expr expr)
+      : ExprStmt(ExprStmt::New(source_paths, comment, expr)) {}
 }; // struct ExprStmt
 
 } // namespace printer
@@ -669,6 +724,9 @@ struct Assert : public ::mlc::printer::Stmt {
       .Field("msg", &AssertObj::msg)
       .StaticFn("__init__", ::mlc::InitOf<AssertObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>,
                                           ::mlc::printer::Expr, ::mlc::Optional<::mlc::printer::Expr>>);
+  explicit Assert(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                  ::mlc::printer::Expr cond, ::mlc::Optional<::mlc::printer::Expr> msg)
+      : Assert(Assert::New(source_paths, comment, cond, msg)) {}
 }; // struct Assert
 
 } // namespace printer
@@ -695,6 +753,9 @@ struct Return : public ::mlc::printer::Stmt {
       .Field("value", &ReturnObj::value)
       .StaticFn("__init__", ::mlc::InitOf<ReturnObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>,
                                           ::mlc::Optional<::mlc::printer::Expr>>);
+  explicit Return(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                  ::mlc::Optional<::mlc::printer::Expr> value)
+      : Return(Return::New(source_paths, comment, value)) {}
 }; // struct Return
 
 } // namespace printer
@@ -741,6 +802,11 @@ struct Function : public ::mlc::printer::Stmt {
           ::mlc::InitOf<FunctionObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>,
                         ::mlc::printer::Id, ::mlc::List<::mlc::printer::Assign>, ::mlc::List<::mlc::printer::Expr>,
                         ::mlc::Optional<::mlc::printer::Expr>, ::mlc::List<::mlc::printer::Stmt>>);
+  explicit Function(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                    ::mlc::printer::Id name, ::mlc::List<::mlc::printer::Assign> args,
+                    ::mlc::List<::mlc::printer::Expr> decorators, ::mlc::Optional<::mlc::printer::Expr> return_type,
+                    ::mlc::List<::mlc::printer::Stmt> body)
+      : Function(Function::New(source_paths, comment, name, args, decorators, return_type, body)) {}
 }; // struct Function
 
 } // namespace printer
@@ -774,6 +840,10 @@ struct Class : public ::mlc::printer::Stmt {
           "__init__",
           ::mlc::InitOf<ClassObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>, ::mlc::printer::Id,
                         ::mlc::List<::mlc::printer::Expr>, ::mlc::List<::mlc::printer::Stmt>>);
+  explicit Class(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment,
+                 ::mlc::printer::Id name, ::mlc::List<::mlc::printer::Expr> decorators,
+                 ::mlc::List<::mlc::printer::Stmt> body)
+      : Class(Class::New(source_paths, comment, name, decorators, body)) {}
 }; // struct Class
 
 } // namespace printer
@@ -797,6 +867,8 @@ struct Comment : public ::mlc::printer::Stmt {
       .Field("comment", &CommentObj::comment)
       .StaticFn("__init__",
                 ::mlc::InitOf<CommentObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>>);
+  explicit Comment(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment)
+      : Comment(Comment::New(source_paths, comment)) {}
 }; // struct Comment
 
 } // namespace printer
@@ -820,6 +892,8 @@ struct DocString : public ::mlc::printer::Stmt {
       .Field("comment", &DocStringObj::comment)
       .StaticFn("__init__",
                 ::mlc::InitOf<DocStringObj, ::mlc::List<::mlc::core::ObjectPath>, ::mlc::Optional<::mlc::Str>>);
+  explicit DocString(::mlc::List<::mlc::core::ObjectPath> source_paths, ::mlc::Optional<::mlc::Str> comment)
+      : DocString(DocString::New(source_paths, comment)) {}
 }; // struct DocString
 
 } // namespace printer

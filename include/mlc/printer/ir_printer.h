@@ -18,6 +18,8 @@ struct DefaultFrame : public ObjectRef {
   MLC_DEF_OBJ_REF(MLC_EXPORTS, DefaultFrame, DefaultFrameObj, ObjectRef)
       .Field("stmts", &DefaultFrameObj::stmts)
       .StaticFn("__init__", InitOf<DefaultFrameObj, mlc::List<Stmt>>);
+  explicit DefaultFrame() : DefaultFrame(DefaultFrame::New()) {}
+  explicit DefaultFrame(mlc::List<Stmt> stmts) : DefaultFrame(DefaultFrame::New(stmts)) {}
 }; // struct DefaultFrame
 
 struct VarInfoObj : public Object {
@@ -33,6 +35,7 @@ struct VarInfo : public ObjectRef {
       .Field("creator", &VarInfoObj::creator)
       .Field("name", &VarInfoObj::name)
       .StaticFn("__init__", InitOf<VarInfoObj, Optional<Str>, Func>);
+  explicit VarInfo(Optional<Str> name, Func creator) : VarInfo(VarInfo::New(name, creator)) {}
 }; // struct VarInfo
 
 struct IRPrinterObj : public Object {
@@ -171,6 +174,11 @@ struct IRPrinter : public ObjectRef {
       .MemFn("frame_push", &IRPrinterObj::FramePush)
       .MemFn("frame_pop", &IRPrinterObj::FramePop)
       .MemFn("__call__", &IRPrinterObj::operator());
+  explicit IRPrinter(PrinterConfig cfg) : IRPrinter(IRPrinter::New(cfg)) {}
+  explicit IRPrinter(PrinterConfig cfg, mlc::Dict<Any, VarInfo> obj2info, mlc::Dict<Str, int64_t> defined_names,
+                     mlc::UList frames, mlc::UDict frame_vars)
+      : IRPrinter(IRPrinter::New(cfg, obj2info, defined_names, frames, frame_vars)) {}
+
 }; // struct IRPrinter
 
 inline Str ToPython(const ObjectRef &obj, const PrinterConfig &cfg) {

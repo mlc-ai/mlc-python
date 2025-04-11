@@ -138,6 +138,7 @@ struct py_class : public ::mlc::ObjectRef {
     .Field("opt_dict_any_str", &py_classObj::opt_dict_any_str)
     .Field("opt_dict_str_list_int", &py_classObj::opt_dict_str_list_int)
     .StaticFn("__init__", ::mlc::InitOf<py_classObj, bool, int64_t, int64_t, int64_t, int64_t, double, double, void*, DLDataType, DLDevice, ::mlc::Any, ::mlc::Func, ::mlc::List<::mlc::Any>, ::mlc::Dict<::mlc::Any, ::mlc::Any>, ::mlc::Str, ::mlc::Str, ::mlc::List<::mlc::Any>, ::mlc::List<::mlc::List<int64_t>>, ::mlc::Dict<::mlc::Any, ::mlc::Any>, ::mlc::Dict<::mlc::Str, ::mlc::Any>, ::mlc::Dict<::mlc::Any, ::mlc::Str>, ::mlc::Dict<::mlc::Str, ::mlc::List<int64_t>>, ::mlc::Optional<bool>, ::mlc::Optional<int64_t>, ::mlc::Optional<double>, ::mlc::Optional<void*>, ::mlc::Optional<DLDataType>, ::mlc::Optional<DLDevice>, ::mlc::Optional<::mlc::Func>, ::mlc::Optional<::mlc::List<::mlc::Any>>, ::mlc::Optional<::mlc::Dict<::mlc::Any, ::mlc::Any>>, ::mlc::Optional<::mlc::Str>, ::mlc::Optional<::mlc::List<::mlc::Any>>, ::mlc::Optional<::mlc::List<::mlc::List<int64_t>>>, ::mlc::Optional<::mlc::Dict<::mlc::Any, ::mlc::Any>>, ::mlc::Optional<::mlc::Dict<::mlc::Str, ::mlc::Any>>, ::mlc::Optional<::mlc::Dict<::mlc::Any, ::mlc::Str>>, ::mlc::Optional<::mlc::Dict<::mlc::Str, ::mlc::List<int64_t>>>>);
+  MLC_DEF_OBJ_REF_FWD_NEW(py_class)
 };  // struct py_class
 }  // namespace testing
 }  // namespace mlc

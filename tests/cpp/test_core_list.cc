@@ -17,6 +17,7 @@ public:
 class TestType : public ObjectRef {
 public:
   MLC_DEF_OBJ_REF(MLC_CPPTESTS_EXPORTS, TestType, TestTypeObj, ObjectRef);
+  MLC_DEF_OBJ_REF_FWD_NEW(TestType)
 };
 
 // Tests for List<int>

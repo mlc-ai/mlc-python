@@ -240,7 +240,7 @@ template <typename T> struct ListObj : protected UListObj {
   MLC_INLINE const_reverse_iterator rend() const { return UListObj::rend(); }
 };
 
-template <typename T> struct List : protected UList {
+template <typename T> struct List : public UList {
   static_assert(::mlc::base::IsContainerElement<T>);
   using TElem = T;
   using iterator = UListObj::iterator;

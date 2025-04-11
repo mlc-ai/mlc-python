@@ -76,6 +76,9 @@ struct Error : public ObjectRef {
   MLC_DEF_OBJ_REF(MLC_EXPORTS, Error, ErrorObj, ObjectRef)
       .Field("kind", &MLCError::kind, /*frozen=*/true)
       .MemFn("__str__", &ErrorObj::__str__);
+  explicit Error(const char *kind, MLCByteArray message, MLCByteArray traceback)
+      : Error(Error::New(kind, message, traceback)) {}
+  explicit Error(const char *kind, int64_t num_bytes, const char *bytes) : Error(Error::New(kind, num_bytes, bytes)) {}
 };
 
 inline Ref<ErrorObj> ErrorObj::AppendWith(MLCByteArray traceback) const {

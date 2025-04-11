@@ -34,6 +34,7 @@ struct AnyType : public Type {
       .StaticFn("__init__", InitOf<AnyTypeObj>)
       .MemFn("__str__", &AnyTypeObj::__str__)
       .MemFn("__cxx_str__", &AnyTypeObj::__cxx_str__);
+  explicit AnyType() : AnyType(AnyType::New()) {}
 };
 
 struct AtomicTypeObj : protected MLCTypingAtomic {
@@ -123,6 +124,7 @@ struct AtomicType : public Type {
       .StaticFn("__init__", InitOf<AtomicTypeObj, int32_t>)
       .MemFn("__str__", &AtomicTypeObj::__str__)
       .MemFn("__cxx_str__", &AtomicTypeObj::__cxx_str__);
+  explicit AtomicType(int32_t type_index) : AtomicType(AtomicType::New(type_index)) {}
 };
 
 struct PtrTypeObj : protected MLCTypingPtr {
@@ -152,6 +154,7 @@ struct PtrType : public Type {
       ._Field("ty", offsetof(MLCTypingPtr, ty), sizeof(MLCTypingPtr::ty), false, ParseType<Type>())
       .MemFn("__str__", &PtrTypeObj::__str__)
       .MemFn("__cxx_str__", &PtrTypeObj::__cxx_str__);
+  explicit PtrType(Type ty) : PtrType(PtrType::New(ty)) {}
 };
 
 struct OptionalObj : protected MLCTypingOptional {
@@ -181,6 +184,7 @@ struct Optional : public Type {
       ._Field("ty", offsetof(MLCTypingOptional, ty), sizeof(MLCTypingOptional::ty), false, ParseType<Type>())
       .MemFn("__str__", &OptionalObj::__str__)
       .MemFn("__cxx_str__", &OptionalObj::__cxx_str__);
+  explicit Optional(Type ty) : Optional(Optional::New(ty)) {}
 };
 
 struct ListObj : protected MLCTypingList {
@@ -210,6 +214,7 @@ struct List : public Type {
       ._Field("ty", offsetof(MLCTypingList, ty), sizeof(MLCTypingList::ty), false, ParseType<Type>())
       .MemFn("__str__", &ListObj::__str__)
       .MemFn("__cxx_str__", &ListObj::__cxx_str__);
+  explicit List(Type ty) : List(List::New(ty)) {}
 };
 
 struct DictObj : protected MLCTypingDict {
@@ -249,6 +254,7 @@ struct Dict : public Type {
       ._Field("ty_v", offsetof(MLCTypingDict, ty_v), sizeof(MLCTypingDict::ty_v), false, ParseType<Type>())
       .MemFn("__str__", &DictObj::__str__)
       .MemFn("__cxx_str__", &DictObj::__cxx_str__);
+  explicit Dict(Type ty_k, Type ty_v) : Dict(Dict::New(ty_k, ty_v)) {}
 };
 
 } // namespace typing
