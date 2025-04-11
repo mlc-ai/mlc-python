@@ -1,6 +1,5 @@
 #ifndef MLC_BASE_OPTIONAL_H_
 #define MLC_BASE_OPTIONAL_H_
-#include "./lib.h"
 #include "./ref.h"
 #include "./utils.h"
 #include <type_traits>
@@ -82,6 +81,7 @@ public:
   }
   MLC_INLINE bool defined() const { return TBase::ptr != nullptr; }
   MLC_INLINE bool has_value() const { return TBase::ptr != nullptr; }
+  MLC_INLINE operator bool() const { return TBase::ptr != nullptr; }
   MLC_INLINE bool operator==(std::nullptr_t) const { return TBase::ptr == nullptr; }
   MLC_INLINE bool operator!=(std::nullptr_t) const { return TBase::ptr != nullptr; }
   MLC_INLINE bool operator==(const TSelf &rhs) const { return TBase::ptr == rhs.TBase::ptr; }
@@ -156,6 +156,7 @@ public:
     }                                                                                                                  \
     MLC_INLINE bool defined() const { return TBase::ptr != nullptr; }                                                  \
     MLC_INLINE bool has_value() const { return TBase::ptr != nullptr; }                                                \
+    MLC_INLINE operator bool() const { return TBase::ptr != nullptr; }                                                 \
     MLC_INLINE T &value() { return operator*(); }                                                                      \
     MLC_INLINE const T &value() const { return operator*(); }                                                          \
     MLC_INLINE bool operator==(std::nullptr_t) const { return TBase::ptr == nullptr; }                                 \
