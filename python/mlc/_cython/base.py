@@ -259,7 +259,10 @@ def translate_exception_from_c(err: Error) -> Exception:
     from .core import error_pycode_fake  # type: ignore[import-not-found]
 
     kind, info = err.kind, err._info
-    msg, info = info[0], info[1:]
+    if info:
+        msg, info = info[0], info[1:]
+    else:
+        msg = ""
     if kind in ERR_KIND2CLS:
         exception = ERR_KIND2CLS[kind](msg)
     else:

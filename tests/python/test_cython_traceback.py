@@ -15,8 +15,19 @@ def test_throw_exception_from_c() -> None:
     assert "Traceback (most recent call last)" in msg[0]
     assert "in test_throw_exception_from_c" in msg[1]
     assert "ValueError: This is an error message" in msg[-1]
-    if mlc._cython.SYSTEM != "Darwin":
-        assert "c_api.cc" in msg[-3]
+    assert "c_api.cc" in msg[-3]
+
+
+def test_throw_exception_from_c_empty() -> None:
+    func = mlc.Func.get("mlc.testing.throw_exception_from_c_empty")
+    with pytest.raises(ValueError) as exc_info:
+        func()
+
+    msg = traceback.format_exception(exc_info.type, exc_info.value, exc_info.tb)
+    msg = "".join(msg).strip().splitlines()
+    assert "Traceback (most recent call last)" in msg[0]
+    assert "in test_throw_exception_from_c_empty" in msg[1]
+    assert "ValueError" == msg[-1].strip()
 
 
 def test_throw_exception_from_ffi() -> None:
@@ -49,10 +60,9 @@ def test_throw_exception_from_ffi_in_c() -> None:
     assert "Traceback (most recent call last)" in msg[0]
     assert "in test_throw_exception_from_ffi_in_c" in msg[1]
     assert "ValueError: This is a ValueError" in msg[-1]
-    if mlc._cython.SYSTEM != "Darwin":
-        idx_c_api_tests = next(i for i, line in enumerate(msg) if "c_api.cc" in line)
-        idx_handle_error = next(i for i, line in enumerate(msg) if "_func_safe_call_impl" in line)
-        assert idx_c_api_tests < idx_handle_error
+    idx_c_api_tests = next(i for i, line in enumerate(msg) if "c_api.cc" in line)
+    idx_handle_error = next(i for i, line in enumerate(msg) if "_func_safe_call_impl" in line)
+    assert idx_c_api_tests < idx_handle_error
 
 
 def test_throw_NotImplementedError_from_ffi_in_c() -> None:

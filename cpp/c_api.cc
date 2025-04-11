@@ -389,6 +389,11 @@ MLC_REGISTER_FUNC("mlc.testing.throw_exception_from_c").set_body([]() {
   MLC_THROW(ValueError) << "This is an error message";
 });
 
+MLC_REGISTER_FUNC("mlc.testing.throw_exception_from_c_empty").set_body([]() {
+  // Throw an exception in C++ with no message
+  MLC_THROW(ValueError);
+});
+
 MLC_REGISTER_FUNC("mlc.testing.throw_exception_from_ffi_in_c").set_body([](FuncObj *func) {
   // call a Python function which throws an exception
   (*func)();
