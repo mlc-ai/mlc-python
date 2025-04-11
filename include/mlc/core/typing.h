@@ -119,7 +119,7 @@ struct AtomicTypeObj : protected MLCTypingAtomic {
 
 struct AtomicType : public Type {
   MLC_DEF_OBJ_REF(MLC_EXPORTS, AtomicType, AtomicTypeObj, Type)
-      .FieldReadOnly("type_index", &MLCTypingAtomic::type_index)
+      .Field("type_index", &MLCTypingAtomic::type_index, /*frozen=*/true)
       .StaticFn("__init__", InitOf<AtomicTypeObj, int32_t>)
       .MemFn("__str__", &AtomicTypeObj::__str__)
       .MemFn("__cxx_str__", &AtomicTypeObj::__cxx_str__);

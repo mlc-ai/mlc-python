@@ -74,7 +74,7 @@ struct ErrorObj::Allocator {
 
 struct Error : public ObjectRef {
   MLC_DEF_OBJ_REF(MLC_EXPORTS, Error, ErrorObj, ObjectRef)
-      .FieldReadOnly("kind", &MLCError::kind)
+      .Field("kind", &MLCError::kind, /*frozen=*/true)
       .MemFn("__str__", &ErrorObj::__str__);
 };
 

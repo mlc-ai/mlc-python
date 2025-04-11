@@ -143,9 +143,9 @@ struct UDict : public ObjectRef {
     ::mlc::core::DictBase::Accessor<UDictObj>::New(num_args, args, ret);
   }
   MLC_DEF_OBJ_REF(MLC_EXPORTS, UDict, UDictObj, ObjectRef)
-      .FieldReadOnly("capacity", &MLCDict::capacity)
-      .FieldReadOnly("size", &MLCDict::size)
-      .FieldReadOnly("data", &MLCDict::data)
+      .Field("capacity", &MLCDict::capacity, /*frozen=*/true)
+      .Field("size", &MLCDict::size, /*frozen=*/true)
+      .Field("data", &MLCDict::data, /*frozen=*/true)
       .StaticFn("__init__", FromAnyTuple)
       .MemFn("__str__", &UDictObj::__str__)
       .MemFn("__getitem__", ::mlc::core::DictBase::Accessor<UDictObj>::GetItem)

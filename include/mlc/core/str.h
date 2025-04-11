@@ -178,8 +178,8 @@ struct Str : public ObjectRef {
     return std::string_view(this->get()->data(), this->get()->length());
   }
   MLC_DEF_OBJ_REF(MLC_EXPORTS, Str, StrObj, ObjectRef)
-      .FieldReadOnly("length", &MLCStr::length)
-      .FieldReadOnly("data", &MLCStr::data)
+      .Field("length", &MLCStr::length, /*frozen=*/true)
+      .Field("data", &MLCStr::data, /*frozen=*/true)
       .MemFn("__str__", &StrObj::__str__);
 };
 // Overload << operator
