@@ -142,7 +142,7 @@ inline bool ObjectPathObj::Equal(const ObjectPathObj *other) const {
     } else if (type_index == kMLCPtr) {
       MLC_OBJ_PATH_CHECK_SEG(p->key, q->key, void *);
     } else if (type_index == kMLCDataType) {
-      MLC_OBJ_PATH_CHECK_SEG_PRED(p->key, q->key, DLDataType, mlc::base::DataTypeEqual);
+      MLC_OBJ_PATH_CHECK_SEG_PRED(p->key, q->key, DLDataType, mlc::base::DType::Equal);
     } else if (type_index == kMLCDevice) {
       MLC_OBJ_PATH_CHECK_SEG_PRED(p->key, q->key, DLDevice, mlc::base::DeviceEqual);
     } else {

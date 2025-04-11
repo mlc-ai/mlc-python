@@ -63,7 +63,7 @@ struct TensorObj : public MLCTensor {
   ::mlc::Str __str__() const {
     std::ostringstream oss;
     oss << "<mlc.Tensor";
-    oss << " " << ::mlc::base::DataTypeToStr(tensor.dtype);
+    oss << " " << mlc::base::DType::Str(tensor.dtype);
     oss << "[";
     for (int i = 0; i < tensor.ndim; ++i) {
       if (i != 0) {

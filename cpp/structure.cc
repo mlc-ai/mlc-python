@@ -412,8 +412,8 @@ template <typename T> MLC_INLINE T *WithOffset(Object *obj, MLCTypeField *field)
 inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
   using CharArray = const char *;
   using VoidPtr = ::mlc::base::VoidPtr;
-  using mlc::base::DataTypeEqual;
   using mlc::base::DeviceEqual;
+  using mlc::base::DType;
   struct Task {
     Object *lhs;
     Object *rhs;
@@ -431,7 +431,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
     MLC_CORE_EQ_S_OPT(int64_t, std::equal_to<int64_t>());
     MLC_CORE_EQ_S_OPT(double, DoubleEqual);
     MLC_CORE_EQ_S_OPT(DLDevice, DeviceEqual);
-    MLC_CORE_EQ_S_OPT(DLDataType, DataTypeEqual);
+    MLC_CORE_EQ_S_OPT(DLDataType, DType::Equal);
     MLC_CORE_EQ_S_OPT(VoidPtr, std::equal_to<const void *>());
     MLC_CORE_EQ_S_POD(bool, std::equal_to<bool>());
     MLC_CORE_EQ_S_POD(int8_t, std::equal_to<int8_t>());
@@ -440,7 +440,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
     MLC_CORE_EQ_S_POD(int64_t, std::equal_to<int64_t>());
     MLC_CORE_EQ_S_POD(float, FloatEqual);
     MLC_CORE_EQ_S_POD(double, DoubleEqual);
-    MLC_CORE_EQ_S_POD(DLDataType, DataTypeEqual);
+    MLC_CORE_EQ_S_POD(DLDataType, DType::Equal);
     MLC_CORE_EQ_S_POD(DLDevice, DeviceEqual);
     MLC_CORE_EQ_S_POD(VoidPtr, std::equal_to<const void *>());
     MLC_CORE_EQ_S_POD(CharArray, CharArrayEqual);
@@ -497,7 +497,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
       MLC_CORE_EQ_S_ANY(type_index == kMLCInt, int64_t, std::equal_to<int64_t>(), lhs, rhs, new_path);
       MLC_CORE_EQ_S_ANY(type_index == kMLCFloat, double, DoubleEqual, lhs, rhs, new_path);
       MLC_CORE_EQ_S_ANY(type_index == kMLCPtr, VoidPtr, std::equal_to<const void *>(), lhs, rhs, new_path);
-      MLC_CORE_EQ_S_ANY(type_index == kMLCDataType, DLDataType, DataTypeEqual, lhs, rhs, new_path);
+      MLC_CORE_EQ_S_ANY(type_index == kMLCDataType, DLDataType, DType::Equal, lhs, rhs, new_path);
       MLC_CORE_EQ_S_ANY(type_index == kMLCDevice, DLDevice, DeviceEqual, lhs, rhs, new_path);
       MLC_CORE_EQ_S_ANY(type_index == kMLCRawStr, CharArray, CharArrayEqual, lhs, rhs, new_path);
       if (type_index < kMLCStaticObjectBegin) {
@@ -527,7 +527,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
         if (lhs_tensor->byte_offset != rhs_tensor->byte_offset) {
           MLC_CORE_EQ_S_ERR(lhs_tensor->byte_offset, rhs_tensor->byte_offset, new_path->WithField("byte_offset"));
         }
-        if (!::mlc::base::DataTypeEqual(lhs_tensor->dtype, rhs_tensor->dtype)) {
+        if (!::mlc::base::DType::Equal(lhs_tensor->dtype, rhs_tensor->dtype)) {
           MLC_CORE_EQ_S_ERR(AnyView(lhs_tensor->dtype), AnyView(rhs_tensor->dtype), new_path->WithField("dtype"));
         }
         if (!::mlc::base::DeviceEqual(lhs_tensor->device, rhs_tensor->device)) {
@@ -1213,7 +1213,7 @@ Str TensorToBytes(const DLTensor *src) {
   }
   int32_t ndim = src->ndim;
   int64_t numel = ::mlc::core::ShapeToNumel(ndim, src->shape);
-  int32_t elem_size = ::mlc::base::DataTypeSize(src->dtype);
+  int32_t elem_size = ::mlc::base::DType::Size(src->dtype);
   int64_t total_bytes = 8 + 4 + 4 + 8 * ndim + numel * elem_size;
   Str ret(::mlc::core::StrPad::Allocator::NewWithPad<uint8_t>(total_bytes + 1, total_bytes));
   uint8_t *data_ptr = reinterpret_cast<uint8_t *>(ret->data());
@@ -1263,7 +1263,7 @@ Tensor TensorFromBytes(const uint8_t *data_ptr, int64_t max_size) {
     tensor->shape[i] = ReadElem<8, int64_t>(data_ptr, &head, max_size);
   }
   tensor->shape[ndim] = -1;
-  int32_t elem_size = ::mlc::base::DataTypeSize(tensor->dtype);
+  int32_t elem_size = ::mlc::base::DType::Size(tensor->dtype);
   int64_t numel = ::mlc::core::ShapeToNumel(ndim, tensor->shape);
   uint8_t *content = new uint8_t[numel * elem_size];
   ReadElemMany(data_ptr, &head, max_size, content, elem_size, numel);
@@ -1328,7 +1328,7 @@ inline mlc::Str Serialize(Any any) {
     }
     inline void EmitDType(DLDataType v) {
       int32_t type_dtype = (*get_json_type_index)(TypeTraits<DLDataType>::type_str);
-      (*os) << ", [" << type_dtype << ", " << ::mlc::base::TypeTraits<DLDataType>::__str__(v) << "]";
+      (*os) << ", [" << type_dtype << ", " << ::mlc::base::DType::Str(v) << "]";
     }
     inline void EmitAny(const Any *any) {
       int32_t type_index = any->type_index;
@@ -1431,7 +1431,7 @@ inline mlc::Str Serialize(Any any) {
   } else if (any.type_index == kMLCDataType) {
     int32_t type_dtype = get_json_type_index(TypeTraits<DLDataType>::type_str);
     DLDataType v = any;
-    os << "[" << type_dtype << ", \"" << TypeTraits<DLDataType>::__str__(v) << "\"]";
+    os << "[" << type_dtype << ", \"" << ::mlc::base::DType::Str(v) << "\"]";
   } else {
     MLC_THROW(TypeError) << "Cannot serialize type: " << Lib::GetTypeKey(any.type_index);
   }

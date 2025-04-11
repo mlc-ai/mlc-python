@@ -7,18 +7,7 @@
 namespace mlc {
 namespace base {
 
-inline DLDataType DataTypeFromStr(const char *source);
-
-inline bool DataTypeEqual(DLDataType a, DLDataType b) {
-  return a.code == b.code && a.bits == b.bits && a.lanes == b.lanes;
-}
 inline const char *DataTypeCode2Str(int32_t type_code) { return ::mlc::Lib::DataTypeCodeToStr(type_code); }
-
-inline int32_t DataTypeSize(DLDataType dtype) {
-  int32_t bits = static_cast<int32_t>(dtype.bits);
-  int32_t lanes = static_cast<int32_t>(dtype.lanes);
-  return ((bits + 7) / 8) * lanes;
-}
 
 template <> struct TypeTraits<DLDataType> {
   static constexpr int32_t type_index = static_cast<int32_t>(MLCTypeIndex::kMLCDataType);
@@ -35,10 +24,10 @@ template <> struct TypeTraits<DLDataType> {
       return v->v.v_dtype;
     }
     if (ty == MLCTypeIndex::kMLCRawStr) {
-      return DataTypeFromStr(v->v.v_str);
+      return ::mlc::Lib::DataTypeFromStr(v->v.v_str);
     }
     if (ty == MLCTypeIndex::kMLCStr) {
-      return DataTypeFromStr(reinterpret_cast<const MLCStr *>(v->v.v_obj)->data);
+      return ::mlc::Lib::DataTypeFromStr(reinterpret_cast<const MLCStr *>(v->v.v_obj)->data);
     }
     throw TemporaryTypeError();
   }
@@ -68,8 +57,55 @@ template <> struct TypeTraits<DLDataType> {
   }
 };
 
-inline DLDataType DataTypeFromStr(const char *source) { return ::mlc::Lib::DataTypeFromStr(source); }
-inline std::string DataTypeToStr(DLDataType dtype) { return TypeTraits<DLDataType>::__str__(dtype); }
+struct DType {
+  static DLDataType Int(int bits, int lanes = 1) {
+    DLDataType dtype;
+    dtype.code = kDLInt;
+    dtype.bits = static_cast<uint8_t>(bits);
+    dtype.lanes = static_cast<uint16_t>(lanes);
+    return dtype;
+  }
+  static DLDataType UInt(int bits, int lanes = 1) {
+    DLDataType dtype;
+    dtype.code = kDLUInt;
+    dtype.bits = static_cast<uint8_t>(bits);
+    dtype.lanes = static_cast<uint16_t>(lanes);
+    return dtype;
+  }
+  static DLDataType Float(int bits, int lanes = 1) {
+    DLDataType dtype;
+    dtype.code = kDLFloat;
+    dtype.bits = static_cast<uint8_t>(bits);
+    dtype.lanes = static_cast<uint16_t>(lanes);
+    return dtype;
+  }
+  static DLDataType Bool(int lanes = 1) {
+    DLDataType dtype;
+    dtype.code = kDLUInt;
+    dtype.bits = 1;
+    dtype.lanes = static_cast<uint16_t>(lanes);
+    return dtype;
+  }
+  static DLDataType Void() {
+    DLDataType dtype;
+    dtype.code = kDLOpaqueHandle;
+    dtype.bits = 0;
+    dtype.lanes = 0;
+    return dtype;
+  }
+  static bool Equal(DLDataType a, DLDataType b) { return a.code == b.code && a.bits == b.bits && a.lanes == b.lanes; }
+  static bool IsBool(DLDataType dtype) { return dtype.code == kDLUInt && dtype.bits == 1; }
+  static bool IsFloat(DLDataType dtype) {
+    // TODO: handle fp8
+    return dtype.code == kDLFloat || dtype.code == kDLBfloat;
+  }
+  static std::string Str(DLDataType dtype) { return TypeTraits<DLDataType>::__str__(dtype); }
+  static int32_t Size(DLDataType dtype) {
+    int32_t bits = static_cast<int32_t>(dtype.bits);
+    int32_t lanes = static_cast<int32_t>(dtype.lanes);
+    return ((bits + 7) / 8) * lanes;
+  }
+};
 
 } // namespace base
 } // namespace mlc

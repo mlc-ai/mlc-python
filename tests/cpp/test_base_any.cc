@@ -5,8 +5,8 @@
 
 namespace {
 using namespace mlc;
-using mlc::base::DataTypeEqual;
 using mlc::base::DeviceEqual;
+using mlc::base::DType;
 using mlc::base::FuncCanonicalize;
 
 using MyFuncTraits = FuncCanonicalize<void(int32_t num_args, const AnyView *args, Any *ret)>;
@@ -34,7 +34,7 @@ template <typename T> inline void CheckAnyPOD(const MLCAny &any, MLCTypeIndex ty
   } else if constexpr (std::is_same_v<T, DLDevice>) {
     EXPECT_PRED2(DeviceEqual, any.v.v_device, v);
   } else if constexpr (std::is_same_v<T, DLDataType>) {
-    EXPECT_PRED2(DataTypeEqual, any.v.v_dtype, v);
+    EXPECT_PRED2(DType::Equal, any.v.v_dtype, v);
   } else if constexpr (std::is_same_v<T, const char *> || std::is_same_v<T, char *>) {
     EXPECT_STREQ(any.v.v_str, v);
   } else {
@@ -48,7 +48,7 @@ template <typename T> inline void CheckConvert(std::function<T()> convert, T exp
   } else if constexpr (std::is_same_v<T, DLDevice>) {
     EXPECT_PRED2(DeviceEqual, convert(), expected);
   } else if constexpr (std::is_same_v<T, DLDataType>) {
-    EXPECT_PRED2(DataTypeEqual, convert(), expected);
+    EXPECT_PRED2(DType::Equal, convert(), expected);
   } else {
     EXPECT_EQ(convert(), expected);
   }
@@ -320,7 +320,7 @@ template <typename AnyType> struct Checker_Constructor_DataType {
   static void Check(const AnyView &v, DLDataType dtype) {
     CheckAnyPOD<DLDataType>(v, MLCTypeIndex::kMLCDataType, dtype);
     EXPECT_STREQ(v.str()->c_str(), "float32x4");
-    EXPECT_PRED2(DataTypeEqual, v.operator DLDataType(), dtype);
+    EXPECT_PRED2(DType::Equal, v.operator DLDataType(), dtype);
     CheckConvertFail([&]() { return v.operator int(); }, v.type_index, "int");
     CheckConvertFail([&]() { return v.operator double(); }, v.type_index, "float");
     CheckConvertFail([&]() { return v.operator void *(); }, v.type_index, "Ptr");
