@@ -12,6 +12,9 @@ struct Type;
 template <typename T> typing::Type ParseType();
 
 struct _Reflect {
+  static constexpr int32_t kMemFn = 0;
+  static constexpr int32_t kStaticFn = 1;
+
   explicit _Reflect(int32_t type_index) : type_index(type_index) {}
 
   template <typename Cls> _Reflect &Init() {
@@ -19,16 +22,10 @@ struct _Reflect {
     return *this;
   }
 
-  template <typename Cls, typename FieldType> _Reflect &FieldReadOnly(const char *name, FieldType Cls::*field) {
+  template <typename Cls, typename FieldType>
+  _Reflect &Field(const char *name, FieldType Cls::*field, bool frozen = false) {
     MLCTypeField f = this->PrepareField<Cls, FieldType>(name, field);
-    f.frozen = true;
-    this->fields.emplace_back(f);
-    return *this;
-  }
-
-  template <typename Cls, typename FieldType> _Reflect &Field(const char *name, FieldType Cls::*field) {
-    MLCTypeField f = this->PrepareField<Cls, FieldType>(name, field);
-    f.frozen = false;
+    f.frozen = frozen;
     this->fields.emplace_back(f);
     return *this;
   }
@@ -54,31 +51,24 @@ struct _Reflect {
     return *this;
   }
 
-  _Reflect &Structure(std::vector<std::string> sub_structures, StructureKind kind) {
+  _Reflect &Structure(StructureKind kind, std::vector<std::string> sub_structures) {
     this->structure_kind = kind;
     this->sub_structure_indices.clear();
     this->sub_structure_kinds.clear();
     for (std::string name : sub_structures) {
       int32_t sub_kind = 0;
-      if (std::size_t pos = name.find(':'); pos != std::string::npos) {
-        std::string kind_name = name.substr(pos + 1);
-        name = name.substr(0, pos);
-        if (kind_name == "bind") {
-          sub_kind = 1;
-        } else {
-          MLC_THROW(InternalError) << "Unknown sub-structure kind: " << kind_name;
-        }
+      // Check if `name` ends with ":bind"
+      if (name.size() >= 5 && strncmp(name.c_str() + name.size() - 5, ":bind", 5) == 0) {
+        name = name.substr(0, name.size() - 5);
+        sub_kind = 1;
       }
-      int32_t index = [&]() -> int32_t {
-        for (const auto &entry : this->fields) {
-          std::string field_name = entry.name;
-          if (field_name == name) {
+      int32_t index = [this](const std::string &name) -> int32_t {
+        for (const auto &entry : this->fields)
+          if (entry.name == name)
             return entry.index;
-          }
-        }
         MLC_THROW(InternalError) << "Field not found: " << name;
         MLC_UNREACHABLE();
-      }();
+      }(name);
       this->sub_structure_indices.push_back(index);
       this->sub_structure_kinds.push_back(sub_kind);
     }
@@ -145,21 +135,18 @@ private:
   std::vector<MLCTypeField> fields = {};
   std::vector<MLCTypeMethod> methods = {};
   std::vector<Any> any_pool = {};
-  static constexpr int32_t kMemFn = 0;
-  static constexpr int32_t kStaticFn = 1;
 };
 
 struct _NoReflect {
   explicit _NoReflect(int32_t) {}
   template <typename Cls> _NoReflect &Init() { return *this; }
-  template <typename Cls, typename FieldType> _NoReflect &FieldReadOnly(const char *, FieldType Cls::*) {
+  template <typename Cls, typename FieldType> _NoReflect &Field(const char *, FieldType Cls::*, bool = false) {
     return *this;
   }
-  template <typename Cls, typename FieldType> _NoReflect &Field(const char *, FieldType Cls::*) { return *this; }
   _NoReflect &_Field(const char *, int64_t, int32_t, bool, Any) { return *this; }
   template <typename Callable> _NoReflect &MemFn(const char *, Callable &&) { return *this; }
   template <typename Callable> _NoReflect &StaticFn(const char *, Callable &&) { return *this; }
-  _NoReflect &Structure(std::vector<std::string>, StructureKind) { return *this; }
+  _NoReflect &Structure(StructureKind, std::vector<std::string>) { return *this; }
   operator int32_t() { return 0; }
 };
 
@@ -170,6 +157,16 @@ template <> struct Reflect<true> : public _Reflect {
 template <> struct Reflect<false> : public _NoReflect {
   explicit Reflect(int32_t type_index) : _NoReflect(type_index) {}
 };
+
+inline int32_t _ReflectStaticFn(int32_t type_index, const char *name, Any func) {
+  return ::MLCTypeAddMethod(nullptr, type_index,
+                            MLCTypeMethod{name, reinterpret_cast<MLCFunc *>(func.v.v_obj), _Reflect::kStaticFn});
+}
+
+inline int32_t _ReflectMemFn(int32_t type_index, const char *name, Any func) {
+  return ::MLCTypeAddMethod(nullptr, type_index,
+                            MLCTypeMethod{name, reinterpret_cast<MLCFunc *>(func.v.v_obj), _Reflect::kMemFn});
+}
 
 } // namespace core
 } // namespace mlc

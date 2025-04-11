@@ -29,10 +29,10 @@ struct Opaque : public ObjectRef {
   MLC_DEF_OBJ_REF(MLC_EXPORTS, Opaque, OpaqueObj, ObjectRef)
       .StaticFn("__init__", InitOf<OpaqueObj, void *, void *, const char *>)
       .MemFn("__str__", &OpaqueObj::__str__)
-      .FieldReadOnly("handle", &OpaqueObj::handle)
+      .Field("handle", &OpaqueObj::handle, /*frozen=*/true)
       ._Field("handle_deleter", offsetof(MLCOpaque, handle_deleter), sizeof(MLCOpaque::handle_deleter), true,
               ::mlc::core::ParseType<void *>())
-      .FieldReadOnly("opaque_type_name", &OpaqueObj::opaque_type_name);
+      .Field("opaque_type_name", &OpaqueObj::opaque_type_name, /*frozen=*/true);
 };
 
 } // namespace mlc

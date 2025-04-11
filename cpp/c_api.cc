@@ -348,7 +348,7 @@ struct TestingCClass : public ObjectRef {
       .Field("ulist", &TestingCClassObj::ulist)
       .Field("udict", &TestingCClassObj::udict)
       .Field("str_", &TestingCClassObj::str_)
-      .FieldReadOnly("str_readonly", &TestingCClassObj::str_readonly)
+      .Field("str_readonly", &TestingCClassObj::str_readonly, /*frozen=*/true)
       .Field("list_any", &TestingCClassObj::list_any)
       .Field("list_list_int", &TestingCClassObj::list_list_int)
       .Field("dict_any_any", &TestingCClassObj::dict_any_any)

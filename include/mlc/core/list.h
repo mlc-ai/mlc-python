@@ -152,9 +152,9 @@ struct UList : public ObjectRef {
     ::mlc::core::ListBase::Accessor<UListObj>::New(num_args, args, ret);
   }
   MLC_DEF_OBJ_REF(MLC_EXPORTS, UList, UListObj, ObjectRef)
-      .FieldReadOnly("size", &MLCList::size)
-      .FieldReadOnly("capacity", &MLCList::capacity)
-      .FieldReadOnly("data", &MLCList::data)
+      .Field("size", &MLCList::size, /*frozen=*/true)
+      .Field("capacity", &MLCList::capacity, /*frozen=*/true)
+      .Field("data", &MLCList::data, /*frozen=*/true)
       .StaticFn("__init__", FromAnyTuple)
       .MemFn("__str__", &UListObj::__str__)
       .MemFn("__iter_at__", &::mlc::core::ListBase::Accessor<UListObj>::At)

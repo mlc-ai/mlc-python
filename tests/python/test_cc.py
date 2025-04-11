@@ -25,7 +25,7 @@ def test_jit_load() -> None:
     struct MyObjRef : public mlc::ObjectRef {
     MLC_DEF_OBJ_REF(MLC_JIT_EXPORTS, MyObjRef, MyObj, mlc::ObjectRef)
         .Field("x", &MyObj::x)
-        .FieldReadOnly("y", &MyObj::y)
+        .Field("y", &MyObj::y, /*frozen=*/true)
         .StaticFn("__init__", mlc::InitOf<MyObj, mlc::Str, int32_t>)
         .MemFn("YPlusOne", &MyObj::YPlusOne);
     };
