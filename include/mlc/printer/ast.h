@@ -10,29 +10,32 @@ namespace printer {
 using mlc::core::ObjectPath;
 
 struct PrinterConfigObj : public Object {
+  bool def_free_var = true;
   int32_t indent_spaces = 2;
   int8_t print_line_numbers = 0;
   int32_t num_context_lines = -1;
   mlc::List<ObjectPath> path_to_underline;
 
   PrinterConfigObj() = default;
-  explicit PrinterConfigObj(int32_t indent_spaces, int8_t print_line_numbers, int32_t num_context_lines,
-                            mlc::List<ObjectPath> path_to_underline)
-      : indent_spaces(indent_spaces), print_line_numbers(print_line_numbers), num_context_lines(num_context_lines),
-        path_to_underline(path_to_underline) {}
+  explicit PrinterConfigObj(bool def_free_var, int32_t indent_spaces, int8_t print_line_numbers,
+                            int32_t num_context_lines, mlc::List<ObjectPath> path_to_underline)
+      : def_free_var(def_free_var), indent_spaces(indent_spaces), print_line_numbers(print_line_numbers),
+        num_context_lines(num_context_lines), path_to_underline(path_to_underline) {}
   MLC_DEF_DYN_TYPE(MLC_EXPORTS, PrinterConfigObj, Object, "mlc.printer.PrinterConfig");
 };
 
 struct PrinterConfig : public ObjectRef {
   MLC_DEF_OBJ_REF(MLC_EXPORTS, PrinterConfig, PrinterConfigObj, ObjectRef)
+      .Field("def_free_var", &PrinterConfigObj::def_free_var)
       .Field("indent_spaces", &PrinterConfigObj::indent_spaces)
       .Field("print_line_numbers", &PrinterConfigObj::print_line_numbers)
       .Field("num_context_lines", &PrinterConfigObj::num_context_lines)
       .Field("path_to_underline", &PrinterConfigObj::path_to_underline)
-      .StaticFn("__init__", InitOf<PrinterConfigObj, int32_t, int8_t, int32_t, mlc::List<ObjectPath>>);
-  explicit PrinterConfig(int32_t indent_spaces = 2, int8_t print_line_numbers = 0, int32_t num_context_lines = -1,
-                         mlc::List<ObjectPath> path_to_underline = {})
-      : PrinterConfig(PrinterConfig::New(indent_spaces, print_line_numbers, num_context_lines, path_to_underline)) {}
+      .StaticFn("__init__", InitOf<PrinterConfigObj, bool, int32_t, int8_t, int32_t, mlc::List<ObjectPath>>);
+  explicit PrinterConfig(bool def_free_var = true, int32_t indent_spaces = 2, int8_t print_line_numbers = 0,
+                         int32_t num_context_lines = -1, mlc::List<ObjectPath> path_to_underline = {})
+      : PrinterConfig(PrinterConfig::New(def_free_var, indent_spaces, print_line_numbers, num_context_lines,
+                                         path_to_underline)) {}
 };
 
 } // namespace printer
@@ -82,6 +85,17 @@ struct ExprObj : public ::mlc::Object {
 }; // struct ExprObj
 
 struct Expr : public ::mlc::printer::Node {
+  Expr Attr(mlc::Str name) const { return this->get()->Attr(name); }
+  Expr Index(mlc::List<::mlc::printer::Expr> idx) const { return this->get()->Index(idx); }
+  Expr Call(mlc::List<::mlc::printer::Expr> args) const { return this->get()->Call(args); }
+  Expr CallKw(mlc::List<::mlc::printer::Expr> args, mlc::List<::mlc::Str> kwargs_keys,
+              mlc::List<::mlc::printer::Expr> kwargs_values) const {
+    return this->get()->CallKw(args, kwargs_keys, kwargs_values);
+  }
+  Expr AddPath(mlc::core::ObjectPath p) {
+    this->get()->source_paths->push_back(p);
+    return *this;
+  }
   MLC_DEF_OBJ_REF(MLC_EXPORTS, Expr, ExprObj, ::mlc::printer::Node)
       .Field("source_paths", &ExprObj::source_paths)
       .StaticFn("__init__", ::mlc::InitOf<ExprObj, ::mlc::List<::mlc::core::ObjectPath>>)

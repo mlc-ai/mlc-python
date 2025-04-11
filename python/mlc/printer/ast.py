@@ -9,6 +9,7 @@ from .cprint import cprint
 
 @mlcd.c_class("mlc.printer.PrinterConfig")
 class PrinterConfig(Object):
+    def_free_var: bool = True
     indent_spaces: int = 2
     print_line_numbers: int = 0
     num_context_lines: int = -1

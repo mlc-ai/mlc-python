@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 import itertools
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import mlc.printer as mlcp
 import pytest
 
 if TYPE_CHECKING:
-    import _pytest
+    from _pytest.mark import ParameterSet
 
 
 @pytest.mark.parametrize(
@@ -645,7 +647,7 @@ def test_print_expr_stmt_doc() -> None:
     ],
     ids=itertools.count(),
 )
-def test_print_assert_doc(msg: Optional[mlcp.ast.Expr], expected: str) -> None:
+def test_print_assert_doc(msg: mlcp.ast.Expr | None, expected: str) -> None:
     test = mlcp.ast.Literal(True)
     doc = mlcp.ast.Assert(test, msg)
     assert doc.to_python().strip() == expected.strip()
@@ -774,7 +776,7 @@ def test_print_function_doc(
     args: list[mlcp.ast.Assign],
     decorators: list[mlcp.ast.Id],
     body: list[mlcp.ast.Stmt],
-    return_type: Optional[mlcp.ast.Expr],
+    return_type: mlcp.ast.Expr | None,
     expected: str,
 ) -> None:
     doc = mlcp.ast.Function(mlcp.ast.Id("func"), args, decorators, return_type, body)
@@ -1103,7 +1105,7 @@ def test_print_invalid_multiline_doc_comment(doc: mlcp.ast.Stmt) -> None:
     assert "cannot have newline" in str(e.value)
 
 
-def generate_expr_precedence_test_cases() -> list["_pytest.mark.ParameterSet"]:
+def generate_expr_precedence_test_cases() -> list[ParameterSet]:
     x = mlcp.ast.Id("x")
     y = mlcp.ast.Id("y")
     z = mlcp.ast.Id("z")

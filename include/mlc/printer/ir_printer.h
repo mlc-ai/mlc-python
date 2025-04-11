@@ -139,6 +139,17 @@ struct IRPrinterObj : public Object {
     return ret;
   }
 
+  template <typename T> mlc::List<T> ApplyToList(const UList &list, const ObjectPath &p) const {
+    // TODO: expose a Python interface
+    int64_t n = list->size();
+    mlc::List<T> args;
+    args.reserve(n);
+    for (int64_t i = 0; i < n; ++i) {
+      args->push_back(this->operator()(list[i], p->WithListIndex(i)));
+    }
+    return args;
+  }
+
   void FramePush(const ObjectRef &frame) {
     frames.push_back(frame);
     frame_vars[frame] = mlc::UList();
@@ -178,14 +189,28 @@ struct IRPrinter : public ObjectRef {
   explicit IRPrinter(PrinterConfig cfg, mlc::Dict<Any, VarInfo> obj2info, mlc::Dict<Str, int64_t> defined_names,
                      mlc::UList frames, mlc::UDict frame_vars)
       : IRPrinter(IRPrinter::New(cfg, obj2info, defined_names, frames, frame_vars)) {}
-
 }; // struct IRPrinter
 
 inline Str ToPython(const ObjectRef &obj, const PrinterConfig &cfg) {
   IRPrinter printer(cfg);
-  printer->FramePush(DefaultFrame());
+  DefaultFrame frame;
+  printer->FramePush(frame);
   Node ret = ::mlc::Lib::IRPrint(obj, printer, ObjectPath::Root());
   printer->FramePop();
+  if (frame->stmts->empty()) {
+    return ret->ToPython(cfg);
+  }
+  if (const auto *block = ret.as<StmtBlockObj>()) {
+    // TODO: support List::insert by iterator
+    frame->stmts->insert(frame->stmts.size(), block->stmts->begin(), block->stmts->end());
+  } else if (const auto *expr = ret.as<ExprObj>()) {
+    frame->stmts->push_back(ExprStmt(mlc::List<ObjectPath>{}, Optional<Str>{}, Expr(expr)));
+  } else if (const auto *stmt = ret.as<StmtObj>()) {
+    frame->stmts->push_back(Stmt(stmt));
+  } else {
+    MLC_THROW(ValueError) << "Unsupported type: " << ret;
+  }
+  ret = StmtBlock(mlc::List<ObjectPath>{}, Optional<Str>{}, frame->stmts);
   return ret->ToPython(cfg);
 }
 
