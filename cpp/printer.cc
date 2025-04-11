@@ -51,7 +51,7 @@ protected:
   void PrintTypedDoc(const NodeObj *doc) {
     using PrinterVTable = std::unordered_map<int32_t, std::function<void(DocPrinter *, const NodeObj *)>>;
     // clang-format off
-    #define MLC_PRINTER_PRINT_TYPED_DOC_ENTRY_(Type) { Type::TObj::_type_index, [](DocPrinter *printer, const NodeObj *doc) { printer->PrintTypedDoc(Type(doc->Cast<Type::TObj>())); } }
+    #define MLC_PRINTER_PRINT_TYPED_DOC_ENTRY_(Type) { Type::TObj::_type_index, [](DocPrinter *printer, const NodeObj *doc) { printer->PrintTypedDoc(Type(doc->DynCast<Type::TObj>())); } }
     // clang-format on
     static PrinterVTable vtable{
         MLC_PRINTER_PRINT_TYPED_DOC_ENTRY_(Literal),   MLC_PRINTER_PRINT_TYPED_DOC_ENTRY_(Id),
@@ -227,7 +227,7 @@ inline ExprPrecedence GetExprPrecedence(const Expr &doc) {
     }
     return table;
   }();
-  if (const auto *op_doc = doc->TryCast<OperationObj>()) {
+  if (const auto *op_doc = doc->as<OperationObj>()) {
     ExprPrecedence precedence = op_kind_precedence.at(op_doc->op);
     if (precedence == ExprPrecedence::kUnkown) {
       MLC_THROW(ValueError) << "Unknown precedence for operator: " << op_doc->op;
@@ -878,7 +878,7 @@ inline void PythonDocPrinter::PrintTypedDoc(const StmtBlock &doc) {
 
 inline void PythonDocPrinter::PrintTypedDoc(const Assign &doc) {
   bool lhs_empty = false;
-  if (const auto *tuple_doc = doc->lhs->TryCast<TupleObj>()) {
+  if (const auto *tuple_doc = doc->lhs->as<TupleObj>()) {
     if (tuple_doc->values.size() == 0) {
       lhs_empty = true;
       if (doc->annotation.defined()) {
@@ -901,7 +901,7 @@ inline void PythonDocPrinter::PrintTypedDoc(const Assign &doc) {
     if (!lhs_empty) {
       output_ << " = ";
     }
-    if (const auto *tuple_doc = doc->rhs.TryCast<TupleObj>()) {
+    if (const auto *tuple_doc = doc->rhs.as<TupleObj>()) {
       if (tuple_doc->values.size() > 1) {
         PrintJoinedDocs(tuple_doc->values, ", ");
       } else {
@@ -938,7 +938,7 @@ inline void PythonDocPrinter::PrintTypedDoc(const While &doc) {
 inline void PythonDocPrinter::PrintTypedDoc(const For &doc) {
   MaybePrintCommenMultiLines(doc, true);
   output_ << "for ";
-  if (const auto *tuple = doc->lhs->TryCast<TupleObj>()) {
+  if (const auto *tuple = doc->lhs->as<TupleObj>()) {
     if (tuple->values.size() == 1) {
       PrintDoc(tuple->values[0]);
       output_ << ",";
