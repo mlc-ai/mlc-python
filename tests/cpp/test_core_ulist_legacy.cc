@@ -5,8 +5,8 @@
 namespace {
 
 using namespace mlc;
-using mlc::base::DataTypeEqual;
 using mlc::base::DeviceEqual;
+using mlc::base::DType;
 
 void TestSizeCapacityClear(UListObj *list, int64_t size, int64_t capacity) {
   EXPECT_EQ(list->size(), size);
@@ -125,7 +125,7 @@ TEST(Legacy_UList_PushBack, Heterogeneous) {
     EXPECT_EQ(i_0, integer);
     EXPECT_DOUBLE_EQ(i_1, fp);
     EXPECT_EQ(i_2, str);
-    EXPECT_PRED2(DataTypeEqual, i_3, dtype);
+    EXPECT_PRED2(DType::Equal, i_3, dtype);
     EXPECT_PRED2(DeviceEqual, i_4, device);
     EXPECT_EQ(i_5, obj.get());
     EXPECT_EQ(i_6, nullptr);
@@ -321,7 +321,7 @@ TEST(Legacy_UList_PopBack, Heterogeneous) {
       EXPECT_STREQ(list[2], str.c_str());
     }
     if (m > 3) {
-      EXPECT_PRED2(DataTypeEqual, DLDataType(list[3]), dtype);
+      EXPECT_PRED2(DType::Equal, DLDataType(list[3]), dtype);
     }
     if (m > 4) {
       EXPECT_PRED2(DeviceEqual, DLDevice(list[4]), device);
@@ -361,7 +361,7 @@ TEST(Legacy_UList_Erase, Front) {
   EXPECT_EQ(list->capacity(), 7);
   EXPECT_EQ(double(list[0]), 1.0);
   EXPECT_STREQ(list[1], "Hi");
-  EXPECT_PRED2(DataTypeEqual, DLDataType(list[2]), dtype);
+  EXPECT_PRED2(DType::Equal, DLDataType(list[2]), dtype);
   EXPECT_PRED2(DeviceEqual, DLDevice(list[3]), device);
   EXPECT_EQ((Object *)(list[4]), obj.get());
   EXPECT_EQ((Object *)(list[5]), nullptr);
@@ -381,7 +381,7 @@ TEST(Legacy_UList_Erase, Back) {
   EXPECT_EQ(list->capacity(), 7);
   EXPECT_EQ(double(list[0]), 1.0);
   EXPECT_STREQ(list[1], "Hi");
-  EXPECT_PRED2(DataTypeEqual, DLDataType(list[2]), dtype);
+  EXPECT_PRED2(DType::Equal, DLDataType(list[2]), dtype);
   EXPECT_PRED2(DeviceEqual, DLDevice(list[3]), device);
   EXPECT_EQ((Object *)(list[4]), obj.get());
   EXPECT_EQ((Object *)(list[5]), nullptr);

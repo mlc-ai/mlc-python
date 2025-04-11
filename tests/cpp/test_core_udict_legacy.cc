@@ -7,7 +7,7 @@ namespace {
 
 using namespace mlc;
 using mlc::base::AnyEqual;
-using mlc::base::DataTypeEqual;
+using mlc::base::DType;
 
 TEST(Legacy_UDict_Construtor, Default) {
   UDict dict;
@@ -59,7 +59,7 @@ TEST(Legacy_UDict_Insert, New) {
   dict[device] = null_obj;
   EXPECT_EQ(dict->size(), 4);
   EXPECT_DOUBLE_EQ(double(dict[integer]), fp);
-  EXPECT_PRED2(DataTypeEqual, DLDataType(dict[str]), dtype);
+  EXPECT_PRED2(DType::Equal, DLDataType(dict[str]), dtype);
   EXPECT_EQ(int(dict[null_obj]), 0);
   EXPECT_EQ((Object *)(dict[device]), nullptr);
 }
@@ -85,7 +85,7 @@ TEST(Legacy_UDict_At, Found) {
   Ref<Object> null_obj{nullptr};
   UDict dict{{integer, fp}, {str, dtype}, {null_obj, 0}};
   EXPECT_DOUBLE_EQ(double(dict->at(integer)), fp);
-  EXPECT_PRED2(DataTypeEqual, DLDataType(dict->at(str)), dtype);
+  EXPECT_PRED2(DType::Equal, DLDataType(dict->at(str)), dtype);
   EXPECT_EQ(int(dict->at(null_obj)), 0);
 }
 
