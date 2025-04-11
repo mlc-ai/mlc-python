@@ -170,7 +170,8 @@ private:
 };
 
 struct Tensor : public ObjectRef {
-  explicit Tensor(DLManagedTensor *tensor) : ObjectRef(TensorObj::Allocator::New(tensor)) {}
+  explicit Tensor(DLManagedTensorVersioned *ext) : Tensor(Tensor::New(ext)) {}
+  explicit Tensor(DLManagedTensor *tensor) : Tensor(Tensor::New(tensor)) {}
   static Tensor FromBytes(const Str &source) { return Tensor(TensorObj::FromBytes(source)); }
   static Tensor FromBase64(const Str &source) { return Tensor(TensorObj::FromBase64(source)); }
 

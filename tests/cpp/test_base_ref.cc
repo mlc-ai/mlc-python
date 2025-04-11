@@ -27,6 +27,7 @@ public:
 
 class TestObjRef : public ObjectRef {
   MLC_DEF_OBJ_REF(MLC_CPPTESTS_EXPORTS, TestObjRef, TestObj, ObjectRef);
+  MLC_DEF_OBJ_REF_FWD_NEW(TestObjRef)
 };
 
 // Tests for Ref<>

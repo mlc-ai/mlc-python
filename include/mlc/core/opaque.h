@@ -33,6 +33,8 @@ struct Opaque : public ObjectRef {
       ._Field("handle_deleter", offsetof(MLCOpaque, handle_deleter), sizeof(MLCOpaque::handle_deleter), true,
               ::mlc::core::ParseType<void *>())
       .Field("opaque_type_name", &OpaqueObj::opaque_type_name, /*frozen=*/true);
+  explicit Opaque(void *handle, void *handle_deleter, const char *opaque_type_name)
+      : Opaque(Opaque::New(handle, handle_deleter, opaque_type_name)) {}
 };
 
 } // namespace mlc

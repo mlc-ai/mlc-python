@@ -54,6 +54,10 @@ struct ObjectPath : public ObjectRef {
       .MemFn("equal", &ObjectPathObj::Equal)
       .MemFn("get_prefix", &ObjectPathObj::GetPrefix)
       .MemFn("is_prefix_of", &ObjectPathObj::IsPrefixOf);
+  explicit ObjectPath(int32_t kind, Any key, Optional<ObjectRef> prev, int64_t length)
+      : ObjectPath(ObjectPath::New(kind, key, prev, length)) {}
+  explicit ObjectPath(int32_t kind, Any key, const ObjectPathObj *prev)
+      : ObjectPath(ObjectPath::New(kind, key, prev)) {}
 };
 
 inline ::mlc::Str ObjectPathObj::__str__() const {

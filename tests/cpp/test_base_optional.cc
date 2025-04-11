@@ -16,6 +16,7 @@ public:
 class TestObjRef : public ObjectRef {
 public:
   MLC_DEF_OBJ_REF(MLC_CPPTESTS_EXPORTS, TestObjRef, TestObj, ObjectRef);
+  MLC_DEF_OBJ_REF_FWD_NEW(TestObjRef)
 };
 
 // Default Constructor Tests
