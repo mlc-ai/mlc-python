@@ -243,7 +243,7 @@ inline Str Object::str() const {
 }
 
 template <typename T> inline Str Ref<T>::str() const {
-  AnyView v(this->operator AnyView());
+  AnyView v(this);
   std::ostringstream os;
   os << v;
   return Str(os.str());

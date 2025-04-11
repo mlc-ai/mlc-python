@@ -518,8 +518,8 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
           MLC_CORE_EQ_S_ERR(lhs_str, rhs_str, new_path);
         }
       } else if (lhs_type_index == kMLCTensor) {
-        DLTensor *lhs_tensor = &lhs->Cast<TensorObj>()->tensor;
-        DLTensor *rhs_tensor = &rhs->Cast<TensorObj>()->tensor;
+        DLTensor *lhs_tensor = &lhs->DynCast<TensorObj>()->tensor;
+        DLTensor *rhs_tensor = &rhs->DynCast<TensorObj>()->tensor;
         int32_t ndim = lhs_tensor->ndim;
         if (ndim != rhs_tensor->ndim) {
           MLC_CORE_EQ_S_ERR(lhs_tensor->ndim, rhs_tensor->ndim, new_path->WithField("ndim"));
@@ -539,7 +539,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
         throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", new_path);
       } else if (lhs_type_index == kMLCOpaque) {
         std::ostringstream err;
-        err << "Cannot compare `mlc.Opaque` of type: " << lhs->Cast<OpaqueObj>()->opaque_type_name;
+        err << "Cannot compare `mlc.Opaque` of type: " << lhs->DynCast<OpaqueObj>()->opaque_type_name;
         throw SEqualError(err.str().c_str(), new_path);
       } else {
         bool visited = false;
@@ -803,7 +803,7 @@ inline uint64_t StructuralHashImpl(Object *obj) {
         throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", ObjectPath::Root());
       } else if (type_index == kMLCOpaque) {
         std::ostringstream err;
-        err << "Cannot compare `mlc.Opaque` of type: " << obj->Cast<OpaqueObj>()->opaque_type_name;
+        err << "Cannot compare `mlc.Opaque` of type: " << obj->DynCast<OpaqueObj>()->opaque_type_name;
         throw SEqualError(err.str().c_str(), ObjectPath::Root());
       } else {
         MLCTypeInfo *type_info = Lib::GetTypeInfo(type_index);
@@ -948,9 +948,9 @@ inline Any CopyShallowImpl(AnyView source) {
   int32_t type_index = source.type_index;
   if (::mlc::base::IsTypeIndexPOD(type_index)) {
     return source;
-  } else if (UListObj *list = source.TryCast<UListObj>()) {
+  } else if (UListObj *list = source.as<UListObj>()) {
     return UList(list->begin(), list->end());
-  } else if (UDictObj *dict = source.TryCast<UDictObj>()) {
+  } else if (UDictObj *dict = source.as<UDictObj>()) {
     return UDict(dict->begin(), dict->end());
   } else if (source.IsInstance<StrObj>() || source.IsInstance<ErrorObj>() || source.IsInstance<FuncObj>() ||
              source.IsInstance<TensorObj>()) {
@@ -1092,7 +1092,7 @@ inline Any CopyDeepImpl(AnyView source) {
     }
 
     void HandleAny(const Any *any) {
-      if (const Object *obj = any->TryCast<Object>()) {
+      if (const Object *obj = any->as<Object>()) {
         HandleObject(obj);
       } else {
         fields->push_back(AnyView(*any));
@@ -1106,14 +1106,14 @@ inline Any CopyDeepImpl(AnyView source) {
   std::vector<AnyView> fields;
   TopoVisit(source.operator Object *(), nullptr, [&](Object *object, MLCTypeInfo *type_info) mutable -> void {
     Any ret;
-    if (UListObj *list = object->TryCast<UListObj>()) {
+    if (UListObj *list = object->as<UListObj>()) {
       fields.clear();
       fields.reserve(list->size());
       for (Any &e : *list) {
         Copier{&orig2copy, &fields}.HandleAny(&e);
       }
       UList::FromAnyTuple(static_cast<int32_t>(fields.size()), fields.data(), &ret);
-    } else if (UDictObj *dict = object->TryCast<UDictObj>()) {
+    } else if (UDictObj *dict = object->as<UDictObj>()) {
       fields.clear();
       for (auto [key, value] : *dict) {
         Copier{&orig2copy, &fields}.HandleAny(&key);
@@ -1124,7 +1124,7 @@ inline Any CopyDeepImpl(AnyView source) {
                object->IsInstance<TensorObj>()) {
       ret = object;
     } else if (object->IsInstance<OpaqueObj>()) {
-      MLC_THROW(TypeError) << "Cannot copy `mlc.Opaque` of type: " << object->Cast<OpaqueObj>()->opaque_type_name;
+      MLC_THROW(TypeError) << "Cannot copy `mlc.Opaque` of type: " << object->DynCast<OpaqueObj>()->opaque_type_name;
     } else {
       fields.clear();
       VisitFields(object, type_info, Copier{&orig2copy, &fields});
@@ -1382,27 +1382,28 @@ inline mlc::Str Serialize(Any any) {
     } else {
       os->put(',');
     }
-    if (StrObj *str = object->TryCast<StrObj>()) {
+    if (StrObj *str = object->as<StrObj>()) {
       str->PrintEscape(*os);
       return;
     }
     (*os) << '[' << (*get_json_type_index)(type_info->type_key);
-    if (UListObj *list = object->TryCast<UListObj>()) {
+    if (UListObj *list = object->as<UListObj>()) {
       for (Any &any : *list) {
         emitter(nullptr, &any);
       }
-    } else if (UDictObj *dict = object->TryCast<UDictObj>()) {
+    } else if (UDictObj *dict = object->as<UDictObj>()) {
       for (auto &kv : *dict) {
         emitter(nullptr, &kv.first);
         emitter(nullptr, &kv.second);
       }
-    } else if (TensorObj *tensor = object->TryCast<TensorObj>()) {
+    } else if (TensorObj *tensor = object->as<TensorObj>()) {
       (*os) << ", " << tensors.size();
       tensors.push_back(tensor);
     } else if (object->IsInstance<FuncObj>() || object->IsInstance<ErrorObj>()) {
       MLC_THROW(TypeError) << "Unserializable type: " << object->GetTypeKey();
     } else if (object->IsInstance<OpaqueObj>()) {
-      MLC_THROW(TypeError) << "Cannot serialize `mlc.Opaque` of type: " << object->Cast<OpaqueObj>()->opaque_type_name;
+      MLC_THROW(TypeError) << "Cannot serialize `mlc.Opaque` of type: "
+                           << object->DynCast<OpaqueObj>()->opaque_type_name;
     } else {
       VisitFields(object, type_info, emitter);
     }

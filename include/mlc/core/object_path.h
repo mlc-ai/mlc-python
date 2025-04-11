@@ -59,7 +59,7 @@ struct ObjectPath : public ObjectRef {
 inline ::mlc::Str ObjectPathObj::__str__() const {
   std::ostringstream os;
   std::vector<const ObjectPathObj *> items;
-  for (const ObjectPathObj *p = this; p; p = p->prev.Cast<ObjectPathObj>()) {
+  for (const ObjectPathObj *p = this; p; p = p->prev.DynCast<ObjectPathObj>()) {
     items.push_back(p);
   }
   for (auto it = items.rbegin(); it != items.rend(); ++it) {
@@ -112,7 +112,7 @@ inline bool ObjectPathObj::Equal(const ObjectPathObj *other) const {
     return false;
   }
   for (const ObjectPathObj *p = this, *q = other; p && q;
-       p = p->prev.Cast<ObjectPathObj>(), q = q->prev.Cast<ObjectPathObj>()) {
+       p = p->prev.DynCast<ObjectPathObj>(), q = q->prev.DynCast<ObjectPathObj>()) {
     if (p->kind != q->kind) {
       return false;
     } else if (p->kind == -1) {
@@ -155,7 +155,7 @@ inline ObjectPathObj *ObjectPathObj::GetPrefix(int64_t prefix_length) const {
     MLC_THROW(ValueError) << "prefix_length" << prefix_length << " > length: " << prefix_length << " vs " << length;
   }
   ObjectPathObj *p = const_cast<ObjectPathObj *>(this);
-  for (; p->length > prefix_length; p = p->prev.Cast<ObjectPathObj>()) {
+  for (; p->length > prefix_length; p = p->prev.DynCast<ObjectPathObj>()) {
   }
   return p;
 }

@@ -65,20 +65,20 @@ struct AnyView : public MLCAny {
     }
     return ::mlc::base::IsInstanceOf<DerivedObj>(this->v.v_obj);
   }
-  template <typename DerivedObj> MLC_INLINE DerivedObj *TryCast() {
+  template <typename DerivedObj> MLC_INLINE DerivedObj *as() {
     return this->IsInstance<DerivedObj>() ? reinterpret_cast<DerivedObj *>(this->v.v_obj) : nullptr;
   }
-  template <typename DerivedObj> MLC_INLINE const DerivedObj *TryCast() const {
+  template <typename DerivedObj> MLC_INLINE const DerivedObj *as() const {
     return this->IsInstance<DerivedObj>() ? reinterpret_cast<const DerivedObj *>(this->v.v_obj) : nullptr;
   }
-  template <typename DerivedObj> inline DerivedObj *Cast() {
+  template <typename DerivedObj> inline DerivedObj *DynCast() {
     if (!this->IsInstance<DerivedObj>()) {
       MLC_THROW(TypeError) << "Cannot cast from type `" << Lib::GetTypeKey(this->type_index) << "` to type `"
                            << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
     }
     return reinterpret_cast<DerivedObj *>(this->v.v_obj);
   }
-  template <typename DerivedObj> MLC_INLINE const DerivedObj *Cast() const {
+  template <typename DerivedObj> MLC_INLINE const DerivedObj *DynCast() const {
     if (!this->IsInstance<DerivedObj>()) {
       MLC_THROW(TypeError) << "Cannot cast from type `" << Lib::GetTypeKey(this->type_index) << "` to type `"
                            << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
@@ -159,20 +159,20 @@ struct Any : public MLCAny {
     }
     return ::mlc::base::IsInstanceOf<DerivedObj>(this->v.v_obj);
   }
-  template <typename DerivedObj> MLC_INLINE DerivedObj *TryCast() {
+  template <typename DerivedObj> MLC_INLINE DerivedObj *as() {
     return this->IsInstance<DerivedObj>() ? reinterpret_cast<DerivedObj *>(this->v.v_obj) : nullptr;
   }
-  template <typename DerivedObj> MLC_INLINE const DerivedObj *TryCast() const {
+  template <typename DerivedObj> MLC_INLINE const DerivedObj *as() const {
     return this->IsInstance<DerivedObj>() ? reinterpret_cast<const DerivedObj *>(this->v.v_obj) : nullptr;
   }
-  template <typename DerivedObj> inline DerivedObj *Cast() {
+  template <typename DerivedObj> inline DerivedObj *DynCast() {
     if (!this->IsInstance<DerivedObj>()) {
       MLC_THROW(TypeError) << "Cannot cast from type `" << Lib::GetTypeKey(this->type_index) << "` to type `"
                            << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";
     }
     return reinterpret_cast<DerivedObj *>(this->v.v_obj);
   }
-  template <typename DerivedObj> MLC_INLINE const DerivedObj *Cast() const {
+  template <typename DerivedObj> MLC_INLINE const DerivedObj *DynCast() const {
     if (!this->IsInstance<DerivedObj>()) {
       MLC_THROW(TypeError) << "Cannot cast from type `" << Lib::GetTypeKey(this->type_index) << "` to type `"
                            << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";

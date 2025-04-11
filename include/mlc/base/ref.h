@@ -15,13 +15,13 @@
     }                                                                                                                  \
     return ::mlc::base::IsInstanceOf<DerivedObj, TObj>(ObjPtrConst);                                                   \
   }                                                                                                                    \
-  template <typename DerivedObj> MLC_INLINE DerivedObj *TryCast() {                                                    \
+  template <typename DerivedObj> MLC_INLINE DerivedObj *as() {                                                         \
     return this->IsInstance<DerivedObj>() ? reinterpret_cast<DerivedObj *>(ObjPtrMut) : nullptr;                       \
   }                                                                                                                    \
-  template <typename DerivedObj> MLC_INLINE const DerivedObj *TryCast() const {                                        \
+  template <typename DerivedObj> MLC_INLINE const DerivedObj *as() const {                                             \
     return this->IsInstance<DerivedObj>() ? reinterpret_cast<const DerivedObj *>(ObjPtrConst) : nullptr;               \
   }                                                                                                                    \
-  template <typename DerivedObj> inline DerivedObj *Cast() {                                                           \
+  template <typename DerivedObj> inline DerivedObj *DynCast() {                                                        \
     if constexpr (CheckNulll) {                                                                                        \
       if ((ObjPtrConst) == nullptr) {                                                                                  \
         return nullptr;                                                                                                \
@@ -34,7 +34,7 @@
                          << ::mlc::base::Type2Str<DerivedObj>::Run() << "`";                                           \
     MLC_UNREACHABLE();                                                                                                 \
   }                                                                                                                    \
-  template <typename DerivedObj> MLC_INLINE const DerivedObj *Cast() const {                                           \
+  template <typename DerivedObj> MLC_INLINE const DerivedObj *DynCast() const {                                        \
     if constexpr (CheckNulll) {                                                                                        \
       if ((ObjPtrConst) == nullptr) {                                                                                  \
         return nullptr;                                                                                                \

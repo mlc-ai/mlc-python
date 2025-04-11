@@ -263,11 +263,11 @@ inline void TopoVisit(Object *root, std::function<void(Object *object, MLCTypeIn
     if (pre_visit) {
       pre_visit(current->obj, current->type_info);
     }
-    if (UListObj *list = current->obj->TryCast<UListObj>()) {
+    if (UListObj *list = current->obj->as<UListObj>()) {
       for (Any any : *list) {
         FieldExtractor{&state, current}(nullptr, &any);
       }
-    } else if (UDictObj *dict = current->obj->TryCast<UDictObj>()) {
+    } else if (UDictObj *dict = current->obj->as<UDictObj>()) {
       for (auto &kv : *dict) {
         FieldExtractor{&state, current}(nullptr, &kv.first);
         FieldExtractor{&state, current}(nullptr, &kv.second);

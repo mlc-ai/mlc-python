@@ -558,27 +558,27 @@ TEST(Any, Constructor_Any_ObjPtr) {
 TEST(AnyView, RTTI_POD) {
   AnyView v(1);
   EXPECT_FALSE(v.IsInstance<Object>());
-  EXPECT_EQ(v.TryCast<Object>(), nullptr);
+  EXPECT_EQ(v.as<Object>(), nullptr);
 }
 
 TEST(AnyView, RTTI_Object) {
   ObjectRef obj;
   AnyView v(obj);
   EXPECT_TRUE(v.IsInstance<Object>());
-  EXPECT_EQ(v.TryCast<Object>(), obj.get());
+  EXPECT_EQ(v.as<Object>(), obj.get());
 }
 
 TEST(Any, RTTI_POD) {
   Any v(1);
   EXPECT_FALSE(v.IsInstance<Object>());
-  EXPECT_EQ(v.TryCast<Object>(), nullptr);
+  EXPECT_EQ(v.as<Object>(), nullptr);
 }
 
 TEST(Any, RTTI_Object) {
   ObjectRef obj;
   Any v(obj);
   EXPECT_TRUE(v.IsInstance<Object>());
-  EXPECT_EQ(v.TryCast<Object>(), obj.get());
+  EXPECT_EQ(v.as<Object>(), obj.get());
 }
 
 } // namespace
