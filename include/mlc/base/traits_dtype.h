@@ -94,6 +94,7 @@ struct DType {
     return dtype;
   }
   static bool Equal(DLDataType a, DLDataType b) { return a.code == b.code && a.bits == b.bits && a.lanes == b.lanes; }
+  static bool IsIntOrUIntOrBool(DLDataType dtype) { return dtype.code == kDLInt || dtype.code == kDLUInt; }
   static bool IsBool(DLDataType dtype) { return dtype.code == kDLUInt && dtype.bits == 1; }
   static bool IsFloat(DLDataType dtype) {
     // TODO: handle fp8

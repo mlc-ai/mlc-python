@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <memory>
 #include <mlc/sym/all.h>
-#include <optional>
 #include <unordered_set>
 
 namespace mlc {

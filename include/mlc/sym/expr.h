@@ -5,6 +5,24 @@
 #include <type_traits>
 
 #define MLC_SYM_EXPORTS MLC_EXPORTS
+#define MLC_SYM_CHECK_BINARY_ARITH_DTYPE(name, dtype, a, b)                                                            \
+  if (!DType::Equal(dtype, a->dtype) || !DType::Equal(dtype, b->dtype)) {                                              \
+    MLC_THROW(TypeError) << "In `" << name << "`, `dtype`, `a.dtype` and `b.dtype` must be the same, but got: "        \
+                         << "dtype = " << DType::Str(dtype) << ", "                                                    \
+                         << "a.dtype = " << DType::Str(a->dtype) << ", "                                               \
+                         << "b.dtype = " << DType::Str(b->dtype);                                                      \
+  }
+#define MLC_SYM_CHECK_BINARY_CMP_DTYPE(name, dtype, a, b)                                                              \
+  if (!DType::Equal(a->dtype, b->dtype)) {                                                                             \
+    MLC_THROW(TypeError) << "In `" << name << "`, ``a.dtype` and `b.dtype` must be the same, but got: "                \
+                         << "dtype = " << DType::Str(dtype) << ", "                                                    \
+                         << "a.dtype = " << DType::Str(a->dtype) << ", "                                               \
+                         << "b.dtype = " << DType::Str(b->dtype);                                                      \
+  }                                                                                                                    \
+  if (!DType::IsBool(dtype)) {                                                                                         \
+    MLC_THROW(TypeError) << "In `" << name << "`, `dtype` must be bool, but got: "                                     \
+                         << "dtype = " << DType::Str(dtype);                                                           \
+  }
 
 namespace mlc {
 namespace sym {
@@ -105,11 +123,8 @@ struct IntImmObj {
   DLDataType dtype;
   int64_t value;
   explicit IntImmObj(DLDataType dtype, int64_t value) : _mlc_header{}, dtype(dtype), value(value) {
-    if (DType::IsBool(dtype)) {
-      MLC_THROW(InternalError) << "Bool type should be represented by BoolImm";
-    }
-    if (DType::IsFloat(dtype)) {
-      MLC_THROW(InternalError) << "Float type should be represented by FloatImm";
+    if (!DType::IsIntOrUIntOrBool(dtype)) {
+      MLC_THROW(InternalError) << "Expect int, uint or bool type, but got " << DType::Str(dtype);
     }
   }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, IntImmObj, ::mlc::sym::ExprObj, "mlc.sym.IntImm");
@@ -134,7 +149,11 @@ struct BoolImmObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   int64_t value;
-  explicit BoolImmObj(DLDataType dtype, int64_t value) : _mlc_header{}, dtype(dtype), value(value) {}
+  explicit BoolImmObj(DLDataType dtype, int64_t value) : _mlc_header{}, dtype(dtype), value(value) {
+    if (!DType::IsBool(dtype)) {
+      MLC_THROW(InternalError) << "Expect bool type, but got " << DType::Str(dtype);
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, BoolImmObj, ::mlc::sym::IntImmObj, "mlc.sym.BoolImm");
 }; // struct BoolImmObj
 
@@ -156,7 +175,11 @@ struct FloatImmObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   double value;
-  explicit FloatImmObj(DLDataType dtype, double value) : _mlc_header{}, dtype(dtype), value(value) {}
+  explicit FloatImmObj(DLDataType dtype, double value) : _mlc_header{}, dtype(dtype), value(value) {
+    if (!DType::IsFloat(dtype)) {
+      MLC_THROW(InternalError) << "Expect float type, but got " << DType::Str(dtype);
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, FloatImmObj, ::mlc::sym::ExprObj, "mlc.sym.FloatImm");
 }; // struct FloatImmObj
 
@@ -201,7 +224,9 @@ struct AddObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit AddObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit AddObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("Add", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, AddObj, ::mlc::sym::ExprObj, "mlc.sym.Add");
 }; // struct AddObj
 
@@ -225,7 +250,9 @@ struct SubObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit SubObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit SubObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("Sub", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, SubObj, ::mlc::sym::ExprObj, "mlc.sym.Sub");
 }; // struct SubObj
 
@@ -249,7 +276,9 @@ struct MulObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit MulObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit MulObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("Mul", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, MulObj, ::mlc::sym::ExprObj, "mlc.sym.Mul");
 }; // struct MulObj
 
@@ -273,7 +302,9 @@ struct DivObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit DivObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit DivObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("Div", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, DivObj, ::mlc::sym::ExprObj, "mlc.sym.Div");
 }; // struct DivObj
 
@@ -297,7 +328,9 @@ struct ModObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit ModObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit ModObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("Mod", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, ModObj, ::mlc::sym::ExprObj, "mlc.sym.Mod");
 }; // struct ModObj
 
@@ -322,7 +355,9 @@ struct FloorDivObj {
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
   explicit FloorDivObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b)
-      : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+      : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("FloorDiv", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, FloorDivObj, ::mlc::sym::ExprObj, "mlc.sym.FloorDiv");
 }; // struct FloorDivObj
 
@@ -347,7 +382,9 @@ struct FloorModObj {
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
   explicit FloorModObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b)
-      : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+      : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("FloorMod", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, FloorModObj, ::mlc::sym::ExprObj, "mlc.sym.FloorMod");
 }; // struct FloorModObj
 
@@ -371,7 +408,9 @@ struct MinObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit MinObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit MinObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("Min", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, MinObj, ::mlc::sym::ExprObj, "mlc.sym.Min");
 }; // struct MinObj
 
@@ -395,7 +434,9 @@ struct MaxObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit MaxObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit MaxObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_ARITH_DTYPE("Max", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, MaxObj, ::mlc::sym::ExprObj, "mlc.sym.Max");
 }; // struct MaxObj
 
@@ -420,9 +461,7 @@ struct EQObj {
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
   explicit EQObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
-    if (!DType::Equal(a->dtype, b->dtype)) {
-      MLC_THROW(InternalError) << "EQ: a and b must have the same dtype";
-    }
+    MLC_SYM_CHECK_BINARY_CMP_DTYPE("EQ", dtype, a, b);
   }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, EQObj, ::mlc::sym::ExprObj, "mlc.sym.EQ");
 }; // struct EQObj
@@ -448,7 +487,9 @@ struct NEObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit NEObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit NEObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_CMP_DTYPE("NE", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, NEObj, ::mlc::sym::ExprObj, "mlc.sym.NE");
 }; // struct NEObj
 
@@ -473,7 +514,9 @@ struct LTObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit LTObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit LTObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_CMP_DTYPE("LT", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, LTObj, ::mlc::sym::ExprObj, "mlc.sym.LT");
 }; // struct LTObj
 
@@ -498,7 +541,9 @@ struct LEObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit LEObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit LEObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_CMP_DTYPE("LE", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, LEObj, ::mlc::sym::ExprObj, "mlc.sym.LE");
 }; // struct LEObj
 
@@ -523,7 +568,9 @@ struct GTObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit GTObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit GTObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_CMP_DTYPE("GT", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, GTObj, ::mlc::sym::ExprObj, "mlc.sym.GT");
 }; // struct GTObj
 
@@ -548,7 +595,9 @@ struct GEObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit GEObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit GEObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    MLC_SYM_CHECK_BINARY_CMP_DTYPE("GE", dtype, a, b);
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, GEObj, ::mlc::sym::ExprObj, "mlc.sym.GE");
 }; // struct GEObj
 
@@ -573,7 +622,14 @@ struct AndObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit AndObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit AndObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    if (!DType::IsBool(dtype) || !DType::IsBool(a->dtype) || !DType::IsBool(b->dtype)) {
+      MLC_THROW(TypeError) << "In `And`, `dtype`, `a.dtype`, and `b.dtype` must be bool"
+                           << ", but got: dtype = " << DType::Str(dtype) //
+                           << ", a.dtype = " << DType::Str(a->dtype)     //
+                           << ", b.dtype = " << DType::Str(b->dtype);
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, AndObj, ::mlc::sym::ExprObj, "mlc.sym.And");
 }; // struct AndObj
 
@@ -598,7 +654,14 @@ struct OrObj {
   DLDataType dtype;
   ::mlc::sym::Expr a;
   ::mlc::sym::Expr b;
-  explicit OrObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {}
+  explicit OrObj(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : _mlc_header{}, dtype(dtype), a(a), b(b) {
+    if (!DType::IsBool(dtype) || !DType::IsBool(a->dtype) || !DType::IsBool(b->dtype)) {
+      MLC_THROW(TypeError) << "In `Or`, `dtype`, `a.dtype`, and `b.dtype` must be bool"
+                           << ", but got: dtype = " << DType::Str(dtype) //
+                           << ", a.dtype = " << DType::Str(a->dtype)     //
+                           << ", b.dtype = " << DType::Str(b->dtype);
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, OrObj, ::mlc::sym::ExprObj, "mlc.sym.Or");
 }; // struct OrObj
 
@@ -622,7 +685,13 @@ struct NotObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
-  explicit NotObj(DLDataType dtype, ::mlc::sym::Expr a) : _mlc_header{}, dtype(dtype), a(a) {}
+  explicit NotObj(DLDataType dtype, ::mlc::sym::Expr a) : _mlc_header{}, dtype(dtype), a(a) {
+    if (!DType::IsBool(dtype) || !DType::IsBool(a->dtype)) {
+      MLC_THROW(TypeError) << "In `Not`, `dtype` and `a.dtype` must be bool"
+                           << ", but got: dtype = " << DType::Str(dtype) //
+                           << ", a.dtype = " << DType::Str(a->dtype);
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, NotObj, ::mlc::sym::ExprObj, "mlc.sym.Not");
 }; // struct NotObj
 
@@ -648,7 +717,18 @@ struct SelectObj {
   ::mlc::sym::Expr true_value;
   ::mlc::sym::Expr false_value;
   explicit SelectObj(DLDataType dtype, ::mlc::sym::Expr cond, ::mlc::sym::Expr true_value, ::mlc::sym::Expr false_value)
-      : _mlc_header{}, dtype(dtype), cond(cond), true_value(true_value), false_value(false_value) {}
+      : _mlc_header{}, dtype(dtype), cond(cond), true_value(true_value), false_value(false_value) {
+    if (!DType::IsBool(cond->dtype)) {
+      MLC_THROW(TypeError) << "In `Select`, `cond.dtype` must be bool"
+                           << ", but got: cond.dtype = " << DType::Str(cond->dtype);
+    }
+    if (!DType::Equal(dtype, true_value->dtype) || !DType::Equal(dtype, false_value->dtype)) {
+      MLC_THROW(TypeError) << "In `Select`, `dtype`, `true_value.dtype`, and `false_value.dtype` must be the same"
+                           << ", but got: dtype = " << DType::Str(dtype)               //
+                           << ", true_value.dtype = " << DType::Str(true_value->dtype) //
+                           << ", false_value.dtype = " << DType::Str(false_value->dtype);
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, SelectObj, ::mlc::sym::ExprObj, "mlc.sym.Select");
 }; // struct SelectObj
 
@@ -676,7 +756,28 @@ struct RampObj {
   ::mlc::sym::Expr stride;
   int64_t lanes;
   explicit RampObj(DLDataType dtype, ::mlc::sym::Expr base, ::mlc::sym::Expr stride, int64_t lanes)
-      : _mlc_header{}, dtype(dtype), base(base), stride(stride), lanes(lanes) {}
+      : _mlc_header{}, dtype(dtype), base(base), stride(stride), lanes(lanes) {
+    if (base->dtype.lanes != 1 || stride->dtype.lanes != 1) {
+      MLC_THROW(TypeError) << "In `Ramp`, `base.dtype` and `stride.dtype` must have `lanes = 1`, but got"
+                           << ": base.dtype = " << DType::Str(base->dtype) << " (lanes: " << base->dtype.lanes << ")"
+                           << ", stride.dtype = " << DType::Str(stride->dtype) << " (lanes: " << stride->dtype.lanes
+                           << ")";
+    }
+    if (lanes != static_cast<int64_t>(dtype.lanes)) {
+      MLC_THROW(TypeError) << "In `Ramp`, `lanes` must be equal to `dtype.lanes`"
+                           << ", but got: lanes = " << lanes //
+                           << ", dtype = " << DType::Str(dtype) << " (lanes: " << dtype.lanes << ")";
+    }
+    if (dtype.code != base->dtype.code || dtype.bits != base->dtype.bits) {
+      MLC_THROW(TypeError) << "In `Ramp`, `dtype` and `base.dtype` must have the same code and bits"
+                           << ", but got: dtype = " << DType::Str(dtype)             //
+                           << " (code: " << base::DataTypeCode2Str(dtype.code)       //
+                           << ", bits: " << dtype.bits << ")"                        //
+                           << ", base.dtype = " << DType::Str(base->dtype)           //
+                           << " (code: " << base::DataTypeCode2Str(base->dtype.code) //
+                           << ", bits: " << base->dtype.bits << ")";
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, RampObj, ::mlc::sym::ExprObj, "mlc.sym.Ramp");
 }; // struct RampObj
 
@@ -704,7 +805,27 @@ struct BroadcastObj {
   ::mlc::sym::Expr value;
   int64_t lanes;
   explicit BroadcastObj(DLDataType dtype, ::mlc::sym::Expr value, int64_t lanes)
-      : _mlc_header{}, dtype(dtype), value(value), lanes(lanes) {}
+      : _mlc_header{}, dtype(dtype), value(value), lanes(lanes) {
+    if (value->dtype.lanes != 1) {
+      MLC_THROW(TypeError) << "In `Broadcast`, `value.dtype` must have `lanes = 1`, but got"
+                           << ": value.dtype = " << DType::Str(value->dtype) << " (lanes: " << value->dtype.lanes
+                           << ")";
+    }
+    if (lanes != static_cast<int64_t>(dtype.lanes)) {
+      MLC_THROW(TypeError) << "In `Broadcast`, `lanes` must be equal to `dtype.lanes`"
+                           << ", but got: lanes = " << lanes //
+                           << ", dtype = " << DType::Str(dtype) << " (lanes: " << dtype.lanes << ")";
+    }
+    if (dtype.code != value->dtype.code || dtype.bits != value->dtype.bits) {
+      MLC_THROW(TypeError) << "In `Broadcast`, `dtype` and `value.dtype` must have the same code and bits"
+                           << ", but got: dtype = " << DType::Str(dtype)              //
+                           << " (code: " << base::DataTypeCode2Str(dtype.code)        //
+                           << ", bits: " << dtype.bits << ")"                         //
+                           << ", value.dtype = " << DType::Str(value->dtype)          //
+                           << " (code: " << base::DataTypeCode2Str(value->dtype.code) //
+                           << ", bits: " << value->dtype.bits << ")";
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, BroadcastObj, ::mlc::sym::ExprObj, "mlc.sym.Broadcast");
 }; // struct BroadcastObj
 
@@ -756,7 +877,18 @@ struct LetObj {
   ::mlc::sym::Expr value;
   ::mlc::sym::Expr body;
   explicit LetObj(DLDataType dtype, ::mlc::sym::Var var, ::mlc::sym::Expr value, ::mlc::sym::Expr body)
-      : _mlc_header{}, dtype(dtype), var(var), value(value), body(body) {}
+      : _mlc_header{}, dtype(dtype), var(var), value(value), body(body) {
+    if (!DType::Equal(value->dtype, var->dtype)) {
+      MLC_THROW(TypeError) << "In `Let`, `value.dtype` and `var.dtype` must be the same"
+                           << ", but got: value.dtype = " << DType::Str(value->dtype)
+                           << ", var.dtype = " << DType::Str(var->dtype);
+    }
+    if (!DType::Equal(body->dtype, dtype)) {
+      MLC_THROW(TypeError) << "In `Let`, `body.dtype` and `dtype` must be the same"
+                           << ", but got: body.dtype = " << DType::Str(body->dtype) //
+                           << ", dtype = " << DType::Str(dtype);
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, LetObj, ::mlc::sym::ExprObj, "mlc.sym.Let");
 }; // struct LetObj
 
@@ -803,7 +935,13 @@ struct RangeObj {
   MLCAny _mlc_header;
   ::mlc::sym::Expr min;
   ::mlc::sym::Expr extent;
-  explicit RangeObj(::mlc::sym::Expr min, ::mlc::sym::Expr extent) : _mlc_header{}, min(min), extent(extent) {}
+  explicit RangeObj(::mlc::sym::Expr min, ::mlc::sym::Expr extent) : _mlc_header{}, min(min), extent(extent) {
+    if (!DType::Equal(min->dtype, extent->dtype)) {
+      MLC_THROW(TypeError) << "In `Range`, `min.dtype` and `extent.dtype` must be the same"
+                           << ", but got: min.dtype = " << DType::Str(min->dtype) //
+                           << ", extent.dtype = " << DType::Str(extent->dtype);
+    }
+  }
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, RangeObj, ::mlc::Object, "mlc.sym.Range");
 }; // struct RangeObj
 
@@ -859,5 +997,8 @@ template <typename T, typename> inline Expr Expr::Const(DLDataType t, T value) {
 
 } // namespace sym
 } // namespace mlc
+
+#undef MLC_SYM_CHECK_BINARY_ARITH_DTYPE
+#undef MLC_SYM_CHECK_BINARY_CMP_DTYPE
 
 #endif // MLC_SYM_EXPR_H_
