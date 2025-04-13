@@ -2,6 +2,7 @@
 #define MLC_PRINTER_IR_PRINTER_H
 
 #include "./ast.h"
+#include <algorithm>
 
 namespace mlc {
 namespace printer {
