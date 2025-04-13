@@ -1,7 +1,6 @@
 #include "./analyzer_impl.h"
 #include "./utils.h"
 #include <memory>
-#include <optional>
 
 namespace mlc {
 namespace sym {

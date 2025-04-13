@@ -1,6 +1,5 @@
 #include "./analyzer_impl.h"
 #include <memory>
-#include <optional>
 #include <unordered_set>
 
 namespace mlc {
