@@ -198,12 +198,12 @@ template <typename TNode, typename FLeaf> inline void UnpackReduction(const Expr
 }
 
 template <typename FLeaf> inline void UnpackSum(const Expr &value, FLeaf fleaf, int sign = 1) {
-  if (const auto *node = value.as<AddObj>()) {
-    UnpackSum(node->a, fleaf, sign);
-    UnpackSum(node->b, fleaf, sign);
-  } else if (const auto *node = value.as<SubObj>()) {
-    UnpackSum(node->a, fleaf, sign);
-    UnpackSum(node->b, fleaf, -sign);
+  if (const auto *add = value.as<AddObj>()) {
+    UnpackSum(add->a, fleaf, sign);
+    UnpackSum(add->b, fleaf, sign);
+  } else if (const auto *sub = value.as<SubObj>()) {
+    UnpackSum(sub->a, fleaf, sign);
+    UnpackSum(sub->b, fleaf, -sign);
   } else {
     fleaf(value, sign);
   }

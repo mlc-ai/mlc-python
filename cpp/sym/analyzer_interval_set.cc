@@ -5,15 +5,15 @@ namespace mlc {
 namespace sym {
 
 IntervalSet IntervalSetObj::Intersect(IntervalSetObj *b, AnalyzerObj::Impl *analyzer) const {
-  Expr max_value = min(this->max_value, b->max_value);
-  Expr min_value = max(this->min_value, b->min_value);
+  Expr max_value_ = min(this->max_value, b->max_value);
+  Expr min_value_ = max(this->min_value, b->min_value);
   auto int_or_uint = [](DLDataType dtype) { return dtype.code == kDLInt || dtype.code == kDLUInt; };
-  if (int_or_uint(max_value->dtype) && //
-      int_or_uint(min_value->dtype) && //
-      analyzer->CanProve(max_value < min_value)) {
+  if (int_or_uint(max_value_->dtype) && //
+      int_or_uint(min_value_->dtype) && //
+      analyzer->CanProve(max_value_ < min_value_)) {
     return IntervalSet::Empty();
   } else {
-    return IntervalSet(min_value, max_value);
+    return IntervalSet(min_value_, max_value_);
   }
 }
 
@@ -22,9 +22,9 @@ IntervalSet IntervalSetObj::Union(IntervalSetObj *b, AnalyzerObj::Impl *) const 
     return IntervalSet(b);
   if (b->IsEmpty())
     return IntervalSet(this);
-  Expr max_value = max(this->max_value, b->max_value);
-  Expr min_value = min(this->min_value, b->min_value);
-  return IntervalSet(min_value, max_value);
+  Expr max_value_ = max(this->max_value, b->max_value);
+  Expr min_value_ = min(this->min_value, b->min_value);
+  return IntervalSet(min_value_, max_value_);
 }
 
 bool IntervalSetObj::HasUpperBound() const { return !is_pos_inf(max_value) && !IsEmpty(); }
@@ -397,7 +397,7 @@ struct IntervalSetEvaluator : public ExprFunctor<IntervalSet(const Expr &)> {
     if (stride.Match(op->stride)) {
       DLDataType t = op->base->dtype;
       int64_t vstride = stride.Eval()->value;
-      int lanes = op->lanes;
+      int32_t lanes = static_cast<int32_t>(op->lanes);
       if (vstride > 0) {
         Expr min = Expr::Const(t, 0);
         Expr max = Expr::Const(t, vstride * (lanes - 1));

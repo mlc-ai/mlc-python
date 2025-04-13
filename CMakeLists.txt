@@ -71,6 +71,9 @@ set_target_properties(
   MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
 )
 add_cxx_warning(mlc_objs)
+if(MSVC)
+  target_compile_options(mlc_objs PRIVATE /bigobj)
+endif()
 target_include_directories(mlc_objs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(mlc_objs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/dlpack/include")
 target_link_libraries(mlc_objs PUBLIC mlc::mlc_backtrace-static)

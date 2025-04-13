@@ -1602,7 +1602,8 @@ Expr RewriteSimplifier::Impl::VisitExpr_(const LEObj *op) {
   // (floordiv(A,B)<x) in these cases instead.
   ret = ApplyRewriteRules(Not(ApplyRewriteRules(LT(op->b, op->a))));
 
-  if (auto op = ret.as<LEObj>(); op && IsIndexType(op->a->dtype)) {
+  op = ret.as<LEObj>();
+  if (op && IsIndexType(op->a->dtype)) {
     CompareResult result = TryCompare(op->a, op->b);
     if (result == CompareResult::kLE || result == CompareResult::kLT || result == CompareResult::kEQ) {
       return Expr::Const(op->dtype, true);

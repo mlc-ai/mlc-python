@@ -37,10 +37,8 @@ struct SplitExprObj : public ExprObj {
 
   explicit SplitExprObj(DLDataType dtype, Expr index, int64_t lower_factor, int64_t upper_factor, int64_t scale,
                         DivMode div_mode)
-      : index(std::move(index)), lower_factor(lower_factor), upper_factor(upper_factor), scale(scale),
-        div_mode(div_mode) {
-    this->dtype = dtype;
-  }
+      : ExprObj(dtype), index(index), lower_factor(lower_factor), upper_factor(upper_factor), scale(scale),
+        div_mode(div_mode) {}
 
   void Verify() const {
     if (!(upper_factor == kPosInf || upper_factor % lower_factor == 0)) {
@@ -58,7 +56,7 @@ struct SplitExprObj : public ExprObj {
   }
   Expr NormalizeWithScale(int64_t sscale) const;
   Expr Normalize() const { return NormalizeWithScale(1); }
-  void MulToSelf(int64_t scale) { this->scale *= scale; }
+  void MulToSelf(int64_t s) { this->scale *= s; }
   bool CanPushCastToChildren(DLDataType dtype, AnalyzerObj::Impl *analyzer) const;
   void PushCastToChildren(DLDataType dtype);
   inline bool IndexEqual(const SplitExpr &other) const;

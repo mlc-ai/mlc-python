@@ -37,49 +37,49 @@ bool CastIsSafe(DLDataType dtype, Expr value, AnalyzerObj::Impl *analyzer) {
 
 Expr SplitExprObj::NormalizeWithScale(int64_t sscale) const {
   Expr res = this->index;
-  DLDataType dtype = this->dtype;
+  // DLDataType dtype = this->dtype;
   if (this->scale == 0) {
-    return Expr::Const(dtype, 0);
+    return Expr::Const(this->dtype, 0);
   }
   if (this->upper_factor != kPosInf) {
-    res = ModImpl(res, Expr::Const(dtype, this->upper_factor), div_mode);
+    res = ModImpl(res, Expr::Const(this->dtype, this->upper_factor), div_mode);
   }
   if (this->lower_factor != 1) {
-    res = DivImpl(res, Expr::Const(dtype, this->lower_factor), div_mode);
+    res = DivImpl(res, Expr::Const(this->dtype, this->lower_factor), div_mode);
   }
   sscale *= this->scale;
   if (sscale != 1) {
     // TODO: recover this
-    // ICHECK(!dtype.is_uint() || sscale > 0);
+    // ICHECK(!this->dtype.is_uint() || sscale > 0);
     res = res * sscale;
   }
   return res;
 }
 
-bool SplitExprObj::CanPushCastToChildren(DLDataType dtype, AnalyzerObj::Impl *analyzer) const {
-  // cast(dtype, index % upper_factor / lower_factor * scale) ==
-  // cast(dtype, index) % upper_factor / lower_factor * scale
-  // iff it is an upcast (dtype.bits >= self.dtype.bits) or all of
+bool SplitExprObj::CanPushCastToChildren(DLDataType dtype_, AnalyzerObj::Impl *analyzer) const {
+  // cast(dtype_, index % upper_factor / lower_factor * scale) ==
+  // cast(dtype_, index) % upper_factor / lower_factor * scale
+  // iff it is an upcast (dtype_.bits >= self.dtype_.bits) or all of
   // its intermediate results fit in the range of dtype
-  if (dtype.bits >= this->dtype.bits) {
+  if (dtype_.bits >= this->dtype.bits) {
     return true; // upcast is safe
   }
   Expr res = this->index;
   if (this->scale == 0) {
     return true;
   }
-  if (!CastIsSafe(dtype, res, analyzer)) {
+  if (!CastIsSafe(dtype_, res, analyzer)) {
     return false;
   }
   if (this->upper_factor != kPosInf) {
     res = ModImpl(res, Expr::Const(this->dtype, this->upper_factor), div_mode);
-    if (!CastIsSafe(dtype, res, analyzer)) {
+    if (!CastIsSafe(dtype_, res, analyzer)) {
       return false;
     }
   }
   if (this->lower_factor != 1) {
     res = DivImpl(res, Expr::Const(this->dtype, this->lower_factor), div_mode);
-    if (!CastIsSafe(dtype, res, analyzer)) {
+    if (!CastIsSafe(dtype_, res, analyzer)) {
       return false;
     }
   }
@@ -87,16 +87,16 @@ bool SplitExprObj::CanPushCastToChildren(DLDataType dtype, AnalyzerObj::Impl *an
     // TODO: recover
     // ICHECK(!this->dtype.is_uint() || this->scale > 0);
     res = res * this->scale;
-    if (!CastIsSafe(dtype, res, analyzer)) {
+    if (!CastIsSafe(dtype_, res, analyzer)) {
       return false;
     }
   }
   return true;
 }
 
-void SplitExprObj::PushCastToChildren(DLDataType dtype) {
-  this->index = cast(dtype, this->index);
-  this->dtype = dtype;
+void SplitExprObj::PushCastToChildren(DLDataType dtype_) {
+  this->index = cast(dtype_, this->index);
+  this->dtype = dtype_;
 }
 
 bool SplitExprObj::IndexEqual(const SplitExpr &other) const {
@@ -186,29 +186,29 @@ void SumExprObj::AddToSelf(const SumExpr &other, int64_t scale) {
   this->AddToSelf(other->base * scale);
 }
 
-bool SumExprObj::CanPushCastToChildren(DLDataType dtype, AnalyzerObj::Impl *analyzer) const {
-  bool is_min_value = dtype.bits == 64                                     //
+bool SumExprObj::CanPushCastToChildren(DLDataType dtype_, AnalyzerObj::Impl *analyzer) const {
+  bool is_min_value = dtype_.bits == 64                                    //
                           ? base == std::numeric_limits<int64_t>::lowest() //
-                          : base == -(1LL << (dtype.bits - 1));
-  // cast(dtype, arg_1 + arg_2 + ... arg_n) ==
-  // cast(dtype, arg_1) + ... + cast(dtype, arg_n)
-  // iff it is an upcast (dtype.bits >= self.dtype.bits) or all of
+                          : base == -(1LL << (dtype_.bits - 1));
+  // cast(dtype_, arg_1 + arg_2 + ... arg_n) ==
+  // cast(dtype_, arg_1) + ... + cast(dtype_, arg_n)
+  // iff it is an upcast (dtype_.bits >= self.dtype.bits) or all of
   // its intermediate results fit in the range of dtype
-  if (dtype.bits >= this->dtype.bits) {
+  if (dtype_.bits >= this->dtype.bits) {
     return true; // upcast is safe
   }
-  Expr res = Expr::Const(dtype, 0);
+  Expr res = Expr::Const(dtype_, 0);
   for (size_t i = 0; i < args.size(); ++i) {
     if (args[i]->scale > 0) {
       res = res + args[i]->Normalize();
-      if (!CastIsSafe(dtype, res, analyzer)) {
+      if (!CastIsSafe(dtype_, res, analyzer)) {
         return false;
       }
     }
   }
   if (base > 0 || is_min_value) {
     res = res + base;
-    if (!CastIsSafe(dtype, res, analyzer)) {
+    if (!CastIsSafe(dtype_, res, analyzer)) {
       return false;
     }
   }
@@ -216,30 +216,30 @@ bool SumExprObj::CanPushCastToChildren(DLDataType dtype, AnalyzerObj::Impl *anal
   for (size_t i = 0; i < args.size(); ++i) {
     if (args[i]->scale < 0) {
       res = res - args[i]->NormalizeWithScale(-1);
-      if (!CastIsSafe(dtype, res, analyzer)) {
+      if (!CastIsSafe(dtype_, res, analyzer)) {
         return false;
       }
     }
   }
   if (base < 0 && !is_min_value) {
     res = res - (-base);
-    if (!CastIsSafe(dtype, res, analyzer)) {
+    if (!CastIsSafe(dtype_, res, analyzer)) {
       return false;
     }
   }
   for (const auto &arg : args) {
-    if (!arg->CanPushCastToChildren(dtype, analyzer)) {
+    if (!arg->CanPushCastToChildren(dtype_, analyzer)) {
       return false;
     }
   }
   return true;
 }
 
-void SumExprObj::PushCastToChildren(DLDataType dtype) {
+void SumExprObj::PushCastToChildren(DLDataType dtype_) {
   for (auto &arg : args) {
-    arg.CopyOnWrite()->PushCastToChildren(dtype);
+    arg.CopyOnWrite()->PushCastToChildren(dtype_);
   }
-  this->dtype = dtype;
+  this->dtype = dtype_;
 }
 
 std::vector<SplitExpr> SumExprObj::SimplifySplitExprs(std::vector<SplitExpr> args) {
@@ -411,10 +411,10 @@ private:
                               SumExpr *out_non_divisible);
   bool ProdDivSimplify(Expr *lhs, Expr *rhs, Expr *common_scale);
   Expr Normalize(Expr expr) {
-    if (const auto *op = expr.as<SplitExprObj>()) {
-      return op->Normalize();
-    } else if (const auto *op = expr.as<SumExprObj>()) {
-      return op->Normalize();
+    if (const auto *split_expr = expr.as<SplitExprObj>()) {
+      return split_expr->Normalize();
+    } else if (const auto *sum_expr = expr.as<SumExprObj>()) {
+      return sum_expr->Normalize();
     } else {
       return expr;
     }
@@ -428,10 +428,10 @@ private:
         return op->args[0];
       }
     }
-    if (const auto *op = expr.as<SplitExprObj>()) {
-      expr = op->Normalize();
-    } else if (const auto *op = expr.as<SumExprObj>()) {
-      expr = op->Normalize();
+    if (const auto *split_expr = expr.as<SplitExprObj>()) {
+      expr = split_expr->Normalize();
+    } else if (const auto *sum_expr = expr.as<SumExprObj>()) {
+      expr = sum_expr->Normalize();
     }
     return SplitExpr(expr->dtype, expr);
   }
@@ -494,10 +494,10 @@ Expr CanonicalSimplifier::Impl::VisitExpr_(const AddObj *op) {
   // canonical form simplification.
   SumExpr ret = ToSumExpr(std::move(a));
 
-  if (const auto *op = b.as<IntImmObj>()) {
-    ret.CopyOnWrite()->AddToSelf(op->value);
-  } else if (auto op = b.as<SumExprObj>()) {
-    ret.CopyOnWrite()->AddToSelf(SumExpr(op), 1);
+  if (const auto *i = b.as<IntImmObj>()) {
+    ret.CopyOnWrite()->AddToSelf(i->value);
+  } else if (auto *s = b.as<SumExprObj>()) {
+    ret.CopyOnWrite()->AddToSelf(SumExpr(s), 1);
   } else {
     ret.CopyOnWrite()->AddToSelf(ToSplitExpr(b), 1);
   }
@@ -519,10 +519,10 @@ Expr CanonicalSimplifier::Impl::VisitExpr_(const SubObj *op) {
   // canonical form simplification.
   SumExpr ret = ToSumExpr(std::move(a));
 
-  if (const auto *op = b.as<IntImmObj>()) {
-    ret.CopyOnWrite()->AddToSelf(-op->value);
-  } else if (auto op = b.as<SumExprObj>()) {
-    ret.CopyOnWrite()->AddToSelf(SumExpr(op), -1);
+  if (const auto *i = b.as<IntImmObj>()) {
+    ret.CopyOnWrite()->AddToSelf(-i->value);
+  } else if (auto *s = b.as<SumExprObj>()) {
+    ret.CopyOnWrite()->AddToSelf(SumExpr(s), -1);
   } else {
     ret.CopyOnWrite()->AddToSelf(ToSplitExpr(b), -1);
   }

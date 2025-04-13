@@ -8,7 +8,7 @@
 namespace mlc {
 namespace sym {
 
-struct MLC_API AnalyzerObj {
+struct AnalyzerObj {
   MLCAny _mlc_header;
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, AnalyzerObj, ::mlc::Object, "mlc.sym.Analyzer");
 
@@ -18,25 +18,25 @@ struct MLC_API AnalyzerObj {
     kDefault = 0,
     kSymbolicBound = 1,
   };
-  AnalyzerObj();
-  ~AnalyzerObj();
-  void MarkGlobalNonNegValue(const Expr &value);
-  void Bind(const Var &var, const Expr &expr, bool allow_override = false);
-  void Bind(const Var &var, const Range &range, bool allow_override = false);
-  void Bind(const Dict<Var, Range> &variables, bool allow_override = false);
-  bool CanProveGreaterEqual(const Expr &expr, int64_t lower_bound);
-  bool CanProveLess(const Expr &expr, int64_t upper_bound);
-  bool CanProveEqual(const Expr &lhs, const Expr &rhs);
-  bool CanProveLessEqualThanSymbolicShapeValue(const Expr &lhs, const Expr &shape);
-  bool CanProve(const Expr &cond, ProofStrength strength = ProofStrength::kDefault);
-  Expr Simplify(const Expr &expr, int steps = 2);
+  MLC_API AnalyzerObj();
+  MLC_API ~AnalyzerObj();
+  MLC_API void MarkGlobalNonNegValue(const Expr &value);
+  MLC_API void Bind(const Var &var, const Expr &expr, bool allow_override = false);
+  MLC_API void Bind(const Var &var, const Range &range, bool allow_override = false);
+  MLC_API void Bind(const Dict<Var, Range> &variables, bool allow_override = false);
+  MLC_API bool CanProveGreaterEqual(const Expr &expr, int64_t lower_bound);
+  MLC_API bool CanProveLess(const Expr &expr, int64_t upper_bound);
+  MLC_API bool CanProveEqual(const Expr &lhs, const Expr &rhs);
+  MLC_API bool CanProveLessEqualThanSymbolicShapeValue(const Expr &lhs, const Expr &shape);
+  MLC_API bool CanProve(const Expr &cond, ProofStrength strength = ProofStrength::kDefault);
+  MLC_API Expr Simplify(const Expr &expr, int steps = 2);
 
 private:
   friend struct IRMutatorWithAnalyzer;
   std::unique_ptr<Impl> impl_;
 };
 
-struct MLC_API Analyzer : public ObjectRef {
+struct Analyzer : public ObjectRef {
   Analyzer() : ObjectRef(Analyzer::New()) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Analyzer, AnalyzerObj, ObjectRef)
       .StaticFn("__init__", InitOf<AnalyzerObj>)
@@ -56,13 +56,13 @@ struct MLC_API Analyzer : public ObjectRef {
       .MemFn("simplify", &AnalyzerObj::Simplify);
 };
 
-struct MLC_API IRMutatorWithAnalyzer : public ExprMutator {
+struct IRMutatorWithAnalyzer : public ExprMutator {
   explicit IRMutatorWithAnalyzer(AnalyzerObj *analyzer) : analyzer_(analyzer->impl_.get()) {}
   explicit IRMutatorWithAnalyzer(AnalyzerObj::Impl *analyzer) : analyzer_(analyzer) {}
   using ExprMutator::VisitExpr_;
-  Expr VisitExpr_(const LetObj *op) override;
-  Expr VisitExpr_(const SelectObj *op) override;
-  Expr VisitExpr_(const CallObj *op) override;
+  MLC_API Expr VisitExpr_(const LetObj *op) override;
+  MLC_API Expr VisitExpr_(const SelectObj *op) override;
+  MLC_API Expr VisitExpr_(const CallObj *op) override;
 
 protected:
   AnalyzerObj::Impl *analyzer_;

@@ -10,7 +10,7 @@ namespace mlc {
 namespace sym {
 using mlc::base::DType;
 
-struct MLC_API OpObj {
+struct OpObj {
   MLCAny _mlc_header;
   ::mlc::Str name;
   explicit OpObj(::mlc::Str name) : _mlc_header{}, name(name) {}
@@ -23,10 +23,10 @@ struct MLC_API OpObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, OpObj, ::mlc::Object, "mlc.sym.Op");
 }; // struct OpObj
 
-struct MLC_API Op : public ::mlc::ObjectRef {
+struct Op : public ::mlc::ObjectRef {
   static constexpr bool is_logical = false;
   explicit Op(::mlc::Str name) : Op(Op::New(name)) {}
-  static Op Get(::mlc::Str name);
+  static MLC_API Op Get(::mlc::Str name);
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Op, OpObj, ::mlc::ObjectRef)
       .Field("name", &OpObj::name)
       .Structure(StructureKind::kNoBind, {"name"})
@@ -37,13 +37,15 @@ struct MLC_API Op : public ::mlc::ObjectRef {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API ExprObj {
+struct ExprObj {
   MLCAny _mlc_header;
   DLDataType dtype;
+  ExprObj() = default;
+  explicit ExprObj(DLDataType dtype) : _mlc_header{}, dtype(dtype) {}
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, ExprObj, ::mlc::Object, "mlc.sym.Expr");
 }; // struct ExprObj
 
-struct MLC_API Expr : public ::mlc::ObjectRef {
+struct Expr : public ::mlc::ObjectRef {
   static constexpr bool is_logical = false;
   static Expr Bool(bool value, int32_t lanes = 1);
   static Expr Int32(int64_t value, int32_t lanes = 1);
@@ -58,7 +60,7 @@ struct MLC_API Expr : public ::mlc::ObjectRef {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API VarObj {
+struct VarObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::Str name;
@@ -66,7 +68,7 @@ struct MLC_API VarObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, VarObj, ::mlc::sym::ExprObj, "mlc.sym.Var");
 }; // struct VarObj
 
-struct MLC_API Var : public ::mlc::sym::Expr {
+struct Var : public ::mlc::sym::Expr {
   explicit Var(::mlc::Str name, DLDataType dtype) : Var(Var::New(dtype, name)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Var, VarObj, ::mlc::sym::Expr)
       .Field("dtype", &VarObj::dtype)
@@ -78,7 +80,7 @@ struct MLC_API Var : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API ShapeVarObj {
+struct ShapeVarObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::Str name;
@@ -86,7 +88,7 @@ struct MLC_API ShapeVarObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, ShapeVarObj, ::mlc::sym::VarObj, "mlc.sym.ShapeVar");
 }; // struct ShapeVarObj
 
-struct MLC_API ShapeVar : public ::mlc::sym::Var {
+struct ShapeVar : public ::mlc::sym::Var {
   explicit ShapeVar(::mlc::Str name, DLDataType dtype) : ShapeVar(ShapeVar::New(dtype, name)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, ShapeVar, ShapeVarObj, ::mlc::sym::Var)
       .Field("dtype", &ShapeVarObj::dtype)
@@ -98,7 +100,7 @@ struct MLC_API ShapeVar : public ::mlc::sym::Var {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API IntImmObj {
+struct IntImmObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   int64_t value;
@@ -113,7 +115,7 @@ struct MLC_API IntImmObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, IntImmObj, ::mlc::sym::ExprObj, "mlc.sym.IntImm");
 }; // struct IntImmObj
 
-struct MLC_API IntImm : public ::mlc::sym::Expr {
+struct IntImm : public ::mlc::sym::Expr {
   explicit IntImm(int64_t value, int32_t bits, int32_t lanes = 1)
       : IntImm(IntImm::New(DType::Int(bits, lanes), value)) {}
   explicit IntImm(int64_t value, DLDataType dtype) : IntImm(IntImm::New(dtype, value)) {}
@@ -128,7 +130,7 @@ struct MLC_API IntImm : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API BoolImmObj {
+struct BoolImmObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   int64_t value;
@@ -136,7 +138,7 @@ struct MLC_API BoolImmObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, BoolImmObj, ::mlc::sym::IntImmObj, "mlc.sym.BoolImm");
 }; // struct BoolImmObj
 
-struct MLC_API BoolImm : public ::mlc::sym::IntImm {
+struct BoolImm : public ::mlc::sym::IntImm {
   explicit BoolImm(bool value, DLDataType dtype) : BoolImm(BoolImm::New(dtype, static_cast<int64_t>(value))) {}
   explicit BoolImm(bool value, int32_t lanes = 1)
       : BoolImm(BoolImm::New(DType::Bool(lanes), static_cast<int64_t>(value))) {}
@@ -150,7 +152,7 @@ struct MLC_API BoolImm : public ::mlc::sym::IntImm {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API FloatImmObj {
+struct FloatImmObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   double value;
@@ -158,7 +160,7 @@ struct MLC_API FloatImmObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, FloatImmObj, ::mlc::sym::ExprObj, "mlc.sym.FloatImm");
 }; // struct FloatImmObj
 
-struct MLC_API FloatImm : public ::mlc::sym::Expr {
+struct FloatImm : public ::mlc::sym::Expr {
   explicit FloatImm(double value, int32_t bits, int32_t lanes = 1)
       : FloatImm(FloatImm::New(DType::Float(bits, lanes), value)) {}
   explicit FloatImm(double value, DLDataType dtype) : FloatImm(FloatImm::New(dtype, value)) {}
@@ -173,7 +175,7 @@ struct MLC_API FloatImm : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API CastObj {
+struct CastObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr value;
@@ -181,7 +183,7 @@ struct MLC_API CastObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, CastObj, ::mlc::sym::ExprObj, "mlc.sym.Cast");
 }; // struct CastObj
 
-struct MLC_API Cast : public ::mlc::sym::Expr {
+struct Cast : public ::mlc::sym::Expr {
   explicit Cast(DLDataType dtype, ::mlc::sym::Expr value) : Cast(Cast::New(dtype, value)) {}
   explicit Cast(::mlc::sym::Expr value, DLDataType dtype) : Cast(Cast::New(dtype, value)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Cast, CastObj, ::mlc::sym::Expr)
@@ -194,7 +196,7 @@ struct MLC_API Cast : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API AddObj {
+struct AddObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -203,8 +205,8 @@ struct MLC_API AddObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, AddObj, ::mlc::sym::ExprObj, "mlc.sym.Add");
 }; // struct AddObj
 
-struct MLC_API Add : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct Add : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit Add(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : Add(Add::New(dtype, a, b)) {}
   explicit Add(::mlc::sym::Expr a, ::mlc::sym::Expr b) : Add(Add::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Add, AddObj, ::mlc::sym::Expr)
@@ -218,7 +220,7 @@ struct MLC_API Add : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API SubObj {
+struct SubObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -227,8 +229,8 @@ struct MLC_API SubObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, SubObj, ::mlc::sym::ExprObj, "mlc.sym.Sub");
 }; // struct SubObj
 
-struct MLC_API Sub : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct Sub : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit Sub(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : Sub(Sub::New(dtype, a, b)) {}
   explicit Sub(::mlc::sym::Expr a, ::mlc::sym::Expr b) : Sub(Sub::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Sub, SubObj, ::mlc::sym::Expr)
@@ -242,7 +244,7 @@ struct MLC_API Sub : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API MulObj {
+struct MulObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -251,8 +253,8 @@ struct MLC_API MulObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, MulObj, ::mlc::sym::ExprObj, "mlc.sym.Mul");
 }; // struct MulObj
 
-struct MLC_API Mul : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct Mul : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit Mul(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : Mul(Mul::New(dtype, a, b)) {}
   explicit Mul(::mlc::sym::Expr a, ::mlc::sym::Expr b) : Mul(Mul::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Mul, MulObj, ::mlc::sym::Expr)
@@ -266,7 +268,7 @@ struct MLC_API Mul : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API DivObj {
+struct DivObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -275,8 +277,8 @@ struct MLC_API DivObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, DivObj, ::mlc::sym::ExprObj, "mlc.sym.Div");
 }; // struct DivObj
 
-struct MLC_API Div : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct Div : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit Div(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : Div(Div::New(dtype, a, b)) {}
   explicit Div(::mlc::sym::Expr a, ::mlc::sym::Expr b) : Div(Div::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Div, DivObj, ::mlc::sym::Expr)
@@ -290,7 +292,7 @@ struct MLC_API Div : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API ModObj {
+struct ModObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -299,8 +301,8 @@ struct MLC_API ModObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, ModObj, ::mlc::sym::ExprObj, "mlc.sym.Mod");
 }; // struct ModObj
 
-struct MLC_API Mod : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct Mod : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit Mod(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : Mod(Mod::New(dtype, a, b)) {}
   explicit Mod(::mlc::sym::Expr a, ::mlc::sym::Expr b) : Mod(Mod::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Mod, ModObj, ::mlc::sym::Expr)
@@ -314,7 +316,7 @@ struct MLC_API Mod : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API FloorDivObj {
+struct FloorDivObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -324,8 +326,8 @@ struct MLC_API FloorDivObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, FloorDivObj, ::mlc::sym::ExprObj, "mlc.sym.FloorDiv");
 }; // struct FloorDivObj
 
-struct MLC_API FloorDiv : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct FloorDiv : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit FloorDiv(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : FloorDiv(FloorDiv::New(dtype, a, b)) {}
   explicit FloorDiv(::mlc::sym::Expr a, ::mlc::sym::Expr b) : FloorDiv(FloorDiv::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, FloorDiv, FloorDivObj, ::mlc::sym::Expr)
@@ -339,7 +341,7 @@ struct MLC_API FloorDiv : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API FloorModObj {
+struct FloorModObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -349,8 +351,8 @@ struct MLC_API FloorModObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, FloorModObj, ::mlc::sym::ExprObj, "mlc.sym.FloorMod");
 }; // struct FloorModObj
 
-struct MLC_API FloorMod : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct FloorMod : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit FloorMod(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : FloorMod(FloorMod::New(dtype, a, b)) {}
   explicit FloorMod(::mlc::sym::Expr a, ::mlc::sym::Expr b) : FloorMod(FloorMod::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, FloorMod, FloorModObj, ::mlc::sym::Expr)
@@ -364,7 +366,7 @@ struct MLC_API FloorMod : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API MinObj {
+struct MinObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -373,8 +375,8 @@ struct MLC_API MinObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, MinObj, ::mlc::sym::ExprObj, "mlc.sym.Min");
 }; // struct MinObj
 
-struct MLC_API Min : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct Min : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit Min(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : Min(Min::New(dtype, a, b)) {}
   explicit Min(::mlc::sym::Expr a, ::mlc::sym::Expr b) : Min(Min::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Min, MinObj, ::mlc::sym::Expr)
@@ -388,7 +390,7 @@ struct MLC_API Min : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API MaxObj {
+struct MaxObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -397,8 +399,8 @@ struct MLC_API MaxObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, MaxObj, ::mlc::sym::ExprObj, "mlc.sym.Max");
 }; // struct MaxObj
 
-struct MLC_API Max : public ::mlc::sym::Expr {
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+struct Max : public ::mlc::sym::Expr {
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit Max(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : Max(Max::New(dtype, a, b)) {}
   explicit Max(::mlc::sym::Expr a, ::mlc::sym::Expr b) : Max(Max::New(a->dtype, a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Max, MaxObj, ::mlc::sym::Expr)
@@ -412,7 +414,7 @@ struct MLC_API Max : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API EQObj {
+struct EQObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -425,9 +427,9 @@ struct MLC_API EQObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, EQObj, ::mlc::sym::ExprObj, "mlc.sym.EQ");
 }; // struct EQObj
 
-struct MLC_API EQ : public ::mlc::sym::Expr {
+struct EQ : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit EQ(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : EQ(EQ::New(dtype, a, b)) {}
   explicit EQ(::mlc::sym::Expr a, ::mlc::sym::Expr b) : EQ(EQ::New(DType::Bool(a->dtype.lanes), a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, EQ, EQObj, ::mlc::sym::Expr)
@@ -441,7 +443,7 @@ struct MLC_API EQ : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API NEObj {
+struct NEObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -450,9 +452,9 @@ struct MLC_API NEObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, NEObj, ::mlc::sym::ExprObj, "mlc.sym.NE");
 }; // struct NEObj
 
-struct MLC_API NE : public ::mlc::sym::Expr {
+struct NE : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit NE(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : NE(NE::New(dtype, a, b)) {}
   explicit NE(::mlc::sym::Expr a, ::mlc::sym::Expr b) : NE(NE::New(DType::Bool(a->dtype.lanes), a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, NE, NEObj, ::mlc::sym::Expr)
@@ -466,7 +468,7 @@ struct MLC_API NE : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API LTObj {
+struct LTObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -475,9 +477,9 @@ struct MLC_API LTObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, LTObj, ::mlc::sym::ExprObj, "mlc.sym.LT");
 }; // struct LTObj
 
-struct MLC_API LT : public ::mlc::sym::Expr {
+struct LT : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit LT(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : LT(LT::New(dtype, a, b)) {}
   explicit LT(::mlc::sym::Expr a, ::mlc::sym::Expr b) : LT(LT::New(DType::Bool(a->dtype.lanes), a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, LT, LTObj, ::mlc::sym::Expr)
@@ -491,7 +493,7 @@ struct MLC_API LT : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API LEObj {
+struct LEObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -500,9 +502,9 @@ struct MLC_API LEObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, LEObj, ::mlc::sym::ExprObj, "mlc.sym.LE");
 }; // struct LEObj
 
-struct MLC_API LE : public ::mlc::sym::Expr {
+struct LE : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit LE(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : LE(LE::New(dtype, a, b)) {}
   explicit LE(::mlc::sym::Expr a, ::mlc::sym::Expr b) : LE(LE::New(DType::Bool(a->dtype.lanes), a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, LE, LEObj, ::mlc::sym::Expr)
@@ -516,7 +518,7 @@ struct MLC_API LE : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API GTObj {
+struct GTObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -525,9 +527,9 @@ struct MLC_API GTObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, GTObj, ::mlc::sym::ExprObj, "mlc.sym.GT");
 }; // struct GTObj
 
-struct MLC_API GT : public ::mlc::sym::Expr {
+struct GT : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit GT(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : GT(GT::New(dtype, a, b)) {}
   explicit GT(::mlc::sym::Expr a, ::mlc::sym::Expr b) : GT(GT::New(DType::Bool(a->dtype.lanes), a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, GT, GTObj, ::mlc::sym::Expr)
@@ -541,7 +543,7 @@ struct MLC_API GT : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API GEObj {
+struct GEObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -550,9 +552,9 @@ struct MLC_API GEObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, GEObj, ::mlc::sym::ExprObj, "mlc.sym.GE");
 }; // struct GEObj
 
-struct MLC_API GE : public ::mlc::sym::Expr {
+struct GE : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit GE(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : GE(GE::New(dtype, a, b)) {}
   explicit GE(::mlc::sym::Expr a, ::mlc::sym::Expr b) : GE(GE::New(DType::Bool(a->dtype.lanes), a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, GE, GEObj, ::mlc::sym::Expr)
@@ -566,7 +568,7 @@ struct MLC_API GE : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API AndObj {
+struct AndObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -575,9 +577,9 @@ struct MLC_API AndObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, AndObj, ::mlc::sym::ExprObj, "mlc.sym.And");
 }; // struct AndObj
 
-struct MLC_API And : public ::mlc::sym::Expr {
+struct And : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit And(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : And(And::New(dtype, a, b)) {}
   explicit And(::mlc::sym::Expr a, ::mlc::sym::Expr b) : And(And::New(DType::Bool(a->dtype.lanes), a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, And, AndObj, ::mlc::sym::Expr)
@@ -591,7 +593,7 @@ struct MLC_API And : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API OrObj {
+struct OrObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -600,9 +602,9 @@ struct MLC_API OrObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, OrObj, ::mlc::sym::ExprObj, "mlc.sym.Or");
 }; // struct OrObj
 
-struct MLC_API Or : public ::mlc::sym::Expr {
+struct Or : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a, Expr b);
+  static MLC_API Optional<Expr> TryConstFold(Expr a, Expr b);
   explicit Or(DLDataType dtype, ::mlc::sym::Expr a, ::mlc::sym::Expr b) : Or(Or::New(dtype, a, b)) {}
   explicit Or(::mlc::sym::Expr a, ::mlc::sym::Expr b) : Or(Or::New(DType::Bool(a->dtype.lanes), a, b)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Or, OrObj, ::mlc::sym::Expr)
@@ -616,7 +618,7 @@ struct MLC_API Or : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API NotObj {
+struct NotObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr a;
@@ -624,9 +626,9 @@ struct MLC_API NotObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, NotObj, ::mlc::sym::ExprObj, "mlc.sym.Not");
 }; // struct NotObj
 
-struct MLC_API Not : public ::mlc::sym::Expr {
+struct Not : public ::mlc::sym::Expr {
   static constexpr bool is_logical = true;
-  static Optional<Expr> TryConstFold(Expr a);
+  static MLC_API Optional<Expr> TryConstFold(Expr a);
   explicit Not(DLDataType dtype, ::mlc::sym::Expr a) : Not(Not::New(dtype, a)) {}
   explicit Not(::mlc::sym::Expr a) : Not(Not::New(DType::Bool(a->dtype.lanes), a)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Not, NotObj, ::mlc::sym::Expr)
@@ -639,7 +641,7 @@ struct MLC_API Not : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API SelectObj {
+struct SelectObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr cond;
@@ -650,7 +652,7 @@ struct MLC_API SelectObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, SelectObj, ::mlc::sym::ExprObj, "mlc.sym.Select");
 }; // struct SelectObj
 
-struct MLC_API Select : public ::mlc::sym::Expr {
+struct Select : public ::mlc::sym::Expr {
   explicit Select(DLDataType dtype, ::mlc::sym::Expr cond, ::mlc::sym::Expr true_value, ::mlc::sym::Expr false_value)
       : Select(Select::New(dtype, cond, true_value, false_value)) {}
   explicit Select(::mlc::sym::Expr cond, ::mlc::sym::Expr true_value, ::mlc::sym::Expr false_value)
@@ -667,7 +669,7 @@ struct MLC_API Select : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API RampObj {
+struct RampObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr base;
@@ -678,7 +680,7 @@ struct MLC_API RampObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, RampObj, ::mlc::sym::ExprObj, "mlc.sym.Ramp");
 }; // struct RampObj
 
-struct MLC_API Ramp : public ::mlc::sym::Expr {
+struct Ramp : public ::mlc::sym::Expr {
   explicit Ramp(DLDataType dtype, ::mlc::sym::Expr base, ::mlc::sym::Expr stride, int64_t lanes)
       : Ramp(Ramp::New(dtype, base, stride, lanes)) {}
   explicit Ramp(::mlc::sym::Expr base, ::mlc::sym::Expr stride, int64_t lanes)
@@ -696,7 +698,7 @@ struct MLC_API Ramp : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API BroadcastObj {
+struct BroadcastObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Expr value;
@@ -706,7 +708,7 @@ struct MLC_API BroadcastObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, BroadcastObj, ::mlc::sym::ExprObj, "mlc.sym.Broadcast");
 }; // struct BroadcastObj
 
-struct MLC_API Broadcast : public ::mlc::sym::Expr {
+struct Broadcast : public ::mlc::sym::Expr {
   explicit Broadcast(DLDataType dtype, ::mlc::sym::Expr value, int64_t lanes)
       : Broadcast(Broadcast::New(dtype, value, lanes)) {}
   explicit Broadcast(::mlc::sym::Expr value, int64_t lanes)
@@ -722,7 +724,7 @@ struct MLC_API Broadcast : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API ShuffleObj {
+struct ShuffleObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::List<::mlc::sym::Expr> vectors;
@@ -732,7 +734,7 @@ struct MLC_API ShuffleObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, ShuffleObj, ::mlc::sym::ExprObj, "mlc.sym.Shuffle");
 }; // struct ShuffleObj
 
-struct MLC_API Shuffle : public ::mlc::sym::Expr {
+struct Shuffle : public ::mlc::sym::Expr {
   explicit Shuffle(DLDataType dtype, ::mlc::List<::mlc::sym::Expr> vectors, ::mlc::List<::mlc::sym::Expr> indices)
       : Shuffle(Shuffle::New(dtype, vectors, indices)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Shuffle, ShuffleObj, ::mlc::sym::Expr)
@@ -747,7 +749,7 @@ struct MLC_API Shuffle : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API LetObj {
+struct LetObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::sym::Var var;
@@ -758,7 +760,7 @@ struct MLC_API LetObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, LetObj, ::mlc::sym::ExprObj, "mlc.sym.Let");
 }; // struct LetObj
 
-struct MLC_API Let : public ::mlc::sym::Expr {
+struct Let : public ::mlc::sym::Expr {
   explicit Let(DLDataType dtype, ::mlc::sym::Var var, ::mlc::sym::Expr value, ::mlc::sym::Expr body)
       : Let(Let::New(dtype, var, value, body)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Let, LetObj, ::mlc::sym::Expr)
@@ -773,7 +775,7 @@ struct MLC_API Let : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API CallObj {
+struct CallObj {
   MLCAny _mlc_header;
   DLDataType dtype;
   ::mlc::Any op;
@@ -783,7 +785,7 @@ struct MLC_API CallObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, CallObj, ::mlc::sym::ExprObj, "mlc.sym.Call");
 }; // struct CallObj
 
-struct MLC_API Call : public ::mlc::sym::Expr {
+struct Call : public ::mlc::sym::Expr {
   explicit Call(DLDataType dtype, ::mlc::Any op, ::mlc::List<::mlc::sym::Expr> args)
       : Call(Call::New(dtype, op, args)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Call, CallObj, ::mlc::sym::Expr)
@@ -797,7 +799,7 @@ struct MLC_API Call : public ::mlc::sym::Expr {
 } // namespace mlc
 namespace mlc {
 namespace sym {
-struct MLC_API RangeObj {
+struct RangeObj {
   MLCAny _mlc_header;
   ::mlc::sym::Expr min;
   ::mlc::sym::Expr extent;
@@ -805,7 +807,7 @@ struct MLC_API RangeObj {
   MLC_DEF_DYN_TYPE(MLC_SYM_EXPORTS, RangeObj, ::mlc::Object, "mlc.sym.Range");
 }; // struct RangeObj
 
-struct MLC_API Range : public ::mlc::ObjectRef {
+struct Range : public ::mlc::ObjectRef {
   explicit Range(::mlc::sym::Expr min, ::mlc::sym::Expr extent) : Range(Range::New(min, extent)) {}
   MLC_DEF_OBJ_REF(MLC_SYM_EXPORTS, Range, RangeObj, ::mlc::ObjectRef)
       .Field("min", &RangeObj::min)

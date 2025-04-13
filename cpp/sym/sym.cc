@@ -642,7 +642,7 @@ Expr ExprMutator::VisitExpr_(const BroadcastObj *op) {
   Expr value = this->VisitExpr(op->value);
   int64_t lanes = op->lanes;
   DLDataType dtype = value->dtype;
-  dtype.lanes = lanes;
+  dtype.lanes = static_cast<uint16_t>(lanes);
   if (value.get() == op->value.get()) {
     return Expr(op);
   } else {
@@ -670,7 +670,7 @@ Expr ExprMutator::VisitExpr_(const ShuffleObj *op) {
   List<Expr> indices = MutateArray(op->indices, [this](const Expr &e) { return this->VisitExpr(e); });
   List<Expr> vectors = MutateArray(op->vectors, [this](const Expr &e) { return this->VisitExpr(e); });
   DLDataType dtype = vectors[0]->dtype;
-  dtype.lanes = indices.size();
+  dtype.lanes = static_cast<uint16_t>(indices.size());
   if (indices.get() == op->indices.get() && vectors.get() == op->vectors.get()) {
     return Expr(op);
   } else {
@@ -852,10 +852,10 @@ Expr cast(DLDataType t, Expr value) {
     return value;
   // const fold IntImm as they are used in index computations
   if (t.lanes == 1) {
-    if (const IntImmObj *op = value.as<IntImmObj>()) {
-      return Expr::Const(t, op->value);
-    } else if (const FloatImmObj *op = value.as<FloatImmObj>()) {
-      return Expr::Const(t, op->value);
+    if (const IntImmObj *i = value.as<IntImmObj>()) {
+      return Expr::Const(t, i->value);
+    } else if (const FloatImmObj *f = value.as<FloatImmObj>()) {
+      return Expr::Const(t, f->value);
     } else if (value->dtype.code == kDLOpaqueHandle) {
       MLC_THROW(ValueError) << "Cannot cast opaque handle to other types";
     }
@@ -865,10 +865,10 @@ Expr cast(DLDataType t, Expr value) {
   if (value->dtype.lanes == 1) {
     // manually unroll cast
     if (!DType::Equal(value->dtype, vtype)) {
-      if (const IntImmObj *op = value.as<IntImmObj>()) {
-        value = Expr::Const(vtype, op->value);
-      } else if (const FloatImmObj *op = value.as<FloatImmObj>()) {
-        value = Expr::Const(vtype, op->value);
+      if (const IntImmObj *i = value.as<IntImmObj>()) {
+        value = Expr::Const(vtype, i->value);
+      } else if (const FloatImmObj *f = value.as<FloatImmObj>()) {
+        value = Expr::Const(vtype, f->value);
       } else {
         value = Cast(vtype, value);
       }

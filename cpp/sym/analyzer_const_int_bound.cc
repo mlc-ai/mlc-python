@@ -736,11 +736,14 @@ public:
     if (auto as_float = arg.as<FloatImmObj>()) {
       // A cast from int to float may have already been simplified
       // out.  Normally we don't inspect floating-point arguments, but here we can
-      int64_t val = std::ceil(std::log2(as_float->value));
+      double val_f = std::ceil(std::log2(as_float->value));
+      int64_t val = static_cast<int64_t>(val_f);
       return MakeBound(val, val);
     } else {
       ConstIntBoundAnalyzerEntry arg_bounds = VisitExpr(arg);
-      return MakeBound(std::ceil(std::log2(arg_bounds.min_value)), std::ceil(std::log2(arg_bounds.max_value)));
+      double min_value = std::ceil(std::log2(arg_bounds.min_value));
+      double max_value = std::ceil(std::log2(arg_bounds.max_value));
+      return MakeBound(static_cast<int64_t>(min_value), static_cast<int64_t>(max_value));
     }
   }
 };
