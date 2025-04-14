@@ -7,6 +7,7 @@ on:
 env:
   CIBW_BUILD_VERBOSITY: 3
   CIBW_TEST_COMMAND: "python -c \"import mlc\""
+  CIBW_ENVIRONMENT: "MLC_RELEASE=1"
   MLC_CIBW_VERSION: "2.22.0"
   MLC_PYTHON_VERSION: "3.9"
   MLC_CIBW_WIN_BUILD: "cp3*-win_amd64"

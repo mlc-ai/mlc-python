@@ -62,7 +62,13 @@ sdist.include = ["python/mlc/_version.py"]
 
 [tool.scikit-build.cmake.define]
 MLC_BUILD_PY = "ON"
+MLC_BUILD_STATIC = "ON"
 MLC_BUILD_TESTS = "OFF"
+
+[[tool.scikit-build.overrides]]
+if.env.MLC_RELEASE = true
+inherit.cmake.define = "append"
+cmake.define.MLC_BUILD_STATIC = "OFF"
 
 [tool.ruff]
 line-length = 100
