@@ -67,7 +67,7 @@ class Tensor(Object):
     def from_base64(base64: str) -> Tensor:
         return TensorFromBase64(base64)
 
-    def __dlpack__(self) -> Any:
+    def __dlpack__(self, stream: Any = None) -> Any:
         return tensor_to_dlpack(self)
 
     def __dlpack_device__(self) -> tuple[int, int]:

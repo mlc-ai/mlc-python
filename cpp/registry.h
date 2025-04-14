@@ -659,7 +659,7 @@ inline TypeTable *TypeTable::New() {
   self->SetFunc("mlc.core.TensorFromBytes", Func(::mlc::registry::TensorFromBytes).get());
   self->SetFunc("mlc.core.TensorToBase64", Func(::mlc::registry::TensorToBase64).get());
   self->SetFunc("mlc.core.TensorFromBase64", Func(::mlc::registry::TensorFromBase64).get());
-  self->SetFunc("mlc.core.TensorToDLPack", Func([](TensorObj *tensor) -> void * { return tensor->DLPack(); }).get());
+  self->SetFunc("mlc.core.TensorToDLPack", Func([](Tensor tensor) -> void * { return tensor->DLPack(); }).get());
   self->SetFunc("mlc.printer.DocToPythonScript", Func(::mlc::registry::DocToPythonScript).get());
   self->SetFunc("mlc.printer.ToPython", Func(::mlc::printer::ToPython).get());
 
