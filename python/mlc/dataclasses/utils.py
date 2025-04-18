@@ -151,7 +151,7 @@ def inspect_dataclass_fields(  # noqa: PLR0912
             )
         )
     for field_name, field_ty_py in type_hints.items():
-        if field_name.startswith("_"):
+        if field_name.startswith("_mlc_"):
             continue
         field_ty = mlc_typing.from_py(field_ty_py)
         type_fields.append(
