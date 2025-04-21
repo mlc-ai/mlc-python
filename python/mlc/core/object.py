@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing
 
-from mlc._cython import PyAny, c_class_core
+from mlc._cython import PyAny, TypeInfo, c_class_core
 
 
 @c_class_core("object.Object")
@@ -64,6 +64,25 @@ class Object(PyAny):
 
     def __ne__(self, other: typing.Any) -> bool:
         return not self == other
+
+    def _mlc_setattr(self, name: str, value: typing.Any) -> None:
+        type_info: TypeInfo = type(self)._mlc_type_info
+        for field in type_info.fields:
+            if field.name == name:
+                if field.setter is None:
+                    raise AttributeError(f"Attribute `{name}` missing setter")
+                field.setter(self, value)
+                return
+        raise AttributeError(f"Attribute `{name}` not found in `{type(self)}`")
+
+    def _mlc_getattr(self, name: str) -> typing.Any:
+        type_info: TypeInfo = type(self)._mlc_type_info
+        for field in type_info.fields:
+            if field.name == name:
+                if field.getter is None:
+                    raise AttributeError(f"Attribute `{name}` missing getter")
+                return field.getter(self)
+        raise AttributeError(f"Attribute `{name}` not found in `{type(self)}`")
 
     def swap(self, other: typing.Any) -> None:
         if type(self) == type(other):

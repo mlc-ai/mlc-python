@@ -2,6 +2,7 @@ from typing import Optional
 
 import mlc
 import mlc.dataclasses as mlcd
+import pytest
 
 
 @mlcd.py_class("mlc.testing.py_class_base")
@@ -55,6 +56,12 @@ class PostInit(mlcd.PyClass):
 
     def __post_init__(self) -> None:
         self.b = self.b.upper()
+
+
+@mlcd.py_class("mlc.testing.py_class_frozen", frozen=True)
+class Frozen(mlcd.PyClass):
+    a: int
+    b: str
 
 
 def test_base() -> None:
@@ -118,6 +125,30 @@ def test_post_init() -> None:
     assert post_init.b == "A"
     assert str(post_init) == "mlc.testing.py_class_post_init(a=1, b='A')"
     assert repr(post_init) == "mlc.testing.py_class_post_init(a=1, b='A')"
+
+
+def test_frozen_set_fail() -> None:
+    frozen = Frozen(1, "a")
+    with pytest.raises(AttributeError) as e:
+        frozen.a = 2
+    # depends on Python version, there are a few possible error messages
+    assert str(e.value) in [
+        "property 'a' of 'Frozen' object has no setter",
+        "can't set attribute",
+    ]
+    assert frozen.a == 1
+    assert frozen.b == "a"
+
+
+def test_frozen_force_set() -> None:
+    frozen = Frozen(1, "a")
+    frozen._mlc_setattr("a", 2)
+    assert frozen.a == 2
+    assert frozen.b == "a"
+
+    frozen._mlc_setattr("b", "b")
+    assert frozen.a == 2
+    assert frozen.b == "b"
 
 
 def test_derived_derived() -> None:

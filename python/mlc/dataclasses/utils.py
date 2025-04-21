@@ -124,6 +124,7 @@ def inspect_dataclass_fields(  # noqa: PLR0912
     type_key: str,
     type_cls: type,
     parent_type_info: TypeInfo,
+    frozen: bool,
 ) -> tuple[list[TypeField], list[Field]]:
     def _get_num_bytes(field_ty: Any) -> int:
         if hasattr(field_ty, "_ctype"):
@@ -136,6 +137,7 @@ def inspect_dataclass_fields(  # noqa: PLR0912
     for type_field in parent_type_info.fields:
         field_name = type_field.name
         field_ty = type_field.ty
+        field_frozen = type_field.frozen
         if type_hints.pop(field_name, None) is None:
             raise ValueError(
                 f"Missing field `{type_key}::{field_name}`, "
@@ -146,7 +148,7 @@ def inspect_dataclass_fields(  # noqa: PLR0912
                 name=field_name,
                 offset=-1,
                 num_bytes=_get_num_bytes(field_ty),
-                frozen=False,
+                frozen=field_frozen,
                 ty=field_ty,
             )
         )
@@ -159,7 +161,7 @@ def inspect_dataclass_fields(  # noqa: PLR0912
                 name=field_name,
                 offset=-1,
                 num_bytes=_get_num_bytes(field_ty),
-                frozen=False,
+                frozen=frozen,
                 ty=field_ty,
             )
         )

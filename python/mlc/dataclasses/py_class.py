@@ -49,6 +49,7 @@ def py_class(
     *,
     init: bool = True,
     repr: bool = True,
+    frozen: bool = False,
     structure: typing.Literal["bind", "nobind", "var"] | None = None,
 ) -> Callable[[type[ClsType]], type[ClsType]]:
     if isinstance(type_key, type):
@@ -86,6 +87,7 @@ def py_class(
             type_key,
             super_type_cls,
             parent_type_info,
+            frozen=frozen,
         )
         num_bytes = _add_field_properties(fields)
         type_info.fields = tuple(fields)
