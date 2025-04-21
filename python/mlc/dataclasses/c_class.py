@@ -39,7 +39,7 @@ def c_class(
 
         if type_info.type_cls is not None:
             raise ValueError(f"Type is already registered: {type_key}")
-        _, d_fields = inspect_dataclass_fields(type_key, type_cls, parent_type_info)
+        _, d_fields = inspect_dataclass_fields(type_key, type_cls, parent_type_info, frozen=False)
         type_info.type_cls = type_cls
         type_info.d_fields = tuple(d_fields)
 

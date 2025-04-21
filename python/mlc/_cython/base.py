@@ -377,6 +377,10 @@ def attach_field(
     def fset(this: typing.Any, value: typing.Any, _name: str = name) -> None:
         setter(this, value)  # type: ignore[misc]
 
+    fget.__name__ = fset.__name__ = name
+    fget.__module__ = fset.__module__ = cls.__module__
+    fget.__qualname__ = fset.__qualname__ = f"{cls.__qualname__}.{name}"  # type: ignore[attr-defined]
+    fget.__doc__ = fset.__doc__ = f"Property `{name}` of class `{cls.__qualname__}`"  # type: ignore[attr-defined]
     prop = property(
         fget=fget if getter else None,
         fset=fset if (not frozen) and setter else None,
