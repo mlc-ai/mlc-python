@@ -1418,6 +1418,18 @@ cpdef void tensor_init(PyAny self, object value):
     self._mlc_any = ret._mlc_any
     ret._mlc_any = _MLCAnyNone()
 
+cpdef object container_to_py(object self):
+    from mlc.core.list import List as mlc_list
+    from mlc.core.dict import Dict as mlc_dict
+
+    if isinstance(self, mlc_list):
+        return [container_to_py(v) for v in self]
+    if isinstance(self, mlc_dict):
+        return {container_to_py(k): container_to_py(v) for k, v in self.items()}
+    if isinstance(self, Str):
+        return str(self)
+    return self
+
 cpdef object tensor_data(PyAny self):
     cdef DLTensor* tensor = _pyany_to_dl_tensor(self)
     cdef void* data = tensor[0].data

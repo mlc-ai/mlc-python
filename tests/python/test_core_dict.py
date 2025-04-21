@@ -104,3 +104,32 @@ def test_dict_ne_1() -> None:
     b = {i: i * i for i in range(1, 5)}
     assert a != b
     assert b != a
+
+
+def test_dict_to_py_0() -> None:
+    a = Dict({i: i * i for i in range(1, 5)}).py()
+    assert isinstance(a, dict)
+    assert len(a) == 4
+    assert isinstance(a[1], int) and a[1] == 1
+    assert isinstance(a[2], int) and a[2] == 4
+    assert isinstance(a[3], int) and a[3] == 9
+    assert isinstance(a[4], int) and a[4] == 16
+
+
+def test_dict_to_py_1() -> None:
+    a = Dict(
+        {
+            "a": {
+                "b": [2],
+                "c": 3.0,
+            },
+            1: "one",
+            None: "e",
+        }
+    ).py()
+    assert len(a) == 3 and set(a.keys()) == {"a", 1, None}
+    assert isinstance(a["a"], dict) and len(a["a"]) == 2
+    assert isinstance(a["a"]["b"], list) and len(a["a"]["b"]) == 1 and a["a"]["b"][0] == 2
+    assert isinstance(a["a"]["c"], float) and a["a"]["c"] == 3.0
+    assert isinstance(a[1], str) and a[1] == "one"
+    assert isinstance(a[None], str) and a[None] == "e"

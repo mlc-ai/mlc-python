@@ -5,7 +5,7 @@ from abc import ABCMeta
 from collections.abc import ItemsView, Iterable, Iterator, KeysView, Mapping, ValuesView
 from typing import Any, TypeVar, overload
 
-from mlc._cython import MetaNoSlots, Ptr, c_class_core
+from mlc._cython import MetaNoSlots, Ptr, c_class_core, container_to_py
 
 from .object import Object
 
@@ -133,6 +133,9 @@ class Dict(Object, Mapping[K, V], metaclass=DictMeta):
 
     def __ne__(self, other: Any) -> bool:
         return not (self == other)
+
+    def py(self) -> dict[K, V]:
+        return container_to_py(self)
 
 
 class _DictKeysView(KeysView[K]):
