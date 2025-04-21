@@ -4,7 +4,7 @@ from abc import ABCMeta
 from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, TypeVar, overload
 
-from mlc._cython import MetaNoSlots, Ptr, c_class_core
+from mlc._cython import MetaNoSlots, Ptr, c_class_core, container_to_py
 
 from .object import Object
 
@@ -99,6 +99,9 @@ class List(Object, Sequence[T], metaclass=ListMeta):
 
     def __delitem__(self, i: int) -> None:
         self.pop(i)
+
+    def py(self) -> list[T]:
+        return container_to_py(self)
 
 
 def _normalize_index(i: int, length: int) -> int:

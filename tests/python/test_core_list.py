@@ -229,3 +229,28 @@ def test_list_delitem_out_of_by(seq: list[int], i: int) -> None:
     with pytest.raises(IndexError) as e:
         del a[i]
     assert str(e.value) == f"list index out of range: {i}"
+
+
+def test_list_to_py_0() -> None:
+    a = List([1, 2, 3]).py()
+    assert isinstance(a, list)
+
+
+def test_list_to_py_1() -> None:
+    a = List([{"a": 1}, ["b"], 1, 2.0, "anything"]).py()
+    assert isinstance(a, list)
+    assert len(a) == 5
+    assert isinstance(a[0], dict)
+    assert isinstance(a[1], list)
+    assert isinstance(a[2], int)
+    assert isinstance(a[3], float)
+    assert isinstance(a[4], str)
+    assert isinstance(a[0], dict)
+    # make sure those types are exactly Python's `str`, `int`, `float`
+    assert len(a[0]) == 1 and isinstance(a[0], dict)
+    assert a[0]["a"] == 1 and type(next(a[0].__iter__())) is str
+    assert len(a[1]) == 1 and isinstance(a[1], list)
+    assert a[1][0] == "b" and type(a[1][0]) is str
+    assert a[2] == 1 and type(a[2]) is int
+    assert a[3] == 2.0 and type(a[3]) is float
+    assert a[4] == "anything" and type(a[4]) is str
