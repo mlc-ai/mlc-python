@@ -13,6 +13,13 @@ class Object(PyAny):
 
         init(*args, **kwargs)
 
+    @property
+    def id_(self) -> int:
+        return self._mlc_address
+
+    def is_(self, other: Object) -> bool:
+        return isinstance(other, Object) and self._mlc_address == other._mlc_address
+
     def json(self) -> str:
         return super()._mlc_json()
 
