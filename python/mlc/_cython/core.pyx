@@ -322,7 +322,11 @@ cdef class PyAny:
 
     @property
     def _mlc_address(self):
-        cdef uint64_t ret = (<uint64_t>(self._mlc_any.v.v_obj)) if self._mlc_any.type_index >= kMLCStaticObjectBegin else 0  # no-cython-lint
+        cdef uint64_t ret = 0
+        if self._mlc_any.type_index >= kMLCStaticObjectBegin:
+            ret = <uint64_t>(self._mlc_any.v.v_obj)
+        else:
+            ret = <uint64_t>(&self._mlc_any)
         return ret
 
     def _mlc_init(self, *init_args) -> None:
