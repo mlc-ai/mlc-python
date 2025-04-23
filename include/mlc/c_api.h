@@ -163,6 +163,7 @@ typedef struct {
   MLCAny _mlc_header;
   int64_t capacity;
   int64_t size;
+  int8_t frozen;
   void *data;
 } MLCList;
 
@@ -170,6 +171,7 @@ typedef struct {
   MLCAny _mlc_header;
   int64_t capacity;
   int64_t size;
+  int8_t frozen;
   void *data;
 } MLCDict;
 

@@ -152,8 +152,9 @@ struct UList : public ObjectRef {
     ::mlc::core::ListBase::Accessor<UListObj>::New(num_args, args, ret);
   }
   MLC_DEF_OBJ_REF(MLC_EXPORTS, UList, UListObj, ObjectRef)
-      .Field("size", &MLCList::size, /*frozen=*/true)
       .Field("capacity", &MLCList::capacity, /*frozen=*/true)
+      .Field("size", &MLCList::size, /*frozen=*/true)
+      .Field("_frozen", &MLCList::frozen, /*frozen=*/false)
       .Field("data", &MLCList::data, /*frozen=*/true)
       .StaticFn("__init__", FromAnyTuple)
       .MemFn("__str__", &UListObj::__str__)

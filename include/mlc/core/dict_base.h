@@ -151,6 +151,7 @@ inline DictBase::DictBase(int64_t capacity) : MLCDict() {
   int64_t num_blocks = capacity / DictBase::kBlockCapacity;
   this->MLCDict::capacity = capacity;
   this->MLCDict::size = 0;
+  this->MLCDict::frozen = 0;
   this->MLCDict::data = ::mlc::base::PODArrayCreate<Block>(num_blocks).release();
   Block *blocks = this->Blocks();
   for (int64_t i = 0; i < num_blocks; ++i) {

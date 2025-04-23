@@ -64,6 +64,18 @@ class Frozen(mlcd.PyClass):
     b: str
 
 
+@mlcd.py_class
+class ContainerFields(mlcd.PyClass):
+    a: list[int]
+    b: dict[int, int]
+
+
+@mlcd.py_class(frozen=True)
+class FrozenContainerFields(mlcd.PyClass):
+    a: list[int]
+    b: dict[int, int]
+
+
 def test_base() -> None:
     base = Base(1, "a")
     base_str = "mlc.testing.py_class_base(base_a=1, base_b='a')"
@@ -164,3 +176,45 @@ def test_derived_derived() -> None:
     assert str(obj) == (
         "mlc.testing.DerivedDerived(base_a=1, base_b=[1, 2], derived_a=2, derived_b='b', derived_derived_a='a')"
     )
+
+
+def test_container_fields() -> None:
+    obj_0 = ContainerFields([1, 2], {1: 2})
+    assert obj_0.a == [1, 2]
+    assert obj_0.b == {1: 2}
+
+    obj_1 = ContainerFields(a=obj_0.a, b=obj_0.b)
+    assert obj_1.a == obj_0.a
+    assert obj_1.b == obj_0.b
+
+
+def test_frozen_container_fields() -> None:
+    obj = FrozenContainerFields([1, 2], {1: 2})
+    assert obj.a == [1, 2]
+    assert obj.b == {1: 2}
+
+    assert obj.a.frozen
+    assert obj.b.frozen
+
+    e: pytest.ExceptionInfo
+    with pytest.raises(AttributeError) as e:
+        obj.a = [2, 3]
+    assert str(e.value) in [
+        "property 'a' of 'FrozenContainerFields' object has no setter",
+        "can't set attribute",
+    ]
+
+    with pytest.raises(AttributeError) as e:
+        obj.b = {2: 3}
+    assert str(e.value) in [
+        "property 'b' of 'FrozenContainerFields' object has no setter",
+        "can't set attribute",
+    ]
+
+    with pytest.raises(RuntimeError) as e:
+        obj.a[0] = 3
+    assert str(e.value) == "Cannot modify a frozen list"
+
+    with pytest.raises(RuntimeError) as e:
+        obj.b[0] = 3
+    assert str(e.value) == "Cannot modify a frozen dict"

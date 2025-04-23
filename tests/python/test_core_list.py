@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import pytest
@@ -254,3 +254,25 @@ def test_list_to_py_1() -> None:
     assert a[2] == 1 and type(a[2]) is int
     assert a[3] == 2.0 and type(a[3]) is float
     assert a[4] == "anything" and type(a[4]) is str
+
+
+@pytest.mark.parametrize(
+    "callable",
+    [
+        lambda a: a.append(4),
+        lambda a: a.insert(0, 0),
+        lambda a: a.pop(0),
+        lambda a: a.clear(),
+        lambda a: a.extend([4, 5, 6]),
+        lambda a: a.__setitem__(0, 0),
+        lambda a: a.__delitem__(0),
+    ],
+)
+def test_list_freeze(callable: Callable[[List], None]) -> None:
+    a = List([1, 2, 3])
+    assert a.frozen == False
+    a.freeze()
+    assert a.frozen == True
+    with pytest.raises(RuntimeError) as e:
+        callable(a)
+    assert str(e.value) == "Cannot modify a frozen list"

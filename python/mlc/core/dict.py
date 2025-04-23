@@ -27,6 +27,7 @@ class DictMeta(MetaNoSlots, ABCMeta): ...
 class Dict(Object, Mapping[K, V], metaclass=DictMeta):
     capacity: int
     size: int
+    _frozen: int
     data: Ptr
 
     def __init__(
@@ -79,16 +80,30 @@ class Dict(Object, Mapping[K, V], metaclass=DictMeta):
     def items(self) -> ItemsView[K, V]:
         return _DictItemsView(self)
 
+    def freeze(self) -> None:
+        if self._frozen == 0:
+            self._frozen = 1
+
+    @property
+    def frozen(self) -> bool:
+        return self._frozen == 1
+
     def __getitem__(self, key: K) -> V:
         return Dict._C(b"__getitem__", self, key)
 
     def __setitem__(self, key: K, value: V) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen dict")
         Dict._C(b"__setitem__", self, key, value)
 
     def __delitem__(self, key: K) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen dict")
         Dict._C(b"__delitem__", self, key)
 
     def pop(self, key: K, default: T | _UnspecifiedType = Unspecified) -> V | T:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen dict")
         try:
             return Dict._C(b"__delitem__", self, key)
         except KeyError:
@@ -98,11 +113,18 @@ class Dict(Object, Mapping[K, V], metaclass=DictMeta):
             return default
 
     def setdefault(self, key: K, default: V | None = None) -> V | None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen dict")
         try:
             return self[key]
         except KeyError:
             self[key] = default  # type: ignore[assignment]
             return default
+
+    def clear(self) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen dict")
+        Dict._C(b"_clear", self)
 
     # Additional methods required by the Mapping ABC
     def __contains__(self, key: object) -> bool:

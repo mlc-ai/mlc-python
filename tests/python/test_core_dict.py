@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 from mlc import Dict
 
@@ -133,3 +135,23 @@ def test_dict_to_py_1() -> None:
     assert isinstance(a["a"]["c"], float) and a["a"]["c"] == 3.0
     assert isinstance(a[1], str) and a[1] == "one"
     assert isinstance(a[None], str) and a[None] == "e"
+
+
+@pytest.mark.parametrize(
+    "callable",
+    [
+        lambda a: a.__setitem__(0, 0),
+        lambda a: a.__delitem__(1),
+        lambda a: a.pop(2),
+        lambda a: a.clear(),
+        lambda a: a.setdefault(1, 5),
+    ],
+)
+def test_dict_freeze(callable: Callable[[Dict], None]) -> None:
+    a = Dict({i: i * i for i in range(1, 5)})
+    assert a.frozen == False
+    a.freeze()
+    assert a.frozen == True
+    with pytest.raises(RuntimeError) as e:
+        callable(a)
+    assert str(e.value) == "Cannot modify a frozen dict"
