@@ -12,9 +12,11 @@ from .core import (
     Opaque,
     Tensor,
     build_info,
+    dep_graph,
     json_loads,
     typing,
 )
+from .core.dep_graph import DepGraph, DepNode
 from .dataclasses import PyClass, c_class, py_class
 
 try:
