@@ -18,6 +18,7 @@ class ListMeta(MetaNoSlots, ABCMeta): ...
 class List(Object, Sequence[T], metaclass=ListMeta):
     capacity: int
     size: int
+    _frozen: int
     data: Ptr
 
     def __init__(self, iterable: Iterable[T] = ()) -> None:
@@ -25,6 +26,14 @@ class List(Object, Sequence[T], metaclass=ListMeta):
 
     def __len__(self) -> int:
         return self.size
+
+    def freeze(self) -> None:
+        if self._frozen == 0:
+            self._frozen = 1
+
+    @property
+    def frozen(self) -> bool:
+        return self._frozen == 1
 
     @overload
     def __getitem__(self, i: int) -> T: ...
@@ -44,6 +53,8 @@ class List(Object, Sequence[T], metaclass=ListMeta):
             raise TypeError(f"list indices must be integers or slices, not {type(i).__name__}")
 
     def __setitem__(self, index: int, value: T) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen list")
         length = len(self)
         if not -length <= index < length:
             raise IndexError(f"list assignment index out of range: {index}")
@@ -69,20 +80,30 @@ class List(Object, Sequence[T], metaclass=ListMeta):
         return result
 
     def insert(self, i: int, x: T) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen list")
         i = _normalize_index(i, len(self) + 1)
         return List._C(b"_insert", self, i, x)
 
     def append(self, x: T) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen list")
         return List._C(b"_append", self, x)
 
     def pop(self, i: int = -1) -> T:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen list")
         i = _normalize_index(i, len(self))
         return List._C(b"_pop", self, i)
 
     def clear(self) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen list")
         return List._C(b"_clear", self)
 
     def extend(self, iterable: Iterable[T]) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen list")
         return List._C(b"_extend", self, *iterable)
 
     def __eq__(self, other: Any) -> bool:
@@ -98,6 +119,8 @@ class List(Object, Sequence[T], metaclass=ListMeta):
         return not (self == other)
 
     def __delitem__(self, i: int) -> None:
+        if self._frozen:
+            raise RuntimeError("Cannot modify a frozen list")
         self.pop(i)
 
     def py(self) -> list[T]:

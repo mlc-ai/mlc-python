@@ -53,6 +53,7 @@ struct ListBase : public MLCList {
 MLC_INLINE ListBase::ListBase() : MLCList() {
   this->MLCList::capacity = 0;
   this->MLCList::size = 0;
+  this->MLCList::frozen = 0;
   this->MLCList::data = nullptr;
 }
 
@@ -62,6 +63,7 @@ MLC_INLINE ListBase::ListBase(std::initializer_list<Any> init) : ListBase() {
   this->MLCList::data = ::mlc::base::PODArrayCreate<MLCAny>(numel).release();
   this->MLCList::capacity = numel;
   this->MLCList::size = 0;
+  this->MLCList::frozen = 0;
   this->Replace(0, 0, numel, elems.data());
 }
 
@@ -71,6 +73,7 @@ template <typename Iter> MLC_INLINE ListBase::ListBase(Iter first, Iter last) : 
   this->MLCList::data = ::mlc::base::PODArrayCreate<MLCAny>(numel).release();
   this->MLCList::capacity = numel;
   this->MLCList::size = 0;
+  this->MLCList::frozen = 0;
   this->Replace(0, 0, numel, elems.data());
 }
 

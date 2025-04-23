@@ -169,7 +169,7 @@ def inspect_dataclass_fields(  # noqa: PLR0912
     d_fields: list[Field] = []
     for type_field in type_fields:
         lhs = type_field.name
-        if lhs.startswith("_"):
+        if lhs.startswith("_mlc_"):
             continue
         rhs = getattr(type_cls, lhs, MISSING)
         if isinstance(rhs, property):

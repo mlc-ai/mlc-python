@@ -138,12 +138,14 @@ cdef extern from "mlc/c_api.h" nogil:
         MLCAny _mlc_header
         int64_t capacity
         int64_t size
+        int8_t frozen
         void* data
 
     ctypedef struct MLCDict:
         MLCAny _mlc_header
         int64_t capacity
         int64_t size
+        int8_t frozen
         void* data
 
     ctypedef struct MLCTensor:
@@ -976,7 +978,7 @@ cdef class TypeCheckAtomicObject:
 
     @staticmethod
     cdef MLCAny convert(object _self, object value, list temporary_storage):
-        cdef TypeCheckAtomicObject self = <TypeCheckAtomicObject>_self
+        cdef TypeCheckAtomicObject self = <TypeCheckAtomicObject?>_self
         cdef PyAny v
         cdef tuple type_ancestors  # ancestors of `value`'s type
         cdef MLCAny ret
@@ -1034,15 +1036,17 @@ cdef class TypeCheckerOptional:
 
 cdef class TypeCheckerList:
     cdef TypeChecker sub
+    cdef bint frozen
 
-    def __init__(self, TypeChecker sub):
+    def __init__(self, TypeChecker sub, bint frozen):
         self.sub = sub
+        self.frozen = frozen
 
     @staticmethod
     cdef MLCAny convert(object _self, object _value, list temporary_storage):
         from mlc.core.list import List as mlc_list
 
-        cdef TypeCheckerList self = <TypeCheckerList>_self
+        cdef TypeCheckerList self = <TypeCheckerList?>_self
         cdef tuple value
         cdef int32_t num_args = 0
         cdef MLCAny* c_args = NULL
@@ -1051,19 +1055,22 @@ cdef class TypeCheckerList:
             for v in _value:
                 _type_checker_call(self.sub, v, temporary_storage)
             temporary_storage.append(_value)
-            return (<PyAny>_value)._mlc_any
-        if not isinstance(_value, (list, tuple, mlc_list)):
+            ret = (<PyAny>_value)._mlc_any
+        elif isinstance(_value, (list, tuple)):
+            value = (<tuple>_value) if isinstance(_value, tuple) else tuple(_value)
+            num_args = len(value)
+            c_args = <MLCAny*> malloc(num_args * sizeof(MLCAny))
+            try:
+                for i in range(num_args):
+                    c_args[i] = _type_checker_call(self.sub, value[i], temporary_storage)
+                _func_call_impl_with_c_args(_LIST_INIT, num_args, c_args, &ret)
+            finally:
+                free(c_args)
+            temporary_storage.append(_pyany_no_inc_ref(ret))
+        else:
             raise TypeError(f"Expected `list` or `tuple`, but got: {type(_value)}")
-        value = tuple(_value)
-        num_args = len(value)
-        c_args = <MLCAny*> malloc(num_args * sizeof(MLCAny))
-        try:
-            for i in range(num_args):
-                c_args[i] = _type_checker_call(self.sub, value[i], temporary_storage)
-            _func_call_impl_with_c_args(_LIST_INIT, num_args, c_args, &ret)
-        finally:
-            free(c_args)
-        temporary_storage.append(_pyany_no_inc_ref(ret))
+        assert ret.type_index == kMLCList
+        (<MLCList*>(ret.v.v_obj)).frozen = self.frozen
         return ret
 
     cdef TypeChecker get(self):
@@ -1075,16 +1082,18 @@ cdef class TypeCheckerList:
 cdef class TypeCheckerDict:
     cdef TypeChecker sub_k
     cdef TypeChecker sub_v
+    cdef bint frozen
 
-    def __init__(self, TypeChecker sub_k, TypeChecker sub_v):
+    def __init__(self, TypeChecker sub_k, TypeChecker sub_v, bint frozen):
         self.sub_k = sub_k
         self.sub_v = sub_v
+        self.frozen = frozen
 
     @staticmethod
     cdef MLCAny convert(object _self, object _value, list temporary_storage):
         from mlc.core.dict import Dict as mlc_dict
 
-        cdef TypeCheckerDict self = <TypeCheckerDict>_self
+        cdef TypeCheckerDict self = <TypeCheckerDict?>_self
         cdef tuple value
         cdef int32_t num_args = 0
         cdef MLCAny* c_args = NULL
@@ -1096,22 +1105,24 @@ cdef class TypeCheckerDict:
                 _type_checker_call(sub_k, k, temporary_storage)
                 _type_checker_call(sub_v, v, temporary_storage)
             temporary_storage.append(_value)
-            return (<PyAny>_value)._mlc_any
+            ret = (<PyAny>_value)._mlc_any
         elif isinstance(_value, dict):
             value = _flatten_dict_to_tuple(_value)
+            num_args = len(value)
+            c_args = <MLCAny*> malloc(num_args * sizeof(MLCAny))
+            try:
+                for i in range(0, num_args, 2):
+                    c_args[i] = _type_checker_call(sub_k, value[i], temporary_storage)
+                for i in range(1, num_args, 2):
+                    c_args[i] = _type_checker_call(sub_v, value[i], temporary_storage)
+                _func_call_impl_with_c_args(_DICT_INIT, num_args, c_args, &ret)
+            finally:
+                free(c_args)
+            temporary_storage.append(_pyany_no_inc_ref(ret))
         else:
             raise TypeError(f"Expected `dict`, but got: {type(_value)}")
-        num_args = len(value)
-        c_args = <MLCAny*> malloc(num_args * sizeof(MLCAny))
-        try:
-            for i in range(0, num_args, 2):
-                c_args[i] = _type_checker_call(sub_k, value[i], temporary_storage)
-            for i in range(1, num_args, 2):
-                c_args[i] = _type_checker_call(sub_v, value[i], temporary_storage)
-            _func_call_impl_with_c_args(_DICT_INIT, num_args, c_args, &ret)
-        finally:
-            free(c_args)
-        temporary_storage.append(_pyany_no_inc_ref(ret))
+        assert ret.type_index == kMLCDict
+        (<MLCDict*>(ret.v.v_obj)).frozen = self.frozen
         return ret
 
     cdef TypeChecker get(self):
@@ -1123,7 +1134,7 @@ cdef class TypeCheckerDict:
 cdef inline MLCAny _type_checker_call(TypeChecker self, object value, list temporary_storage):
     return self.convert(self._self, value, temporary_storage)
 
-cdef inline TypeChecker _type_checker_from_ty(MLCAny* ty):
+cdef inline TypeChecker _type_checker_from_ty(MLCAny* ty, bint frozen):
     cdef int32_t atomic_type_index = -1
     cdef MLCAny* sub_ty_k = NULL
     cdef MLCAny* sub_ty_v = NULL
@@ -1149,16 +1160,17 @@ cdef inline TypeChecker _type_checker_from_ty(MLCAny* ty):
             return None
     elif ty.type_index == kMLCTypingOptional:
         sub_ty_k = (<MLCTypingOptional*>ty).ty.ptr
-        return TypeCheckerOptional(_type_checker_from_ty(sub_ty_k)).get()
+        return TypeCheckerOptional(_type_checker_from_ty(sub_ty_k, frozen)).get()
     elif ty.type_index == kMLCTypingList:
         sub_ty_k = (<MLCTypingList*>ty).ty.ptr
-        return TypeCheckerList(_type_checker_from_ty(sub_ty_k)).get()
+        return TypeCheckerList(_type_checker_from_ty(sub_ty_k, frozen), frozen).get()
     elif ty.type_index == kMLCTypingDict:
         sub_ty_k = (<MLCTypingDict*>ty).ty_k.ptr
         sub_ty_v = (<MLCTypingDict*>ty).ty_v.ptr
         return TypeCheckerDict(
-            _type_checker_from_ty(sub_ty_k),
-            _type_checker_from_ty(sub_ty_v),
+            _type_checker_from_ty(sub_ty_k, frozen),
+            _type_checker_from_ty(sub_ty_v, frozen),
+            frozen,
         ).get()
     elif ty.type_index == kMLCTypingPtr:
         return None  # TODO
@@ -1170,25 +1182,27 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
     cdef int32_t num_bytes = type_field.num_bytes
     cdef MLCAny* ty = (<PyAny?>(type_field.ty))._mlc_any.v.v_obj
     cdef int32_t idx = -1
+    cdef bint frozen = type_field.frozen
     cdef TypeChecker checker
     if (ty.type_index, num_bytes) == (kMLCTypingAny, sizeof(MLCAny)):
-        def f(PyAny self): return _any_c2py_inc_ref((<MLCAny*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
-        def g(PyAny self, object value):  # no-cython-lint
+        def getter(PyAny self): return _any_c2py_inc_ref((<MLCAny*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
+        def setter(PyAny self, object value):  # no-cython-lint
             cdef MLCAny* addr = <MLCAny*>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
             cdef MLCAny save = addr[0]
             cdef list temporary_storage = []
             addr[0] = _any_py2c(value, temporary_storage)
             _check_error(_C_AnyInplaceViewToOwned(addr))
             _check_error(_C_AnyDecRef(&save))
-        return f, g
+            # TODO: frozen support
+        return getter, setter
     elif ty.type_index in (kMLCTypingAtomic, kMLCTypingList, kMLCTypingDict):
         idx = (<MLCTypingAtomic*>ty).type_index if ty.type_index == kMLCTypingAtomic else -1
         if (idx == -1 or idx >= kMLCStaticObjectBegin) and num_bytes == sizeof(MLCAny*):
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef MLCAny* ptr = (<MLCAny**>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
                 return _any_c2py_inc_ref(_MLCAnyObj(ptr)) if ptr != NULL else None
-            checker = _type_checker_from_ty(ty)
-            def g(PyAny self, object value):  # no-cython-lint
+            checker = _type_checker_from_ty(ty, frozen)
+            def setter(PyAny self, object value):  # no-cython-lint
                 cdef MLCAny **addr = <MLCAny**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny save = _MLCAnyNone() if addr[0] == NULL else _MLCAnyObj(addr[0])
                 cdef list temporary_storage = []
@@ -1204,65 +1218,65 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
                         raise TypeError(f"Unexpected type index: {ret.type_index}")
                 else:
                     _check_error(_C_AnyDecRef(&save))
-            return f, g
+            return getter, setter
         elif (idx, num_bytes) == (kMLCBool, 1):
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef uint8_t* ret = <uint8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 return ret[0] != 0
 
-            def g(PyAny self, value):
+            def setter(PyAny self, value):
                 cdef uint8_t* ret = <uint8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 if not isinstance(value, bool):
                     raise TypeError(f"Expected `bool`, but got: {value}")
                 ret[0] = <bint?>(value)
-            return f, g
+            return getter, setter
         elif (idx, num_bytes) == (kMLCInt, 1):
-            def f(PyAny self): return (<int8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
-            def g(PyAny self, int8_t value): (<int8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
-            return f, g
+            def getter(PyAny self): return (<int8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
+            def setter(PyAny self, int8_t value): (<int8_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
+            return getter, setter
         elif (idx, num_bytes) == (kMLCInt, 2):
-            def f(PyAny self): return (<int16_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
-            def g(PyAny self, int16_t value): (<int16_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
-            return f, g
+            def getter(PyAny self): return (<int16_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
+            def setter(PyAny self, int16_t value): (<int16_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
+            return getter, setter
         elif (idx, num_bytes) == (kMLCInt, 4):
-            def f(PyAny self): return (<int32_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
-            def g(PyAny self, int32_t value): (<int32_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
-            return f, g
+            def getter(PyAny self): return (<int32_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
+            def setter(PyAny self, int32_t value): (<int32_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
+            return getter, setter
         elif (idx, num_bytes) == (kMLCInt, 8):
-            def f(PyAny self): return (<int64_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
-            def g(PyAny self, int64_t value): (<int64_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
-            return f, g
+            def getter(PyAny self): return (<int64_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
+            def setter(PyAny self, int64_t value): (<int64_t*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
+            return getter, setter
         elif (idx, num_bytes) == (kMLCFloat, 4):
-            def f(PyAny self): return (<float*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
-            def g(PyAny self, double value): (<float*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
-            return f, g
+            def getter(PyAny self): return (<float*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
+            def setter(PyAny self, double value): (<float*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
+            return getter, setter
         elif (idx, num_bytes) == (kMLCFloat, 8):
-            def f(PyAny self): return (<double*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
-            def g(PyAny self, double value): (<double*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
-            return f, g
+            def getter(PyAny self): return (<double*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0]
+            def setter(PyAny self, double value): (<double*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = value
+            return getter, setter
         elif (idx, num_bytes) == (kMLCPtr, sizeof(void*)):
-            def f(PyAny self): return _Ptr((<void**>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
-            def g(PyAny self, object ptr): (<void**>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = <void*>_addr_from_ptr(ptr)  # no-cython-lint
-            return f, g
+            def getter(PyAny self): return _Ptr((<void**>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
+            def setter(PyAny self, object ptr): (<void**>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0] = <void*>_addr_from_ptr(ptr)  # no-cython-lint
+            return getter, setter
         elif (idx, num_bytes) == (kMLCDataType, sizeof(DLDataType)):
-            def f(PyAny self): return _DataType((<DLDataType*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
-            def g(PyAny self, object dtype):  # no-cython-lint
+            def getter(PyAny self): return _DataType((<DLDataType*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
+            def setter(PyAny self, object dtype):  # no-cython-lint
                 cdef DLDataType* addr = <DLDataType*>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny ret = _MLCAnyNone()
                 _func_call_impl(_DTYPE_INIT, (base.dtype_normalize(dtype), ), &ret)
                 addr[0] = ret.v.v_dtype
-            return f, g
+            return getter, setter
         elif (idx, num_bytes) == (kMLCDevice, sizeof(DLDevice)):
-            def f(PyAny self): return _Device((<DLDevice*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
-            def g(PyAny self, object device):  # no-cython-lint
+            def getter(PyAny self): return _Device((<DLDevice*>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
+            def setter(PyAny self, object device):  # no-cython-lint
                 cdef DLDevice* addr = <DLDevice*>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny ret = _MLCAnyNone()
                 _func_call_impl(_DEVICE_INIT, (base.device_normalize(device), ), &ret)
                 addr[0] = ret.v.v_device
-            return f, g
+            return getter, setter
         elif (idx, num_bytes) == (kMLCRawStr, sizeof(char*)):
-            def f(PyAny self): return str_c2py((<char**>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
-            return f, None  # raw str is always read-only
+            def getter(PyAny self): return str_c2py((<char**>(<uint64_t>(self._mlc_any.v.v_obj) + offset))[0])
+            return getter, None  # raw str is always read-only
     elif ty.type_index in (kMLCTypingPtr, kMLCTypingOptional) and num_bytes == sizeof(MLCAny*):
         if ty.type_index == kMLCTypingPtr:
             ty = (<MLCTypingPtr*>ty).ty.ptr
@@ -1282,12 +1296,12 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
         else:
             raise ValueError(f"Unsupported type field: {type_field.ty.__str__()}")
         if type_index >= kMLCStaticObjectBegin:
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef MLCAny** addr = <MLCAny**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny* ptr = addr[0]
                 return _any_c2py_inc_ref(_MLCAnyObj(ptr)) if ptr != NULL else None
-            checker = TypeCheckerOptional(_type_checker_from_ty(ty)).get()
-            def g(PyAny self, object value):  # no-cython-lint
+            checker = TypeCheckerOptional(_type_checker_from_ty(ty, frozen)).get()
+            def setter(PyAny self, object value):  # no-cython-lint
                 cdef MLCAny **addr = <MLCAny**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny save = _MLCAnyNone() if addr[0] == NULL else _MLCAnyObj(addr[0])
                 cdef list temporary_storage = []
@@ -1303,14 +1317,14 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
                         raise TypeError(f"Unexpected type index: {ret.type_index}")
                 else:
                     _check_error(_C_AnyDecRef(&save))
-            return f, g
+            return getter, setter
         elif type_index == kMLCBool:
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCBoxedPOD* ptr = addr[0]
                 return ptr.data.v_bool if ptr != NULL else None
 
-            def g(PyAny self, value):
+            def setter(PyAny self, value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny ret = _MLCAnyNone()
                 cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
@@ -1319,77 +1333,77 @@ cdef tuple _type_field_accessor(object type_field: base.TypeField):
                         raise TypeError(f"Expected `bool`, but got: {value}")
                     args[1] = _MLCAnyBool(value)
                 _func_call_impl_with_c_args(_BOOL_NEW, 2, args, &ret)
-            return f, g
+            return getter, setter
         elif type_index == kMLCInt:
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCBoxedPOD* ptr = addr[0]
                 return ptr.data.v_int64 if ptr != NULL else None
 
-            def g(PyAny self, object value):
+            def setter(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny ret = _MLCAnyNone()
                 cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
                 if value is not None:
                     args[1] = _MLCAnyInt(<int64_t?>value)
                 _func_call_impl_with_c_args(_INT_NEW, 2, args, &ret)
-            return f, g
+            return getter, setter
         elif type_index == kMLCFloat:
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCBoxedPOD* ptr = addr[0]
                 return ptr.data.v_float64 if ptr != NULL else None
 
-            def g(PyAny self, object value):
+            def setter(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny ret = _MLCAnyNone()
                 cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
                 if value is not None:
                     args[1] = _MLCAnyFloat(<double?>value)
                 _func_call_impl_with_c_args(_FLOAT_NEW, 2, args, &ret)
-            return f, g
+            return getter, setter
         elif type_index == kMLCPtr:
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCBoxedPOD* ptr = addr[0]
                 return _Ptr(ptr.data.v_ptr) if ptr != NULL else None
 
-            def g(PyAny self, object value):
+            def setter(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny ret = _MLCAnyNone()
                 cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
                 if value is not None:
                     args[1] = _MLCAnyPtr(_addr_from_ptr(value))
                 _func_call_impl_with_c_args(_PTR_NEW, 2, args, &ret)
-            return f, g
+            return getter, setter
         elif type_index == kMLCDataType:
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCBoxedPOD* ptr = addr[0]
                 return _DataType(ptr.data.v_dtype) if ptr != NULL else None
 
-            def g(PyAny self, object value):
+            def setter(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
                 cdef MLCAny ret = _MLCAnyNone()
                 if value is not None:
                     _func_call_impl(_DTYPE_INIT, (base.dtype_normalize(value), ), &args[1])
                 _func_call_impl_with_c_args(_DTYPE_NEW, 2, args, &ret)
-            return f, g
+            return getter, setter
         elif type_index == kMLCDevice:
-            def f(PyAny self):
+            def getter(PyAny self):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCBoxedPOD* ptr = addr[0]
                 return _Device(ptr.data.v_device) if ptr != NULL else None
 
-            def g(PyAny self, object value):
+            def setter(PyAny self, object value):
                 cdef MLCBoxedPOD** addr = <MLCBoxedPOD**>(<uint64_t>(self._mlc_any.v.v_obj) + offset)
                 cdef MLCAny ret = _MLCAnyNone()
                 cdef MLCAny[2] args = [_MLCAnyPtr(<uint64_t>addr), _MLCAnyNone()]
                 if value is not None:
                     _func_call_impl(_DEVICE_INIT, (base.device_normalize(value), ), &args[1])
                 _func_call_impl_with_c_args(_DEVICE_NEW, 2, args, &ret)
-            return f, g
+            return getter, setter
     raise ValueError(f"Unsupported {num_bytes}-byte type field: {type_field.ty.__str__()}")
 
 
@@ -1542,7 +1556,7 @@ cpdef object type_key2py_type_info(str type_key):
     return _type_key2py_type_info(type_key)
 
 cpdef object type_cast(PyAny typing_obj, object value):
-    cdef TypeChecker checker = _type_checker_from_ty(typing_obj._mlc_any.v.v_obj)
+    cdef TypeChecker checker = _type_checker_from_ty(typing_obj._mlc_any.v.v_obj, False)
     cdef list temporary_storage = []
     cdef MLCAny ret = _type_checker_call(checker, value, temporary_storage)
     return _any_c2py_inc_ref(ret)
