@@ -13,7 +13,8 @@ env:
   MLC_CIBW_WIN_BUILD: "cp3*-win_amd64"
   MLC_CIBW_MAC_BUILD: "cp3*-macosx_arm64"
   MLC_CIBW_MAC_X86_BUILD: "cp3*-macosx_x86_64"
-  MLC_CIBW_LINUX_BUILD: "cp3*-manylinux_x86_64"
+  MLC_CIBW_LINUX_X86_BUILD: "cp3*-manylinux_x86_64"
+  MLC_CIBW_LINUX_ARM_BUILD: "cp3*-manylinux_aarch64"
 
 jobs:
   windows:
@@ -100,13 +101,36 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
         env:
-          CIBW_BUILD: ${{ env.MLC_CIBW_LINUX_BUILD }}
+          CIBW_BUILD: ${{ env.MLC_CIBW_LINUX_X86_BUILD }}
       - name: Show package contents
         run: python scripts/show_wheel_content.py wheelhouse
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux
+          name: wheels-linux-x86
+          path: ./wheelhouse/*.whl
+  linux-arm:
+    name: Linux
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.MLC_PYTHON_VERSION }}
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==${{ env.MLC_CIBW_VERSION }}
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BUILD: ${{ env.MLC_CIBW_LINUX_ARM_BUILD }}
+      - name: Show package contents
+        run: python scripts/show_wheel_content.py wheelhouse
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-aarch64
           path: ./wheelhouse/*.whl
   publish:
     name: Publish
@@ -133,7 +157,8 @@ jobs:
           mkdir -p dist
           mv wheelhouse/wheels-macos-x86/*.whl dist/
           mv wheelhouse/wheels-macos/*.whl dist/
-          mv wheelhouse/wheels-linux/*.whl dist/
+          mv wheelhouse/wheels-linux-x86/*.whl dist/
+          mv wheelhouse/wheels-linux-aarch64/*.whl dist/
           mv wheelhouse/wheels-windows/*.whl dist/
       - name: Upload wheels to release
         env:
