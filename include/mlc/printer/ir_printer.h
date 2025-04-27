@@ -69,9 +69,18 @@ struct IRPrinterObj : public Object {
       }
     }
     // Find a unique name
-    Str name = name_hint;
-    for (int i = 1; defined_names.count(name) > 0; ++i) {
-      name = name_hint.ToStdString() + '_' + std::to_string(i);
+    std::string name_hint_str = name_hint.ToStdString();
+    Str name(name_hint_str);
+    if (defined_names->count(name)) {
+      if (this->cfg->print_addr_on_dup_var) {
+        std::ostringstream os;
+        os << name_hint_str << "_0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(obj.get());
+        name = Str(os.str());
+      } else {
+        for (int i = 1; defined_names.count(name) > 0; ++i) {
+          name = name_hint_str + '_' + std::to_string(i);
+        }
+      }
     }
     defined_names->Set(name, 1);
     this->_VarDef(VarInfo(name, Func([name]() { return Id(name); })), obj, frame);

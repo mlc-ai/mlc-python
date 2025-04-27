@@ -13,6 +13,7 @@ class PrinterConfig(Object):
     indent_spaces: int = 2
     print_line_numbers: int = 0
     num_context_lines: int = -1
+    print_addr_on_dup_var: bool = False
     path_to_underline: list[ObjectPath] = mlcd.field(default_factory=list)
 
 
