@@ -47,6 +47,7 @@ struct UListObj : protected core::ListBase {
     using value_type = Value;
     using pointer = Value *;
     using reference = std::add_lvalue_reference_t<Value>;
+    friend struct UListObj;
     MLC_INLINE Iter(State i) : i(i) {}
     MLC_INLINE Iter() = default;
     MLC_INLINE Iter(const Iter &) = default;
@@ -86,6 +87,11 @@ struct UListObj : protected core::ListBase {
   MLC_INLINE reverse_iterator rend() { return reverse_iterator(begin()); }
   MLC_INLINE const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
   MLC_INLINE const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+  MLC_INLINE void erase(const iterator &it) { this->Replace(it.i.i, it.i.i + 1, 0, nullptr); }
+  MLC_INLINE void erase(const reverse_iterator &it) { this->Replace(it.base().i.i, it.base().i.i + 1, 0, nullptr); }
+  template <typename Iter> MLC_INLINE void insert(const iterator &i, Iter first, Iter last) {
+    ListBase::Insert(i.i.i, first, last);
+  }
 
   template <typename T> MLC_INLINE_NO_MSVC ListObj<T> *AsTyped() const;
 
@@ -120,6 +126,9 @@ struct UList : public ObjectRef {
   MLC_INLINE UList(std::initializer_list<Any> init) : UList(::mlc::base::AllocatorOf<UListObj>::New(init)) {}
   template <typename Iter> MLC_INLINE UList(Iter first, Iter last) : UList(::mlc::base::AllocatorOf<UListObj>::New(first, last)) {}
   template <typename Iter> MLC_INLINE void insert(int64_t i, Iter first, Iter last) { get()->insert(i, first, last); }
+  template <typename Iter> MLC_INLINE void insert(const iterator &i, Iter first, Iter last) {
+    get()->insert(i, first, last);
+  }
   /* clang-format on */
   template <typename T> MLC_INLINE_NO_MSVC List<T> AsTyped() const;
   MLC_INLINE void insert(int64_t i, Any data) { get()->insert(i, data); }
@@ -131,6 +140,8 @@ struct UList : public ObjectRef {
   MLC_INLINE void push_back(Any data) { get()->push_back(data); }
   MLC_INLINE void pop_back() { get()->pop_back(); }
   MLC_INLINE void erase(int64_t i) { get()->erase(i); }
+  MLC_INLINE void erase(const iterator &it) { get()->erase(it); }
+  MLC_INLINE void erase(const reverse_iterator &it) { get()->erase(it); }
   MLC_INLINE int64_t size() const { return get()->size(); }
   MLC_INLINE int64_t capacity() const { return get()->capacity(); }
   MLC_INLINE bool empty() const { return get()->empty(); }
