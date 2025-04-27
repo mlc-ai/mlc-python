@@ -44,7 +44,7 @@ class PyClass(Object):
         return self.__repr__()
 
 
-def py_class(
+def py_class(  # noqa: PLR0915
     type_key: str | type | None = None,
     *,
     init: bool = True,
@@ -155,6 +155,9 @@ def py_class(
             type_add_method(type_index, "__str__", fn, 1)  # static
             attach_method(super_type_cls, type_cls, "__repr__", fn, check_exists=True)
             attach_method(super_type_cls, type_cls, "__str__", fn, check_exists=True)
+        elif (fn := vars(super_type_cls).get("__str__", None)) is not None:
+            assert callable(fn)
+            type_add_method(type_index, "__str__", fn, 1)
         add_vtable_methods_for_type_cls(super_type_cls, type_index=type_index)
         return type_cls
 
