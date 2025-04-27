@@ -1,3 +1,4 @@
+#include "./dep_graph.h"
 #include "./registry.h"
 #include <mlc/core/all.h>
 
