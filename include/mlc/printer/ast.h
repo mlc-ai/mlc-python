@@ -14,13 +14,16 @@ struct PrinterConfigObj : public Object {
   int32_t indent_spaces = 2;
   int8_t print_line_numbers = 0;
   int32_t num_context_lines = -1;
+  bool print_addr_on_dup_var = false;
   mlc::List<ObjectPath> path_to_underline;
 
   PrinterConfigObj() = default;
   explicit PrinterConfigObj(bool def_free_var, int32_t indent_spaces, int8_t print_line_numbers,
-                            int32_t num_context_lines, mlc::List<ObjectPath> path_to_underline)
+                            int32_t num_context_lines, bool print_addr_on_dup_var,
+                            mlc::List<ObjectPath> path_to_underline)
       : def_free_var(def_free_var), indent_spaces(indent_spaces), print_line_numbers(print_line_numbers),
-        num_context_lines(num_context_lines), path_to_underline(path_to_underline) {}
+        num_context_lines(num_context_lines), print_addr_on_dup_var(print_addr_on_dup_var),
+        path_to_underline(path_to_underline) {}
   MLC_DEF_DYN_TYPE(MLC_EXPORTS, PrinterConfigObj, Object, "mlc.printer.PrinterConfig");
 };
 
@@ -31,11 +34,13 @@ struct PrinterConfig : public ObjectRef {
       .Field("print_line_numbers", &PrinterConfigObj::print_line_numbers)
       .Field("num_context_lines", &PrinterConfigObj::num_context_lines)
       .Field("path_to_underline", &PrinterConfigObj::path_to_underline)
-      .StaticFn("__init__", InitOf<PrinterConfigObj, bool, int32_t, int8_t, int32_t, mlc::List<ObjectPath>>);
+      .Field("print_addr_on_dup_var", &PrinterConfigObj::print_addr_on_dup_var)
+      .StaticFn("__init__", InitOf<PrinterConfigObj, bool, int32_t, int8_t, int32_t, bool, mlc::List<ObjectPath>>);
   explicit PrinterConfig(bool def_free_var = true, int32_t indent_spaces = 2, int8_t print_line_numbers = 0,
-                         int32_t num_context_lines = -1, mlc::List<ObjectPath> path_to_underline = {})
+                         int32_t num_context_lines = -1, bool print_addr_on_dup_var = false,
+                         mlc::List<ObjectPath> path_to_underline = {})
       : PrinterConfig(PrinterConfig::New(def_free_var, indent_spaces, print_line_numbers, num_context_lines,
-                                         path_to_underline)) {}
+                                         print_addr_on_dup_var, path_to_underline)) {}
 };
 
 } // namespace printer

@@ -1,3 +1,5 @@
+import re
+
 import mlc.printer as mlcp
 from mlc.testing.toy_ir import Add, Assign, Func, Var
 
@@ -75,3 +77,31 @@ def test_print_bool() -> None:
     path = mlcp.ObjectPath.root()
     node = printer(True, path)
     assert node.to_python() == "True"
+
+
+def test_duplicated_vars() -> None:
+    a = Var(name="a")
+    b = Var(name="a")
+    stmts = [
+        Assign(lhs=b, rhs=Add(a, a)),
+    ]
+    f = Func(
+        name="f",
+        args=[a],
+        stmts=stmts,
+        ret=b,
+    )
+    assert (
+        mlcp.to_python(f)
+        == """
+def f(a):
+  a_1 = a + a
+  return a_1
+""".strip()
+    )
+    assert re.fullmatch(
+        r"^def f\(a\):\n"
+        r"  a_0x[0-9A-Fa-f]+ = a \+ a\n"
+        r"  return a_0x[0-9A-Fa-f]+$",
+        mlcp.to_python(f, mlcp.PrinterConfig(print_addr_on_dup_var=True)),
+    )
