@@ -1,3 +1,4 @@
+import re
 from typing import Union
 
 import mlc
@@ -641,3 +642,17 @@ def test_mlc_class_mem_fn(mlc_class_for_test: MLCClassForTest) -> None:
     obj = mlc_class_for_test
     assert obj.i64 == 64
     assert obj.i64_plus_one() == 65
+
+
+def test_stringify(mlc_class_for_test: MLCClassForTest) -> None:
+    obj = mlc_class_for_test
+    type_key = type(mlc_class_for_test)._mlc_type_info.type_key
+    expected = (
+        type_key
+        + """@0x<HEX>(bool_=False, i8=8, i16=16, i32=32, i64=64, f32=1.500000, f64=2.500000, raw_ptr=0x0000deadbeef, dtype=float8, device=cuda:0, any="hello", func=object.Func@0x<HEX>, ulist=[1, 2.000000, "three", object.Func@0x<HEX>], udict={"2": 2.000000, "4": object.Func@0x<HEX>, "1": 1, "3": "three"}, str_="world", str_readonly="world", list_any=[1, 2.000000, "three", object.Func@0x<HEX>], list_list_int=[[1, 2, 3], [4, 5, 6]], dict_any_any={2.000000: 2, 4: object.Func@0x<HEX>, 1: 1.000000, "three": "four"}, dict_str_any={"4": object.Func@0x<HEX>, "1": 1.000000, "2.0": 2, "three": "four"}, dict_any_str={2.000000: "2", 4: "5", 1: "1.0", "three": "four"}, dict_str_list_int={"2": [4, 5, 6], "1": [1, 2, 3]}, opt_bool=True, opt_i64=-64, opt_f64=None, opt_raw_ptr=None, opt_dtype=None, opt_device=cuda:0, opt_func=None, opt_ulist=None, opt_udict=None, opt_str=None, opt_list_any=[1, 2.000000, "three", object.Func@0x<HEX>], opt_list_list_int=[[1, 2, 3], [4, 5, 6]], opt_dict_any_any=None, opt_dict_str_any={"4": object.Func@0x<HEX>, "1": 1.000000, "2.0": 2, "three": "four"}, opt_dict_any_str={2.000000: "2", 4: "5", 1: "1.0", "three": "four"}, opt_dict_str_list_int={"2": [4, 5, 6], "1": [1, 2, 3]})"""
+    )
+    actual = re.compile(r"@0x[0-9A-Fa-f]{12}\b").sub(
+        "@0x<HEX>",
+        mlc.dataclasses.stringify(obj),
+    )
+    assert actual == expected

@@ -55,8 +55,7 @@ struct Func : public ObjectRef {
   static FuncObj *GetGlobal(const char *name, bool allow_missing = false) {
     return Lib::FuncGetGlobal(name, allow_missing);
   }
-  // A dummy function to trigger reflection - otherwise reflection registration will be skipped
-  MLC_DEF_OBJ_REF(MLC_EXPORTS, Func, FuncObj, ObjectRef).StaticFn("__nothing__", []() {});
+  MLC_DEF_OBJ_REF(MLC_EXPORTS, Func, FuncObj, ObjectRef).MemFn("__str__", ::mlc::core::StringifyOpaque);
 };
 } // namespace mlc
 

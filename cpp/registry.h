@@ -645,6 +645,7 @@ inline TypeTable *TypeTable::New() {
   self->SetFunc("mlc.base.DataTypeFromStr", Func([self](const char *str) { return self->DataTypeFromStr(str); }).get());
   self->SetFunc("mlc.base.DeviceTypeRegister",
                 Func([self](const char *name) { return self->DeviceTypeRegister(name); }).get());
+  self->SetFunc("mlc.core.Stringify", Func(::mlc::core::StringifyWithFields).get());
   self->SetFunc("mlc.core.JSONLoads", Func(::mlc::registry::JSONLoads).get());
   self->SetFunc("mlc.core.JSONSerialize", Func(::mlc::registry::JSONSerialize).get());
   self->SetFunc("mlc.core.JSONDeserialize", Func(::mlc::registry::JSONDeserialize).get());

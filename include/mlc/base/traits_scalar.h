@@ -2,6 +2,7 @@
 #define MLC_BASE_TRAITS_SCALAR_H_
 
 #include "./utils.h"
+#include <iomanip>
 #include <type_traits>
 
 namespace mlc {
@@ -88,7 +89,7 @@ template <> struct TypeTraits<void *> {
       return "None";
     } else {
       std::ostringstream oss;
-      oss << src;
+      oss << "0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(src);
       return oss.str();
     }
   }
