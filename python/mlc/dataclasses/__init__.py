@@ -6,5 +6,6 @@ from .utils import (
     field,
     prototype,
     replace,
+    stringify,
     vtable_method,
 )

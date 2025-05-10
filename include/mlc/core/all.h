@@ -14,6 +14,7 @@
 #include "./typing.h"       // IWYU pragma: export
 #include "./utils.h"        // IWYU pragma: export
 #include "./visitor.h"      // IWYU pragma: export
+#include <iomanip>
 
 namespace mlc {
 namespace core {
@@ -108,6 +109,54 @@ MLC_INLINE void DeleteExternObject(Object *objptr) {
   } else {
     MLC_THROW(InternalError) << "Cannot find type info for type index: " << type_index;
   }
+}
+
+inline std::string StringifyOpaque(const Object *self) {
+  std::ostringstream os;
+  os << self->GetTypeKey();
+  os << "@0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(self->_mlc_header.v.v_ptr);
+  return os.str();
+}
+
+inline std::string StringifyWithFields(const Object *self) {
+  std::ostringstream os;
+  os << self->GetTypeKey();
+  os << "@0x" << std::setfill('0') << std::setw(12) << std::hex << (uintptr_t)(self->_mlc_header.v.v_ptr);
+  os.copyfmt(std::ostringstream{});
+  struct Printer {
+    void operator()(MLCTypeField *f, const Any *any) { Print(f, AnyView(*any)); }
+    void operator()(MLCTypeField *f, ObjectRef *obj) { Print(f, AnyView(*obj)); }
+    void operator()(MLCTypeField *f, Optional<ObjectRef> *opt) { Print(f, AnyView(*opt)); }
+    void operator()(MLCTypeField *f, Optional<bool> *opt) { Print(f, AnyView(*opt)); }
+    void operator()(MLCTypeField *f, Optional<int64_t> *opt) { Print(f, AnyView(*opt)); }
+    void operator()(MLCTypeField *f, Optional<double> *opt) { Print(f, AnyView(*opt)); }
+    void operator()(MLCTypeField *f, Optional<DLDevice> *opt) { Print(f, AnyView(*opt)); }
+    void operator()(MLCTypeField *f, Optional<DLDataType> *opt) { Print(f, AnyView(*opt)); }
+    void operator()(MLCTypeField *f, bool *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, int8_t *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, int16_t *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, int32_t *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, int64_t *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, float *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, double *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, DLDataType *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, DLDevice *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, Optional<void *> *v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, void **v) { Print(f, AnyView(*v)); }
+    void operator()(MLCTypeField *f, const char **v) { Print(f, AnyView(*v)); }
+    void Print(MLCTypeField *f, const AnyView &any) {
+      if (f->index > 0) {
+        (*os) << ", ";
+      }
+      (*os) << f->name << "=";
+      (*os) << any;
+    }
+    std::ostringstream *os;
+  };
+  os << "(";
+  VisitFields(const_cast<Object *>(self), Lib::GetTypeInfo(self->GetTypeIndex()), Printer{&os});
+  os << ")";
+  return os.str();
 }
 
 } // namespace core
@@ -229,7 +278,6 @@ template <typename Obj> inline VTable &VTable::Set(Func func) {
   MLC_CHECK_ERR(::MLCVTableSetFunc(this->self, Obj::_type_index, func.get(), override_mode));
   return *this;
 }
-
 } // namespace mlc
 
 #endif // MLC_CORE_ALL_H_

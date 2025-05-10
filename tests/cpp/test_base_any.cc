@@ -229,11 +229,7 @@ TEST(Any, Constructor_Bool) {
 template <typename AnyType> struct Checker_Constructor_Ptr_NotNull {
   static void Check(const AnyType &v) {
     CheckAnyPOD<void *>(v, MLCTypeIndex::kMLCPtr, reinterpret_cast<void *>(0x1234));
-#ifndef _MSC_VER
-    EXPECT_STREQ(v.str()->c_str(), "0x1234");
-#else
-    EXPECT_STREQ(v.str()->c_str(), "0000000000001234");
-#endif
+    EXPECT_STREQ(v.str()->c_str(), "0x000000001234");
     EXPECT_EQ(v.operator void *(), reinterpret_cast<void *>(0x1234));
     CheckConvertFail([&]() { return v.operator int(); }, v.type_index, "int");
     CheckConvertFail([&]() { return v.operator double(); }, v.type_index, "float");

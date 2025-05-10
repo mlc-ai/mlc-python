@@ -2,7 +2,6 @@
 #define MLC_CORE_OBJECT_H_
 
 #include "./reflection.h"
-#include <iomanip>
 
 /******************* Section 0. Dummy root *******************/
 
@@ -17,6 +16,8 @@ struct ObjectRefDummyRoot : protected ::mlc::base::PtrBase {
   ObjectRefDummyRoot() : PtrBase() {}
   ObjectRefDummyRoot(NullType) : PtrBase() {}
 };
+std::string StringifyWithFields(const Object *self);
+std::string StringifyOpaque(const Object *self);
 } // namespace core
 } // namespace mlc
 
@@ -61,12 +62,7 @@ struct Object {
   MLC_INLINE Object &operator=(const Object &) { return *this; }
   MLC_INLINE Object &operator=(Object &&) { return *this; }
   Str str() const;
-  std::string __str__() const {
-    std::ostringstream os;
-    os << this->GetTypeKey() << "@0x" << std::setfill('0') << std::setw(12) << std::hex
-       << (uintptr_t)(this->_mlc_header.v.v_ptr);
-    return os.str();
-  }
+  std::string __str__() const { return ::mlc::core::StringifyWithFields(this); }
   friend std::ostream &operator<<(std::ostream &os, const Object &src);
 
   MLC_DEF_STATIC_TYPE(MLC_EXPORTS, Object, ::mlc::core::ObjectDummyRoot, MLCTypeIndex::kMLCObject, "object.Object");
