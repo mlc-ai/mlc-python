@@ -27,7 +27,7 @@ authors = [{ name = "MLC Authors", email = "junrushao@apache.org" }]
 [project.optional-dependencies]
 tests = ['pytest', 'torch']
 dev = [
-    "cython>=3",
+    "cython>=3.1",
     "pre-commit",
     "pytest",
     "pipx",
@@ -38,7 +38,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["scikit-build-core>=0.9.8", "cython", "setuptools-scm"]
+requires = ["scikit-build-core>=0.9.8", "cython>=3.1", "setuptools-scm"]
 build-backend = "scikit_build_core.build"
 
 [tool.setuptools_scm]
@@ -53,6 +53,7 @@ cmake.build-type = "RelWithDebInfo"
 logging.level = "DEBUG"
 wheel.license-files = []
 wheel.install-dir = "mlc"
+wheel.py-api = "cp39"
 install.strip = false
 build-dir = "build-wheels/{wheel_tag}-{build_type}"
 sdist.include = ["python/mlc/_version.py"]
