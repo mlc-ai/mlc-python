@@ -5,6 +5,7 @@ env:
   CIBW_BUILD_VERBOSITY: 3
   CIBW_TEST_REQUIRES: "pytest torch"
   CIBW_TEST_COMMAND: "pytest -svv --durations=20 {project}/tests/python/"
+  CIBW_ENVIRONMENT: "MLC_SHOW_CPP_STACKTRACES=1"
   MLC_CIBW_VERSION: "2.22.0"
   MLC_PYTHON_VERSION: "3.9"
   MLC_CIBW_WIN_BUILD: "cp39-win_amd64"

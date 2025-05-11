@@ -1,6 +1,7 @@
 # cython: language_level=3
 import ctypes
 import itertools
+import os
 from libcpp.vector cimport vector
 from libc.stdint cimport int8_t, int16_t, int32_t, int64_t, uint8_t, uint16_t, uint32_t, uint64_t
 from libc.stdlib cimport malloc, free
@@ -407,7 +408,13 @@ cdef class PyAny:
             func = _vtable_get_func_ptr(vtable, type_index, True)
         except Exception as e:  # no-cython-lint
             raise TypeError(f"Cannot find method `{name}` for type: {cls}") from e
-        _func_call_impl(func, args, &c_ret)
+        if CXX_STACKTRACE_ENABLED:
+            _func_call_impl(func, args, &c_ret)
+        else:
+            try:
+                _func_call_impl(func, args, &c_ret)
+            except Exception as e:  # no-cython-lint
+                raise e.with_traceback(None)
         return _any_c2py_no_inc_ref(c_ret)
 
 cdef class Str(str):
@@ -1699,6 +1706,16 @@ cpdef list type_table():
     return list(TYPE_INDEX_TO_INFO)
 
 
+cpdef void toggle_cxx_stacktrace(bint enable):
+    global CXX_STACKTRACE_ENABLED
+    CXX_STACKTRACE_ENABLED = enable
+
+
+cpdef bint cxx_stacktrace_enabled():
+    global CXX_STACKTRACE_ENABLED
+    return CXX_STACKTRACE_ENABLED
+
+
 cdef const char* _DLPACK_CAPSULE_NAME = "dltensor"
 cdef const char* _DLPACK_CAPSULE_NAME_USED = "used_dltensor"
 cdef const char* _DLPACK_CAPSULE_NAME_VER = "dltensor_versioned"
@@ -1735,3 +1752,4 @@ cdef MLCFunc* _OPAQUE_INIT = _vtable_get_func_ptr(_VTABLE_INIT, kMLCOpaque, Fals
 cdef MLCFunc* _TENSOR_INIT = _vtable_get_func_ptr(_vtable_get_global(b"__init_DLManagedTensor"), kMLCTensor, False)
 cdef MLCFunc* _TENSOR_INIT_VER = _vtable_get_func_ptr(_vtable_get_global(b"__init_DLManagedTensorVersioned"), kMLCTensor, False)  # no-cython-lint
 cdef tuple _OPAQUE_TYPES = ()
+cdef bint CXX_STACKTRACE_ENABLED = os.environ.get("MLC_SHOW_CPP_STACKTRACES", "0") == "1"
