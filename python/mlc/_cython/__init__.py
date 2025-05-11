@@ -27,6 +27,7 @@ from .base import (
 )
 from .core import (  # type: ignore[import-not-found]
     container_to_py,
+    cxx_stacktrace_enabled,
     device_as_pair,
     dtype_as_triple,
     dtype_from_triple,
@@ -50,6 +51,7 @@ from .core import (  # type: ignore[import-not-found]
     tensor_shape,
     tensor_strides,
     tensor_to_dlpack,
+    toggle_cxx_stacktrace,
     type_add_method,
     type_cast,
     type_create,

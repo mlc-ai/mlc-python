@@ -3,7 +3,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from mlc._cython import c_class_core, func_call, func_get, func_init, func_register
+from mlc._cython import (
+    c_class_core,
+    cxx_stacktrace_enabled,
+    func_call,
+    func_get,
+    func_init,
+    func_register,
+)
 
 from .object import Object
 
@@ -17,7 +24,13 @@ class Func(Object):
         func_init(self, func)
 
     def __call__(self, *args: Any) -> Any:
-        return func_call(self, args)
+        if cxx_stacktrace_enabled():
+            return func_call(self, args)
+        else:
+            try:
+                return func_call(self, args)
+            except Exception as e:
+                raise e.with_traceback(None)
 
     @staticmethod
     def get(name: str, allow_missing: bool = False) -> Func:
