@@ -687,6 +687,10 @@ cdef inline MLCAny _any_py2c(object x, list temporary_storage):
         y = (<PyAny>x)._mlc_any
     elif isinstance(x, Str):
         y = (<PyAny>(x._pyany))._mlc_any
+    elif isinstance(x, _OPAQUE_TYPES):
+        x = _pyany_from_opaque(x)
+        y = (<PyAny>x)._mlc_any
+        temporary_storage.append(x)
     elif isinstance(x, bool):
         y = _MLCAnyBool(<bint>x)
     elif isinstance(x, Integral):
@@ -711,10 +715,6 @@ cdef inline MLCAny _any_py2c(object x, list temporary_storage):
         y = _any_py2c_dict(_flatten_dict_to_tuple(x), temporary_storage)
     elif hasattr(x, "__dlpack__"):
         x = _pyany_from_dlpack(x)
-        y = (<PyAny>x)._mlc_any
-        temporary_storage.append(x)
-    elif isinstance(x, _OPAQUE_TYPES):
-        x = _pyany_from_opaque(x)
         y = (<PyAny>x)._mlc_any
         temporary_storage.append(x)
     else:

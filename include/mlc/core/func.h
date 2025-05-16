@@ -15,7 +15,7 @@ struct FuncObj : public MLCFunc {
   using SafeCall = int32_t(const FuncObj *, int32_t, const AnyView *, Any *);
   struct Allocator;
 
-  template <typename... Args> MLC_INLINE Any operator()(Args &&...args) const {
+  template <typename... Args> inline Any operator()(Args &&...args) const {
     constexpr size_t N = sizeof...(Args);
     AnyViewArray<N> stack_args;
     Any ret;

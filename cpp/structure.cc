@@ -538,9 +538,24 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
       } else if (lhs_type_index == kMLCFunc || lhs_type_index == kMLCError) {
         throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", new_path);
       } else if (lhs_type_index == kMLCOpaque) {
-        std::ostringstream err;
-        err << "Cannot compare `mlc.Opaque` of type: " << lhs->DynCast<OpaqueObj>()->opaque_type_name;
-        throw SEqualError(err.str().c_str(), new_path);
+        std::string func_name = "Opaque.eq_s.";
+        func_name += lhs->DynCast<OpaqueObj>()->opaque_type_name;
+        FuncObj *func = Func::GetGlobal(func_name.c_str(), true);
+        if (func == nullptr) {
+          std::ostringstream err;
+          err << "Cannot compare `mlc.Opaque` of type: " << lhs->DynCast<OpaqueObj>()->opaque_type_name << "; Use "
+              << "`mlc.Func.register(\"" << func_name << "\")(eq_s_func)` to register a comparison method";
+          throw SEqualError(err.str().c_str(), new_path);
+        }
+        Any result = (*func)(lhs, rhs);
+        if (result.type_index != kMLCBool) {
+          std::ostringstream err;
+          err << "Comparison function `" << func_name << "` must return a boolean value, but got: " << result;
+          throw SEqualError(err.str().c_str(), new_path);
+        }
+        if (result.operator bool() == false) {
+          MLC_CORE_EQ_S_ERR(lhs, rhs, new_path);
+        }
       } else {
         bool visited = false;
         MLCTypeInfo *type_info = Lib::GetTypeInfo(lhs_type_index);
@@ -802,9 +817,21 @@ inline uint64_t StructuralHashImpl(Object *obj) {
       } else if (type_index == kMLCFunc || type_index == kMLCError) {
         throw SEqualError("Cannot compare `mlc.Func` or `mlc.Error`", ObjectPath::Root());
       } else if (type_index == kMLCOpaque) {
-        std::ostringstream err;
-        err << "Cannot compare `mlc.Opaque` of type: " << obj->DynCast<OpaqueObj>()->opaque_type_name;
-        throw SEqualError(err.str().c_str(), ObjectPath::Root());
+        std::string func_name = "Opaque.hash_s.";
+        func_name += obj->DynCast<OpaqueObj>()->opaque_type_name;
+        FuncObj *func = Func::GetGlobal(func_name.c_str(), true);
+        if (func == nullptr) {
+          MLC_THROW(ValueError) << "Cannot hash `mlc.Opaque` of type: " << obj->DynCast<OpaqueObj>()->opaque_type_name
+                                << "; Use `mlc.Func.register(\"" << func_name
+                                << "\")(hash_s_func)` to register a hashing method";
+        }
+        Any result = (*func)(obj);
+        if (result.type_index != kMLCInt) {
+          MLC_THROW(TypeError) << "Hashing function `" << func_name
+                               << "` must return an integer value, but got: " << result;
+        }
+        int64_t hash_value = result.operator int64_t();
+        EnqueuePOD(tasks, hash_value);
       } else {
         MLCTypeInfo *type_info = Lib::GetTypeInfo(type_index);
         tasks->emplace_back(Task{obj, type_info, false, bind_free_vars, type_info->type_key_hash});
