@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from collections.abc import Callable
 
 from mlc._cython import PyAny, TypeInfo, c_class_core
 
@@ -20,12 +21,18 @@ class Object(PyAny):
     def is_(self, other: Object) -> bool:
         return isinstance(other, Object) and self._mlc_address == other._mlc_address
 
-    def json(self) -> str:
-        return super()._mlc_json()
+    def json(
+        self,
+        fn_opaque_serialize: Callable[[list[typing.Any]], str] | None = None,
+    ) -> str:
+        return super()._mlc_json(fn_opaque_serialize)
 
     @staticmethod
-    def from_json(json_str: str) -> Object:
-        return PyAny._mlc_from_json(json_str)  # type: ignore[attr-defined]
+    def from_json(
+        json_str: str,
+        fn_opaque_deserialize: Callable[[str], list[typing.Any]] | None = None,
+    ) -> Object:
+        return PyAny._mlc_from_json(json_str, fn_opaque_deserialize)  # type: ignore[attr-defined]
 
     def eq_s(
         self,

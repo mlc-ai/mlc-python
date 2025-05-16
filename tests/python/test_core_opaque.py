@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 import mlc
@@ -16,8 +17,19 @@ class MyType:
     def __call__(self, x: int) -> int:
         return x + self.a
 
+    def eq_s(self, other: Any) -> bool:
+        return isinstance(self, MyType) and isinstance(other, MyType) and self.a == other.a
 
-mlc.Opaque.register(MyType)
+    def hash_s(self) -> int:
+        assert isinstance(self, MyType)
+        return hash((MyType, self.a))
+
+
+mlc.Opaque.register(
+    MyType,
+    eq_s=MyType.eq_s,
+    hash_s=MyType.hash_s,
+)
 
 
 @mlc.dataclasses.py_class(structure="bind")
@@ -66,17 +78,6 @@ def test_opaque_dataclass() -> None:
     assert wrapper.field.a == 10
 
 
-@mlc.Func.register("Opaque.eq_s.test_core_opaque.MyType")
-def _eq_s_MyType(a: MyType, b: MyType) -> bool:
-    return isinstance(a, MyType) and isinstance(b, MyType) and a.a == b.a
-
-
-@mlc.Func.register("Opaque.hash_s.test_core_opaque.MyType")
-def _hash_s_MyType(a: MyType) -> int:
-    assert isinstance(a, MyType)
-    return hash((MyType, a.a))
-
-
 def test_opaque_dataclass_eq_s() -> None:
     a1 = Wrapper(field=MyType(a=10))
     a2 = Wrapper(field=MyType(a=10))
@@ -94,3 +95,32 @@ def test_opaque_dataclass_eq_s_fail() -> None:
 def test_opaque_dataclass_hash_s() -> None:
     a1 = Wrapper(field=MyType(a=10))
     assert isinstance(a1.hash_s(), int)
+
+
+def test_opaque_serialize() -> None:
+    obj_1 = Wrapper(field=MyType(a=10))
+    json_str = obj_1.json()
+    js = json.loads(json_str)
+    assert js["opaques"] == '[{"py/object": "test_core_opaque.MyType", "a": 10}]'
+    assert js["values"] == [[0, 0], [1, 0]]
+    assert js["type_keys"] == ["mlc.core.Opaque", "test_core_opaque.Wrapper"]
+    obj_2 = Wrapper.from_json(json_str)
+    assert isinstance(obj_2.field, MyType)
+    assert obj_2.field.a == 10
+
+
+def test_opaque_serialize_with_alias() -> None:
+    a1 = MyType(a=10)
+    a2 = MyType(a=20)
+    a3 = MyType(a=30)
+    obj_1 = Wrapper(field=[a1, a2, a3, a3, a2, a1])
+    obj_2 = Wrapper.from_json(obj_1.json())
+    assert obj_2.field[0] is obj_2.field[5]
+    assert obj_2.field[1] is obj_2.field[4]
+    assert obj_2.field[2] is obj_2.field[3]
+    assert obj_2.field[0].a == 10
+    assert obj_2.field[1].a == 20
+    assert obj_2.field[2].a == 30
+    assert obj_2.field[3].a == 30
+    assert obj_2.field[4].a == 20
+    assert obj_2.field[5].a == 10
