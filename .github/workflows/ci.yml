@@ -3,7 +3,7 @@ name: CI
 on: [push, pull_request]
 env:
   CIBW_BUILD_VERBOSITY: 3
-  CIBW_TEST_REQUIRES: "pytest torch"
+  CIBW_TEST_REQUIRES: "pytest torch jsonpickle"
   CIBW_TEST_COMMAND: "pytest -svv --durations=20 {project}/tests/python/"
   CIBW_ENVIRONMENT: "MLC_SHOW_CPP_STACKTRACES=1"
   CIBW_REPAIR_WHEEL_COMMAND_LINUX: >

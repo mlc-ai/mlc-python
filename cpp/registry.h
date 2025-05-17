@@ -19,8 +19,8 @@ namespace mlc {
 namespace registry {
 
 Any JSONLoads(AnyView json_str);
-Any JSONDeserialize(AnyView json_str);
-Str JSONSerialize(AnyView source);
+Any JSONDeserialize(AnyView json_str, FuncObj *fn_opaque_deserialize);
+Str JSONSerialize(AnyView source, FuncObj *fn_opaque_serialize);
 bool StructuralEqual(AnyView lhs, AnyView rhs, bool bind_free_vars, bool assert_mode);
 int64_t StructuralHash(AnyView root);
 Optional<Str> StructuralEqualFailReason(AnyView lhs, AnyView rhs, bool bind_free_vars);

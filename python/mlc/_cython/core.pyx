@@ -360,16 +360,16 @@ cdef class PyAny:
         return (base.new_object, (type(self),), self.__getstate__())
 
     def __getstate__(self):
-        return {"mlc_json": func_call(_SERIALIZE, (self,))}
+        return {"mlc_json": func_call(_SERIALIZE, (self, None))}
 
     def __setstate__(self, state):
-        cdef PyAny ret = func_call(_DESERIALIZE, (state["mlc_json"], ))
+        cdef PyAny ret = func_call(_DESERIALIZE, (state["mlc_json"], None))
         cdef MLCAny tmp = self._mlc_any
         self._mlc_any = ret._mlc_any
         ret._mlc_any = tmp
 
-    def _mlc_json(self):
-        return func_call(_SERIALIZE, (self,))
+    def _mlc_json(self, fn_opaque_serialize):
+        return func_call(_SERIALIZE, (self, fn_opaque_serialize))
 
     def _mlc_swap(self, PyAny other):
         cdef MLCAny tmp = self._mlc_any
@@ -377,8 +377,8 @@ cdef class PyAny:
         other._mlc_any = tmp
 
     @staticmethod
-    def _mlc_from_json(mlc_json):
-        return func_call(_DESERIALIZE, (mlc_json,))
+    def _mlc_from_json(mlc_json, fn_opaque_deserialize):
+        return func_call(_DESERIALIZE, (mlc_json, fn_opaque_deserialize))
 
     @staticmethod
     def _mlc_eq_s(PyAny lhs, PyAny rhs, bint bind_free_vars, bint assert_mode) -> bool:
@@ -1442,8 +1442,8 @@ cpdef void func_init(PyAny self, object callable):
     self._mlc_any = ret._mlc_any
     ret._mlc_any = _MLCAnyNone()
 
-cpdef void opaque_init(PyAny self, object callable):
-    cdef PyAny ret = _pyany_from_opaque(callable)
+cpdef void opaque_init(PyAny self, object opaque):
+    cdef PyAny ret = _pyany_from_opaque(opaque)
     self._mlc_any = ret._mlc_any
     ret._mlc_any = _MLCAnyNone()
 
