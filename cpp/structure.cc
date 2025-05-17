@@ -627,7 +627,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
     }
     // `task.visited` was `False`
     int64_t task_index = static_cast<int64_t>(tasks.size()) - 1;
-    if (type_info->type_index == kMLCList) {
+    if (lhs->IsInstance<UListObj>()) {
       UListObj *lhs_list = reinterpret_cast<UListObj *>(lhs);
       UListObj *rhs_list = reinterpret_cast<UListObj *>(rhs);
       int64_t lhs_size = lhs_list->size();
@@ -639,7 +639,7 @@ inline void StructuralEqualImpl(Object *lhs, Object *rhs, bool bind_free_vars) {
         auto &err = tasks[task_index].err = std::make_unique<std::ostringstream>();
         (*err) << "List length mismatch: " << lhs_size << " vs " << rhs_size;
       }
-    } else if (type_info->type_index == kMLCDict) {
+    } else if (lhs->IsInstance<UDictObj>()) {
       UDictObj *lhs_dict = reinterpret_cast<UDictObj *>(lhs);
       UDictObj *rhs_dict = reinterpret_cast<UDictObj *>(rhs);
       std::vector<AnyView> not_found_lhs_keys;
@@ -892,13 +892,13 @@ inline uint64_t StructuralHashImpl(Object *obj) {
       task.index_in_result_hashes = result_hashes.size();
     }
     // `task.visited` was `False`
-    if (type_info->type_index == kMLCList) {
+    if (obj->IsInstance<UListObj>()) {
       UListObj *list = reinterpret_cast<UListObj *>(obj);
       hash_value = HashCombine(hash_value, list->size());
       for (int64_t i = list->size() - 1; i >= 0; --i) {
         Visitor::EnqueueAny(&tasks, bind_free_vars, &list->at(i));
       }
-    } else if (type_info->type_index == kMLCDict) {
+    } else if (obj->IsInstance<UDictObj>()) {
       UDictObj *dict = reinterpret_cast<UDictObj *>(obj);
       hash_value = HashCombine(hash_value, dict->size());
       struct KVPair {
@@ -1151,8 +1151,16 @@ inline Any CopyDeepImpl(AnyView source) {
     } else if (object->IsInstance<StrObj>() || object->IsInstance<ErrorObj>() || object->IsInstance<FuncObj>() ||
                object->IsInstance<TensorObj>()) {
       ret = object;
-    } else if (object->IsInstance<OpaqueObj>()) {
-      MLC_THROW(TypeError) << "Cannot copy `mlc.Opaque` of type: " << object->DynCast<OpaqueObj>()->opaque_type_name;
+    } else if (OpaqueObj *opaque = object->as<OpaqueObj>()) {
+      std::string func_name = "Opaque.deepcopy.";
+      func_name += opaque->opaque_type_name;
+      FuncObj *func = Func::GetGlobal(func_name.c_str(), true);
+      if (func == nullptr) {
+        MLC_THROW(ValueError) << "Cannot deepcopy `mlc.Opaque` of type: " << opaque->opaque_type_name
+                              << "; Use `mlc.Func.register(\"" << func_name
+                              << "\")(deepcopy_func)` to register a deepcopy method";
+      }
+      ret = (*func)(object);
     } else {
       fields.clear();
       VisitFields(object, type_info, Copier{&orig2copy, &fields});
@@ -1627,8 +1635,8 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len, FuncObj *fn_o
               MLC_THROW(ValueError) << "Invalid reference when parsing type `" << type_keys[json_type_index]
                                     << "`: referring #" << k << " at #" << i << ". v = " << value;
             }
-          } else if (arg.type_index == kMLCList) {
-            (*list)[j] = invoke_init(arg.operator UList());
+          } else if (UListObj *arg_list = arg.as<UListObj>()) {
+            (*list)[j] = invoke_init(UList(arg_list));
           } else if (arg.type_index == kMLCStr || arg.type_index == kMLCBool || arg.type_index == kMLCFloat ||
                      arg.type_index == kMLCNone) {
             // Do nothing

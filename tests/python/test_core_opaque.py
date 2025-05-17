@@ -1,3 +1,4 @@
+import copy
 import json
 from typing import Any
 
@@ -17,19 +18,15 @@ class MyType:
     def __call__(self, x: int) -> int:
         return x + self.a
 
-    def eq_s(self, other: Any) -> bool:
+    def __eq__(self, other: Any) -> bool:
         return isinstance(self, MyType) and isinstance(other, MyType) and self.a == other.a
 
-    def hash_s(self) -> int:
+    def __hash__(self) -> int:
         assert isinstance(self, MyType)
         return hash((MyType, self.a))
 
 
-mlc.Opaque.register(
-    MyType,
-    eq_s=MyType.eq_s,
-    hash_s=MyType.hash_s,
-)
+mlc.Opaque.register(MyType)
 
 
 @mlc.dataclasses.py_class(structure="bind")
@@ -124,3 +121,13 @@ def test_opaque_serialize_with_alias() -> None:
     assert obj_2.field[3].a == 30
     assert obj_2.field[4].a == 20
     assert obj_2.field[5].a == 10
+
+
+def test_opaque_deepcopy() -> None:
+    a = MyType(a=10)
+    obj_1 = Wrapper(field=a)
+    obj_2 = copy.deepcopy(obj_1)
+    assert isinstance(obj_2.field, MyType)
+    assert obj_2.field.a == 10
+    assert obj_1 is not obj_2
+    assert obj_1.field is not obj_2.field
