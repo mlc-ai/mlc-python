@@ -1,6 +1,8 @@
 import re
 
 import mlc.printer as mlcp
+import pytest
+from mlc.printer import ObjectPath
 from mlc.testing.toy_ir import Add, Assign, Func, Var
 
 
@@ -105,3 +107,108 @@ def f(a):
         r"  return a_0x[0-9A-Fa-f]+$",
         mlcp.to_python(f, mlcp.PrinterConfig(print_addr_on_dup_var=True)),
     )
+
+
+@pytest.mark.parametrize(
+    "path, expected",
+    [
+        (
+            ObjectPath.root()["args"][0],
+            """
+def f(a, b):
+      ^
+  c = a + b
+  return c
+""",
+        ),
+        (
+            ObjectPath.root()["args"][1],
+            """
+def f(a, b):
+         ^
+  c = a + b
+  return c
+""",
+        ),
+        (
+            ObjectPath.root()["stmts"][0],
+            """
+def f(a, b):
+  c = a + b
+  ^^^^^^^^^
+  return c
+""",
+        ),
+        (
+            ObjectPath.root()["stmts"][0],
+            """
+def f(a, b):
+  c = a + b
+  ^^^^^^^^^
+  return c
+""",
+        ),
+        (
+            ObjectPath.root()["stmts"][0]["lhs"],
+            """
+def f(a, b):
+  c = a + b
+  ^
+  return c
+""",
+        ),
+        (
+            ObjectPath.root()["stmts"][0]["rhs"],
+            """
+def f(a, b):
+  c = a + b
+      ^^^^^
+  return c
+""",
+        ),
+        (
+            ObjectPath.root()["stmts"][0]["rhs"]["lhs"],
+            """
+def f(a, b):
+  c = a + b
+      ^
+  return c
+""",
+        ),
+        (
+            ObjectPath.root()["stmts"][0]["rhs"]["rhs"],
+            """
+def f(a, b):
+  c = a + b
+          ^
+  return c
+""",
+        ),
+        (
+            ObjectPath.root()["ret"],
+            """
+def f(a, b):
+  c = a + b
+  return c
+         ^
+""",
+        ),
+    ],
+)
+def test_print_underscore(path: ObjectPath, expected: str) -> None:
+    a = Var(name="a")
+    b = Var(name="b")
+    c = Var(name="c")
+    f = Func(
+        name="f",
+        args=[a, b],
+        stmts=[
+            Assign(lhs=c, rhs=Add(a, b)),
+        ],
+        ret=c,
+    )
+    actual = mlcp.to_python(
+        f,
+        mlcp.PrinterConfig(path_to_underline=[path]),
+    )
+    assert actual.strip() == expected.strip()
