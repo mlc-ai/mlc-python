@@ -476,10 +476,13 @@ inline void DocPrinter::Append(const Node &doc, const PrinterConfig &cfg) {
 }
 
 inline ::mlc::Str DocPrinter::GetString() const {
-  mlc::Str text = output_.str();
+  std::string text = output_.str();
   // Remove any trailing indentation
-  while (!text->empty() && std::isspace(text->back())) {
-    text->pop_back();
+  while (!text.empty() && text.back() == ' ') {
+    text.pop_back();
+  }
+  if (!text.empty() && text.back() != '\n') {
+    text.push_back('\n');
   }
   return DecorateText(text, line_starts_, options_, MergeAndExemptSpans(underlines_, underlines_exempted_));
 }

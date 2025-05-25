@@ -38,8 +38,8 @@ class Add(Expr):
     rhs: Expr
 
     def __ir_print__(self, printer: mlcp.IRPrinter, path: mlcp.ObjectPath) -> mlt.Node:
-        lhs: mlt.Expr = printer(self.lhs, path=path["a"])
-        rhs: mlt.Expr = printer(self.rhs, path=path["b"])
+        lhs: mlt.Expr = printer(self.lhs, path=path["lhs"])
+        rhs: mlt.Expr = printer(self.rhs, path=path["rhs"])
         return lhs + rhs
 
 
@@ -49,9 +49,9 @@ class Assign(Stmt):
     lhs: Var = mlcd.field(structure="bind")
 
     def __ir_print__(self, printer: mlcp.IRPrinter, path: mlcp.ObjectPath) -> mlt.Node:
-        rhs: mlt.Expr = printer(self.rhs, path=path["b"])
+        rhs: mlt.Expr = printer(self.rhs, path=path["rhs"])
         printer.var_def(self.lhs.name, obj=self.lhs)
-        lhs: mlt.Expr = printer(self.lhs, path=path["a"])
+        lhs: mlt.Expr = printer(self.lhs, path=path["lhs"])
         return mlt.Assign(lhs=lhs, rhs=rhs)
 
 
