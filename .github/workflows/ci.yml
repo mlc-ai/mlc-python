@@ -16,7 +16,7 @@ env:
     pipx run delvewheel repair -w {dest_dir} {wheel} &&
     pipx run abi3audit --strict --report {wheel}
   MLC_CIBW_VERSION: "2.22.0"
-  MLC_PYTHON_VERSION: "3.9"
+  MLC_CIBW_PY_VERSION: "3.11"
   MLC_CIBW_WIN_BUILD: "cp39-win_amd64"
   MLC_CIBW_MAC_BUILD: "cp39-macosx_arm64"
   MLC_CIBW_LINUX_BUILD: "cp313-manylinux_x86_64"
@@ -26,9 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.MLC_PYTHON_VERSION }}
       - uses: pre-commit/action@v3.0.1
       - uses:  ytanikin/pr-conventional-commits@1.4.0
         if: github.event_name == 'pull_request'
@@ -43,18 +40,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.MLC_PYTHON_VERSION }}
-      - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel=="${{ env.MLC_CIBW_VERSION }}"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
+        run: |
+          uv run --no-project `
+            --with cibuildwheel==${{ env.MLC_CIBW_VERSION }} `
+            cibuildwheel --output-dir wheelhouse
         env:
+          UV_PYTHON: ${{ env.MLC_CIBW_PY_VERSION }}
           CIBW_BEFORE_ALL: ".\\scripts\\cpp_tests.bat"
           CIBW_BUILD: ${{ env.MLC_CIBW_WIN_BUILD }}
       - name: Show package contents
-        run: python scripts/show_wheel_content.py wheelhouse
+        run: |
+          uv run --no-project `
+            python scripts/show_wheel_content.py wheelhouse
+        env:
+          UV_PYTHON: ${{ env.MLC_CIBW_PY_VERSION }}
   macos:
     name: MacOS
     runs-on: macos-latest
@@ -63,18 +65,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.MLC_PYTHON_VERSION }}
-      - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==${{ env.MLC_CIBW_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
+        run: |
+          uv run --no-project \
+            --with cibuildwheel==${{ env.MLC_CIBW_VERSION }} \
+            cibuildwheel --output-dir wheelhouse
         env:
+          UV_PYTHON: ${{ env.MLC_CIBW_PY_VERSION }}
           CIBW_BEFORE_ALL: "./scripts/cpp_tests.sh"
           CIBW_BUILD: ${{ env.MLC_CIBW_MAC_BUILD }}
       - name: Show package contents
-        run: python scripts/show_wheel_content.py wheelhouse
+        run: |
+          uv run --no-project \
+            python scripts/show_wheel_content.py wheelhouse
+        env:
+          UV_PYTHON: ${{ env.MLC_CIBW_PY_VERSION }}
   linux:
     name: Linux
     runs-on: ubuntu-latest
@@ -83,15 +90,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.MLC_PYTHON_VERSION }}
-      - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==${{ env.MLC_CIBW_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
       - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
+        run: |
+          uv run --no-project \
+            --with cibuildwheel==${{ env.MLC_CIBW_VERSION }} \
+            cibuildwheel --output-dir wheelhouse
         env:
+          UV_PYTHON: ${{ env.MLC_CIBW_PY_VERSION }}
           CIBW_BEFORE_ALL: "./scripts/setup_manylinux2014.sh && ./scripts/cpp_tests.sh"
           CIBW_BUILD: ${{ env.MLC_CIBW_LINUX_BUILD }}
       - name: Show package contents
-        run: python scripts/show_wheel_content.py wheelhouse
+        run: |
+          uv run --no-project \
+            python scripts/show_wheel_content.py wheelhouse
+        env:
+          UV_PYTHON: ${{ env.MLC_CIBW_PY_VERSION }}
