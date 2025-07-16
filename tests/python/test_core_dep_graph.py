@@ -4,7 +4,7 @@ from mlc import DepGraph
 
 
 @mlcd.py_class(repr=False)
-class Var(mlcd.PyClass):
+class Var:
     name: str
 
     def __str__(self) -> str:
@@ -12,7 +12,7 @@ class Var(mlcd.PyClass):
 
 
 @mlcd.py_class(repr=False)
-class Stmt(mlcd.PyClass):
+class Stmt:
     args: list[Var]
     outs: list[Var]
 

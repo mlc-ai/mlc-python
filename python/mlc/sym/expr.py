@@ -337,7 +337,7 @@ class Call(Expr):
 
 
 @mlcd.c_class("mlc.sym.Op")
-class Op(mlcd.PyClass):
+class Op(Object):
     name: str
 
     @staticmethod
@@ -346,7 +346,7 @@ class Op(mlcd.PyClass):
 
 
 @mlcd.c_class("mlc.sym.Range", init=False)
-class Range(mlcd.PyClass):
+class Range(Object):
     min: Expr
     extent: Expr
 

@@ -30,7 +30,7 @@ mlc.Opaque.register(MyType)
 
 
 @mlc.dataclasses.py_class(structure="bind")
-class Wrapper(mlc.dataclasses.PyClass):
+class Wrapper:
     field: Any = mlc.dataclasses.field(structure="nobind")
 
 
@@ -78,30 +78,30 @@ def test_opaque_dataclass() -> None:
 def test_opaque_dataclass_eq_s() -> None:
     a1 = Wrapper(field=MyType(a=10))
     a2 = Wrapper(field=MyType(a=10))
-    a1.eq_s(a2, assert_mode=True)
+    mlc.eq_s(a1, a2, assert_mode=True)
 
 
 def test_opaque_dataclass_eq_s_fail() -> None:
     a1 = Wrapper(field=MyType(a=10))
     a2 = Wrapper(field=MyType(a=20))
     with pytest.raises(ValueError) as exc_info:
-        a1.eq_s(a2, assert_mode=True)
+        mlc.eq_s(a1, a2, assert_mode=True)
     assert str(exc_info.value).startswith("Structural equality check failed at {root}.field")
 
 
 def test_opaque_dataclass_hash_s() -> None:
     a1 = Wrapper(field=MyType(a=10))
-    assert isinstance(a1.hash_s(), int)
+    assert isinstance(mlc.hash_s(a1), int)
 
 
 def test_opaque_serialize() -> None:
     obj_1 = Wrapper(field=MyType(a=10))
-    json_str = obj_1.json()
+    json_str = mlc.json_dumps(obj_1)
     js = json.loads(json_str)
     assert js["opaques"] == '[{"py/object": "test_core_opaque.MyType", "a": 10}]'
     assert js["values"] == [[0, 0], [1, 0]]
     assert js["type_keys"] == ["mlc.core.Opaque", "test_core_opaque.Wrapper"]
-    obj_2 = Wrapper.from_json(json_str)
+    obj_2 = mlc.json_loads(json_str)
     assert isinstance(obj_2.field, MyType)
     assert obj_2.field.a == 10
 
@@ -111,7 +111,7 @@ def test_opaque_serialize_with_alias() -> None:
     a2 = MyType(a=20)
     a3 = MyType(a=30)
     obj_1 = Wrapper(field=[a1, a2, a3, a3, a2, a1])
-    obj_2 = Wrapper.from_json(obj_1.json())
+    obj_2 = mlc.json_loads(mlc.json_dumps(obj_1))
     assert obj_2.field[0] is obj_2.field[5]
     assert obj_2.field[1] is obj_2.field[4]
     assert obj_2.field[2] is obj_2.field[3]

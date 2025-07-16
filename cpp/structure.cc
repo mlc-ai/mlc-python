@@ -23,7 +23,7 @@ using mlc::core::VisitStructure;
 
 /****************** JSON ******************/
 
-inline Any JSONLoads(const char *json_str, int64_t json_str_len) {
+inline Any JSONParse(const char *json_str, int64_t json_str_len) {
   struct JSONParser {
     Any Parse() {
       SkipWhitespace();
@@ -1552,7 +1552,7 @@ inline Any Deserialize(const char *json_str, int64_t json_str_len, FuncObj *fn_o
   int32_t json_type_index_tensor = -1;
   int32_t json_type_index_opaque = -1;
   // Step 0. Parse JSON string
-  UDict json_obj = JSONLoads(json_str, json_str_len);
+  UDict json_obj = JSONParse(json_str, json_str_len);
   // Step 1. type_key => constructors
   UList type_keys = json_obj->at("type_keys");
   std::vector<FuncObj *> constructors;
@@ -1700,12 +1700,12 @@ Any CopyShallow(AnyView source) { return CopyShallowImpl(source); }
 Any CopyDeep(AnyView source) { return CopyDeepImpl(source); }
 void CopyReplace(int32_t num_args, const AnyView *args, Any *ret) { CopyReplaceImpl(num_args, args, ret); }
 
-Any JSONLoads(AnyView json_str) {
+Any JSONParse(AnyView json_str) {
   if (json_str.type_index == kMLCRawStr) {
-    return ::mlc::JSONLoads(json_str.operator const char *(), -1);
+    return ::mlc::JSONParse(json_str.operator const char *(), -1);
   } else {
     StrObj *js = json_str.operator StrObj *();
-    return ::mlc::JSONLoads(js->data(), js->size());
+    return ::mlc::JSONParse(js->data(), js->size());
   }
 }
 

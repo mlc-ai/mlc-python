@@ -6,7 +6,7 @@ import pytest
 
 
 @mlcd.py_class("mlc.testing.py_class_base")
-class Base(mlcd.PyClass):
+class Base:
     base_a: int
     base_b: str
 
@@ -27,7 +27,7 @@ class Derived(Base):
 
 
 @mlcd.py_class("mlc.testing.py_class_base_with_default")
-class BaseWithDefault(mlcd.PyClass):
+class BaseWithDefault:
     base_a: int
     base_b: list[int] = mlcd.field(default_factory=list)
 
@@ -40,17 +40,17 @@ class DerivedWithDefault(BaseWithDefault):
 
 @mlcd.py_class("mlc.testing.DerivedDerived")
 class DerivedDerived(DerivedWithDefault):
-    derived_derived_a: str
+    derived_derived_a: str  # type: ignore[misc]
 
 
 @mlcd.py_class("mlc.testing.py_class_derived_with_default_interleaved")
 class DerivedWithDefaultInterleaved(BaseWithDefault):
-    derived_a: int
+    derived_a: int  # type: ignore[misc]
     derived_b: Optional[str] = "1234"
 
 
 @mlcd.py_class("mlc.testing.py_class_post_init")
-class PostInit(mlcd.PyClass):
+class PostInit:
     a: int
     b: str
 
@@ -59,19 +59,19 @@ class PostInit(mlcd.PyClass):
 
 
 @mlcd.py_class("mlc.testing.py_class_frozen", frozen=True)
-class Frozen(mlcd.PyClass):
+class Frozen:
     a: int
     b: str
 
 
 @mlcd.py_class
-class ContainerFields(mlcd.PyClass):
+class ContainerFields:
     a: list[int]
     b: dict[int, int]
 
 
 @mlcd.py_class(frozen=True)
-class FrozenContainerFields(mlcd.PyClass):
+class FrozenContainerFields:
     a: list[int]
     b: dict[int, int]
 
@@ -86,7 +86,7 @@ def test_base() -> None:
 
 
 def test_derived() -> None:
-    derived = Derived(1.0, "b", 2, "c")
+    derived = Derived(1, "b", 2, "c")
     derived_str = "mlc.testing.py_class_derived(base_a=1, base_b='b', derived_a=2.0, derived_b='c')"
     assert derived.base_a == 1
     assert derived.base_b == "b"
@@ -100,7 +100,7 @@ def test_repr_in_list() -> None:
     target = mlc.List[Base](
         [
             Base(1, "a"),
-            Derived(1.0, "b", 2, "c"),
+            Derived(1, "b", 2, "c"),
         ],
     )
     target_str_0 = "mlc.testing.py_class_base(base_a=1, base_b='a')"
@@ -124,7 +124,7 @@ def test_default_in_derived() -> None:
 
 
 def test_default_in_derived_interleaved() -> None:
-    derived = DerivedWithDefaultInterleaved(12, 34)
+    derived = DerivedWithDefaultInterleaved(12, 34)  # type: ignore[call-arg,arg-type]
     assert derived.base_a == 12
     assert isinstance(derived.base_b, mlc.List) and len(derived.base_b) == 0
     assert derived.derived_a == 34
@@ -142,7 +142,7 @@ def test_post_init() -> None:
 def test_frozen_set_fail() -> None:
     frozen = Frozen(1, "a")
     with pytest.raises(AttributeError) as e:
-        frozen.a = 2
+        frozen.a = 2  # type: ignore[misc]
     # depends on Python version, there are a few possible error messages
     assert str(e.value) in [
         "property 'a' of 'Frozen' object has no setter",
@@ -154,18 +154,18 @@ def test_frozen_set_fail() -> None:
 
 def test_frozen_force_set() -> None:
     frozen = Frozen(1, "a")
-    frozen._mlc_setattr("a", 2)
+    frozen._mlc_setattr("a", 2)  # type: ignore[attr-defined]
     assert frozen.a == 2
     assert frozen.b == "a"
 
-    frozen._mlc_setattr("b", "b")
+    frozen._mlc_setattr("b", "b")  # type: ignore[attr-defined]
     assert frozen.a == 2
     assert frozen.b == "b"
 
 
 def test_derived_derived() -> None:
     # __init__(base_a, derived_derived_a, base_b, derived_a, derived_b)
-    obj = DerivedDerived(1, "a", [1, 2], 2, "b")
+    obj = DerivedDerived(1, "a", [1, 2], 2, "b")  # type: ignore[arg-type]
     assert obj.base_a == 1
     assert obj.derived_derived_a == "a"
     assert isinstance(obj.base_b, mlc.List) and len(obj.base_b) == 2
@@ -193,19 +193,19 @@ def test_frozen_container_fields() -> None:
     assert obj.a == [1, 2]
     assert obj.b == {1: 2}
 
-    assert obj.a.frozen
-    assert obj.b.frozen
+    assert obj.a.frozen  # type: ignore[attr-defined]
+    assert obj.b.frozen  # type: ignore[attr-defined]
 
     e: pytest.ExceptionInfo
     with pytest.raises(AttributeError) as e:
-        obj.a = [2, 3]
+        obj.a = [2, 3]  # type: ignore[misc]
     assert str(e.value) in [
         "property 'a' of 'FrozenContainerFields' object has no setter",
         "can't set attribute",
     ]
 
     with pytest.raises(AttributeError) as e:
-        obj.b = {2: 3}
+        obj.b = {2: 3}  # type: ignore[misc]
     assert str(e.value) in [
         "property 'b' of 'FrozenContainerFields' object has no setter",
         "can't set attribute",

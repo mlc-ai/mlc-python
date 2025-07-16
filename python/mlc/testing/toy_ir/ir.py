@@ -6,7 +6,7 @@ import mlc.printer.ast as mlt
 
 
 @mlcd.py_class
-class Node(mlcd.PyClass): ...
+class Node: ...
 
 
 @mlcd.py_class

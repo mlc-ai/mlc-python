@@ -3,7 +3,7 @@ import re
 import mlc.printer as mlcp
 import pytest
 from mlc.printer import ObjectPath
-from mlc.testing.toy_ir import Add, Assign, Func, Var
+from mlc.testing.toy_ir import Add, Assign, Func, Stmt, Var
 
 
 def test_var_print() -> None:
@@ -37,7 +37,7 @@ def test_func_print() -> None:
     c = Var(name="c")
     d = Var(name="d")
     e = Var(name="e")
-    stmts = [
+    stmts: list[Stmt] = [
         Assign(lhs=d, rhs=Add(a, b)),
         Assign(lhs=e, rhs=Add(d, c)),
     ]
@@ -84,13 +84,10 @@ def test_print_bool() -> None:
 def test_duplicated_vars() -> None:
     a = Var(name="a")
     b = Var(name="a")
-    stmts = [
-        Assign(lhs=b, rhs=Add(a, a)),
-    ]
     f = Func(
         name="f",
         args=[a],
-        stmts=stmts,
+        stmts=[Assign(lhs=b, rhs=Add(a, a))],
         ret=b,
     )
     assert (

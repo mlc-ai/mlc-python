@@ -120,11 +120,11 @@ def test_torch_strides() -> None:
 
 def test_tensor_serialize() -> None:
     a = mlc.Tensor(np.arange(24, dtype=np.int16).reshape(2, 3, 4))
-    a_json = mlc.List([a, a]).json()
-    b = mlc.List.from_json(a_json)
+    a_json = mlc.json_dumps(mlc.List([a, a]))
+    b = mlc.json_loads(a_json)
     assert isinstance(b, mlc.List)
     assert len(b) == 2
     assert isinstance(b[0], mlc.Tensor)
     assert isinstance(b[1], mlc.Tensor)
-    assert b[0].eq_ptr(b[1])
+    assert mlc.eq_ptr(b[0], b[1])
     assert np.array_equal(a.numpy(), b[0].numpy())

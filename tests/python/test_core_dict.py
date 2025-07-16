@@ -1,5 +1,6 @@
 from collections.abc import Callable
 
+import mlc
 import pytest
 from mlc import Dict
 
@@ -88,10 +89,10 @@ def test_dict_eq() -> None:
     assert b == a
     assert a == Dict(b)
     assert Dict(b) == a
-    assert not a.eq_ptr(Dict(b))
-    assert not Dict(b).eq_ptr(a)
+    assert not mlc.eq_ptr(a, Dict(b))
+    assert not mlc.eq_ptr(Dict(b), a)
     assert a == a  # noqa: PLR0124
-    assert a.eq_ptr(a)
+    assert mlc.eq_ptr(a, a)
 
 
 def test_dict_ne_0() -> None:

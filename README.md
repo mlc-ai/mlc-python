@@ -36,7 +36,7 @@ MLC provides Pythonic dataclasses:
 import mlc.dataclasses as mlcd
 
 @mlcd.py_class("demo.MyClass")
-class MyClass(mlcd.PyClass):
+class MyClass:
   a: int
   b: str
   c: float | None
@@ -60,10 +60,10 @@ AttributeError: 'MyClass' object has no attribute 'non_exist' and no __dict__ fo
 **Serialization**. MLC dataclasses are picklable and JSON-serializable.
 
 ```python
->>> MyClass.from_json(instance.json())
+>>> mlc.json_loads(mlc.json_dumps(instance))
 demo.MyClass(a=12, b='test', c=None)
 
->>> import pickle; pickle.loads(pickle.dumps(instance))
+>>> pickle.loads(pickle.dumps(instance))
 demo.MyClass(a=12, b='test', c=None)
 ```
 
@@ -114,10 +114,11 @@ By annotating IR definitions with `structure`, MLC supports structural equality 
 <details><summary> Define a toy IR with `structure`. </summary>
 
 ```python
+import mlc
 import mlc.dataclasses as mlcd
 
 @mlcd.py_class
-class Expr(mlcd.PyClass):
+class Expr:
   def __add__(self, other):
     return Add(a=self, b=other)
 
@@ -146,16 +147,16 @@ class Let(Expr):
 >>> L1 = Let(rhs=x + y, lhs=z, body=z)  # let z = x + y; z
 >>> L2 = Let(rhs=y + z, lhs=x, body=x)  # let x = y + z; x
 >>> L3 = Let(rhs=x + x, lhs=z, body=z)  # let z = x + x; z
->>> L1.eq_s(L2)
+>>> mlc.eq_s(L1, L2)
 True
->>> L1.eq_s(L3, assert_mode=True)
+>>> mlc.eq_s(L1, L3, assert_mode=True)
 ValueError: Structural equality check failed at {root}.rhs.b: Inconsistent binding. RHS has been bound to a different node while LHS is not bound
 ```
 
 **Structural hashing**. The structure of MLC dataclasses can be hashed via `hash_s`, which guarantees if two dataclasses are alpha-equivalent, they will share the same structural hash:
 
 ```python
->>> L1_hash, L2_hash, L3_hash = L1.hash_s(), L2.hash_s(), L3.hash_s()
+>>> L1_hash, L2_hash, L3_hash = mlc.hash_s(L1), mlc.hash_s(L2), mlc.hash_s(L3)
 >>> assert L1_hash == L2_hash
 >>> assert L1_hash != L3_hash
 ```

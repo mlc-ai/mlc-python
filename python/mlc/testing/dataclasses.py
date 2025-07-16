@@ -52,7 +52,7 @@ class CClassForTest(mlc.Object):
 
 
 @mlc.py_class("mlc.testing.py_class")
-class PyClassForTest(mlc.PyClass):
+class PyClassForTest:
     bool_: bool
     i8: int  # `py_class` doesn't support `int8`, it will effectively be `int64_t`
     i16: int  # `py_class` doesn't support `int16`, it will effectively be `int64_t`
@@ -104,11 +104,11 @@ def visit_fields(obj: mlc.Object) -> list[tuple[str, str, Any]]:
     return list(zip(types, names, values))
 
 
-def field_get(obj: mlc.Object, name: str) -> Any:
+def field_get(obj: Any, name: str) -> Any:
     return _C_FieldGet(obj, name)
 
 
-def field_set(obj: mlc.Object, name: str, value: Any) -> None:
+def field_set(obj: Any, name: str, value: Any) -> None:
     _C_FieldSet(obj, name, value)
 
 
