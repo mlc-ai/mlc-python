@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 
 def _binary_op_args(a: Expr | int | float, b: Expr | int | float) -> tuple[Expr, Expr]:
-    from .expr import Expr, const
+    from .expr import Expr, const  # noqa: PLC0415
 
     a_is_expr = isinstance(a, Expr)
     b_is_expr = isinstance(b, Expr)
@@ -107,7 +107,7 @@ def select(
 
 
 def let(var: Var, value: Expr | int | float, body: Expr) -> Let:
-    from .expr import Let, const
+    from .expr import Let, const  # noqa: PLC0415
 
     if isinstance(value, (int, float)):
         value = const(var.dtype, value)
@@ -121,7 +121,7 @@ def ramp(
     *,
     dtype: DataType | str | None = None,
 ) -> Ramp:
-    from .expr import IntImm, Ramp
+    from .expr import IntImm, Ramp  # noqa: PLC0415
 
     if isinstance(stride, int):
         stride = IntImm(stride, base.dtype)
@@ -136,7 +136,7 @@ def broadcast(
     *,
     dtype: DataType | str | None = None,
 ) -> Broadcast:
-    from .expr import Broadcast
+    from .expr import Broadcast  # noqa: PLC0415
 
     if dtype is None:
         dtype = f"{value.dtype}x{lanes}"

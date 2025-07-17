@@ -124,8 +124,8 @@ def from_py(ann: type) -> Type:
     elif (type_info := getattr(ann, "_mlc_type_info", None)) is not None:
         return AtomicType(type_info.type_index)
     elif (origin := typing.get_origin(ann)) is not None:
-        from mlc.core import Dict as MLCDict
-        from mlc.core import List as MLCList
+        from mlc.core import Dict as MLCDict  # noqa: PLC0415
+        from mlc.core import List as MLCList  # noqa: PLC0415
 
         args = typing.get_args(ann)
         if (origin is list) or (origin is MLCList):

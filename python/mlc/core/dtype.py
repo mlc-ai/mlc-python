@@ -62,7 +62,7 @@ class DataType(PyAny):
         return hash((DataType, *self._dtype_triple))
 
     def torch(self) -> torch.dtype:
-        import torch
+        import torch  # noqa: PLC0415
 
         if (ret := getattr(torch, str(self), None)) is not None:
             if isinstance(ret, torch.dtype):
@@ -74,6 +74,6 @@ class DataType(PyAny):
 
     @staticmethod
     def register(name: str, bits: int) -> int:
-        from .func import Func
+        from .func import Func  # noqa: PLC0415
 
         return Func.get("mlc.base.DataTypeRegister")(name, bits)

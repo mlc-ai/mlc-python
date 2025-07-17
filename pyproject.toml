@@ -77,7 +77,7 @@ line-length = 100
 indent-width = 4
 target-version = "py39"
 include = ["pyproject.toml", "python/**/*.py", "tests/python/**/*.py"]
-select = [
+lint.select = [
     "UP",  # pyupgrade, https://docs.astral.sh/ruff/rules/#pyupgrade-up
     "PL",  # pylint, https://docs.astral.sh/ruff/rules/#pylint-pl
     "I",   # isort, https://docs.astral.sh/ruff/rules/#isort-i
@@ -88,12 +88,12 @@ select = [
     "PTH", # flake8-use-pathlib, https://docs.astral.sh/ruff/rules/#flake8-use-pathlib-pth
     # "D",  # pydocstyle, https://docs.astral.sh/ruff/rules/#pydocstyle-d
 ]
-ignore = [
+lint.ignore = [
     "PLR2004", # pylint: magic-value-comparison
     "ANN401",  # flake8-annotations: any-type
 ]
-fixable = ["ALL"]
-unfixable = []
+lint.fixable = ["ALL"]
+lint.unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]

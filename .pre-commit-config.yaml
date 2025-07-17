@@ -14,30 +14,30 @@ repos:
       - id: check-toml
       - id: check-added-large-files
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.0
+    rev: v0.12.3
     hooks:
-      - id: ruff
+      - id: ruff-check
         types_or: [python, pyi, jupyter]
         args: [--fix]
       - id: ruff-format
         types_or: [python, pyi, jupyter]
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.14.1"
+    rev: "v1.17.0"
     hooks:
       - id: mypy
         additional_dependencies: ['numpy >= 1.22', "ml-dtypes >= 0.1", "pytest", "torch", "jsonpickle"]
         args: [--show-error-codes]
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: "v19.1.6"
+    rev: "v20.1.8"
     hooks:
       - id: clang-format
   - repo: https://github.com/MarcoGorelli/cython-lint
-    rev: v0.16.6
+    rev: v0.16.7
     hooks:
       - id: cython-lint
       - id: double-quote-cython-strings
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.10.0-2
+    rev: v3.12.0-2
     hooks:
       - id: shfmt
   - repo: https://github.com/shellcheck-py/shellcheck-py
@@ -50,7 +50,7 @@ repos:
   #     - id: cmake-format
   #     - id: cmake-lint
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.0.0
+    rev: v4.2.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]

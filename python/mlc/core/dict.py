@@ -159,6 +159,10 @@ class Dict(Object, Mapping[K, V], metaclass=DictMeta):
     def py(self) -> dict[K, V]:
         return container_to_py(self)
 
+    def __hash__(self) -> int:
+        # TODO: hash by elements
+        return hash((type(self), self._mlc_address))
+
 
 class _DictKeysView(KeysView[K]):
     def __init__(self, mapping: Dict[K, V]) -> None:

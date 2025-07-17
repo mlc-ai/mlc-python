@@ -36,7 +36,7 @@ def test_cxx_float(x: float) -> None:
 
 @pytest.mark.parametrize("x", [0x0, 0xDEADBEEF])
 def test_cxx_ptr(x: int) -> None:
-    import ctypes
+    import ctypes  # noqa: PLC0415
 
     func = mlc.Func.get("mlc.testing.cxx_ptr")
     y = func(ctypes.c_void_p(x))

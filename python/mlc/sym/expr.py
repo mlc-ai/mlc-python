@@ -370,7 +370,7 @@ class Range(Object):
 
 
 def const(dtype: DataType | str, a: Expr | int | float) -> Expr:
-    from .expr import BoolImm, FloatImm, IntImm
+    from .expr import BoolImm, FloatImm, IntImm  # noqa: PLC0415
 
     if isinstance(dtype, str):
         dtype = DataType(dtype)

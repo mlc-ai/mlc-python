@@ -20,7 +20,7 @@ class Analyzer(Object):
         bound: Range | Expr | int | float,
         allow_override: bool = False,
     ) -> None:
-        from .expr import Expr, Range, const
+        from .expr import Expr, Range, const  # noqa: PLC0415
 
         if isinstance(bound, Range):
             Analyzer._C(b"_bind_range", self, v, bound, allow_override)
@@ -40,7 +40,7 @@ class Analyzer(Object):
         return Analyzer._C(b"can_prove_less", self, a, b)
 
     def can_prove_equal(self, a: Expr, b: Expr | int) -> bool:
-        from .expr import Expr, const
+        from .expr import Expr, const  # noqa: PLC0415
 
         assert isinstance(a, Expr)
         if isinstance(b, int):
