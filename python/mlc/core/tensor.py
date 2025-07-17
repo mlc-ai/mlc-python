@@ -77,7 +77,7 @@ class Tensor(Object):
         return np.from_dlpack(self)
 
     def torch(self) -> torch.Tensor:
-        import torch
+        import torch  # noqa: PLC0415
 
         return torch.from_dlpack(self)
 

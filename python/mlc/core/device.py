@@ -39,12 +39,12 @@ class Device(PyAny):
         return hash((Device, *self._device_pair))
 
     def torch(self) -> torch.device:
-        import torch
+        import torch  # noqa: PLC0415
 
         return torch.device(str(self))
 
     @staticmethod
     def register(name: str) -> int:
-        from .func import Func
+        from .func import Func  # noqa: PLC0415
 
         return Func.get("mlc.base.DeviceTypeRegister")(name)

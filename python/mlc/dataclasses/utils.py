@@ -457,6 +457,6 @@ def replace(obj: Any, /, **changes: Any) -> Any:
 
 
 def stringify(obj: Any) -> str:
-    from mlc.core.func import Func
+    from mlc.core.func import Func  # noqa: PLC0415
 
     return Func.get("mlc.core.Stringify")(obj)

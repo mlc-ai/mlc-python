@@ -126,6 +126,10 @@ class List(Object, Sequence[T], metaclass=ListMeta):
     def py(self) -> list[T]:
         return container_to_py(self)
 
+    def __hash__(self) -> int:
+        # TODO: hash by elements
+        return hash((type(self), self._mlc_address))
+
 
 def _normalize_index(i: int, length: int) -> int:
     if not -length <= i < length:

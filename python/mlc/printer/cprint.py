@@ -36,15 +36,15 @@ def cprint(printable: str, style: str | None = None) -> None:
         return
 
     # pylint: disable=import-outside-toplevel
-    from pygments import highlight  # type: ignore[import-untyped]
-    from pygments.formatters import (  # type: ignore[import-untyped]
+    from pygments import highlight  # type: ignore[import-untyped]  # noqa: PLC0415
+    from pygments.formatters import (  # type: ignore[import-untyped]  # noqa: PLC0415
         HtmlFormatter,
         Terminal256Formatter,
     )
-    from pygments.lexers.python import Python3Lexer  # type: ignore[import-untyped]
+    from pygments.lexers.python import Python3Lexer  # type: ignore[import-untyped]  # noqa: PLC0415
 
     if is_in_notebook:
-        from IPython import display  # type: ignore[import-not-found]
+        from IPython import display  # type: ignore[import-not-found]  # noqa: PLC0415
 
         formatter = HtmlFormatter(style=pygment_style)
         formatter.noclasses = True  # inline styles
@@ -58,8 +58,8 @@ def _get_pygments_style(
     style: str | None,
     is_in_notebook: bool,
 ) -> pygments.style.Style | str | None:
-    from pygments.style import Style  # type: ignore[import-untyped]
-    from pygments.token import (  # type: ignore[import-untyped]
+    from pygments.style import Style  # type: ignore[import-untyped]  # noqa: PLC0415
+    from pygments.token import (  # type: ignore[import-untyped]  # noqa: PLC0415
         Comment,
         Keyword,
         Name,

@@ -34,7 +34,7 @@ def probe_vcvarsall() -> Path:
 
 
 def probe_msvc() -> tuple[Path, ...]:
-    import setuptools  # type: ignore[import-not-found,import-untyped]
+    import setuptools  # type: ignore[import-not-found,import-untyped]  # noqa: PLC0415
 
     results = []
     if (path := shutil.which("cl.exe", mode=os.X_OK)) is not None:
@@ -67,7 +67,7 @@ def probe_compiler() -> tuple[Path, ...]:
 
 
 def display_build_info() -> None:
-    from mlc.core import Func
+    from mlc.core import Func  # noqa: PLC0415
 
     info = Func.get("mlc.core.BuildInfo")()
     for k in sorted(info.keys()):

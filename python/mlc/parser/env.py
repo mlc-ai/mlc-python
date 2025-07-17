@@ -110,7 +110,7 @@ def _getfile(obj: Any) -> str:
         return PY_GETFILE(obj)
     mod = getattr(obj, "__module__", None)
     if mod is not None:
-        import sys
+        import sys  # noqa: PLC0415
 
         file = getattr(sys.modules[mod], "__file__", None)
         if file is not None:
@@ -132,7 +132,7 @@ def _findsource(obj: Any) -> tuple[list[str], int]:  # noqa: PLR0912
     if not inspect.isclass(obj):
         return PY_FINDSOURCE(obj)
 
-    import linecache
+    import linecache  # noqa: PLC0415
 
     file = inspect.getsourcefile(obj)
     if file:

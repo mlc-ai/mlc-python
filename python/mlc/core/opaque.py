@@ -49,13 +49,13 @@ class Opaque(Object):
 
 
 def _default_serialize(opaques: list[Any]) -> str:
-    import jsonpickle  # type: ignore[import-untyped]
+    import jsonpickle  # type: ignore[import-untyped]  # noqa: PLC0415
 
     return jsonpickle.dumps(list(opaques))
 
 
 def _default_deserialize(json_str: str) -> list[Any]:
-    import jsonpickle  # type: ignore[import-untyped]
+    import jsonpickle  # type: ignore[import-untyped]  # noqa: PLC0415
 
     return jsonpickle.loads(json_str)
 

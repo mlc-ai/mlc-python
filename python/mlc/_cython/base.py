@@ -183,7 +183,7 @@ class TypeMethod:
     kind: int  # 0: member method, 1: static method
 
     def as_callable(self) -> Callable[..., typing.Any]:
-        from .core import func_call  # type: ignore[import-not-found]
+        from .core import func_call  # type: ignore[import-not-found]  # noqa: PLC0415
 
         func = self.func
         if self.kind == 0:  # member method
@@ -219,14 +219,16 @@ class TypeInfo:
     d_fields: tuple[Field, ...] = ()
 
     def get_parent(self) -> TypeInfo:
-        from .core import type_index2cached_py_type_info  # type: ignore[import-not-found]
+        from .core import (  # type: ignore[import-not-found]  # noqa: PLC0415
+            type_index2cached_py_type_info,
+        )
 
         type_index = self.type_ancestors[-1]
         return type_index2cached_py_type_info(type_index)
 
 
 def translate_exception_to_c(exception: Exception) -> tuple[bytes, int, bytes]:
-    from .core import str_py2c  # type: ignore[import-not-found]
+    from .core import str_py2c  # type: ignore[import-not-found]  # noqa: PLC0415
 
     def _kind() -> bytes:
         kind: str = exception.__class__.__name__
@@ -256,7 +258,7 @@ def translate_exception_to_c(exception: Exception) -> tuple[bytes, int, bytes]:
 
 
 def translate_exception_from_c(err: Error) -> Exception:
-    from .core import error_pycode_fake  # type: ignore[import-not-found]
+    from .core import error_pycode_fake  # type: ignore[import-not-found]  # noqa: PLC0415
 
     kind, info = err.kind, err._info
     if info:
@@ -306,7 +308,7 @@ def dtype_normalize(dtype: typing.Any) -> str | DataType:
     def _torch_dtype_to_str() -> str | None:
         if "torch" not in sys.modules:
             return None
-        import torch
+        import torch  # noqa: PLC0415
 
         if not isinstance(dtype, torch.dtype):
             return None
@@ -324,7 +326,7 @@ def dtype_normalize(dtype: typing.Any) -> str | DataType:
         return np_dtype
     if (torch_dtype := _torch_dtype_to_str()) is not None:
         return torch_dtype
-    from mlc.core.dtype import DataType
+    from mlc.core.dtype import DataType  # noqa: PLC0415
 
     return dtype if isinstance(dtype, DataType) else str(dtype)
 
@@ -333,7 +335,7 @@ def device_normalize(device: typing.Any) -> str | Device:
     def _torch_device_to_str() -> str | None:
         if "torch" not in sys.modules:
             return None
-        import torch
+        import torch  # noqa: PLC0415
 
         if not isinstance(device, torch.device):
             return None
@@ -416,7 +418,7 @@ def attach_method(
 
 def c_class_core(type_key: str) -> Callable[[type[ClsType]], type[ClsType]]:
     def decorator(super_type_cls: type[ClsType]) -> type[ClsType]:
-        from .core import (  # type: ignore[import-not-found]
+        from .core import (  # type: ignore[import-not-found]  # noqa: PLC0415
             type_index2type_methods,
             type_key2py_type_info,
         )
