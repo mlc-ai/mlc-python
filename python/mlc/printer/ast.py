@@ -18,7 +18,7 @@ class PrinterConfig(Object):
 
 
 @mlcd.c_class("mlc.printer.ast.Node")
-class Node(mlcd.PyClass):
+class Node(Object):
     source_paths: list[ObjectPath] = mlcd.field(default_factory=list)
 
     def to_python(self, config: Optional[PrinterConfig] = None) -> str:

@@ -18,7 +18,7 @@
 namespace mlc {
 namespace registry {
 
-Any JSONLoads(AnyView json_str);
+Any JSONParse(AnyView json_str);
 Any JSONDeserialize(AnyView json_str, FuncObj *fn_opaque_deserialize);
 Str JSONSerialize(AnyView source, FuncObj *fn_opaque_serialize);
 bool StructuralEqual(AnyView lhs, AnyView rhs, bool bind_free_vars, bool assert_mode);
@@ -646,7 +646,7 @@ inline TypeTable *TypeTable::New() {
   self->SetFunc("mlc.base.DeviceTypeRegister",
                 Func([self](const char *name) { return self->DeviceTypeRegister(name); }).get());
   self->SetFunc("mlc.core.Stringify", Func(::mlc::core::StringifyWithFields).get());
-  self->SetFunc("mlc.core.JSONLoads", Func(::mlc::registry::JSONLoads).get());
+  self->SetFunc("mlc.core.JSONParse", Func(::mlc::registry::JSONParse).get());
   self->SetFunc("mlc.core.JSONSerialize", Func(::mlc::registry::JSONSerialize).get());
   self->SetFunc("mlc.core.JSONDeserialize", Func(::mlc::registry::JSONDeserialize).get());
   self->SetFunc("mlc.core.StructuralEqual", Func(::mlc::registry::StructuralEqual).get());

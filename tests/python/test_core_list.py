@@ -1,6 +1,7 @@
 from collections.abc import Callable, Sequence
 from typing import Any
 
+import mlc
 import pytest
 from mlc import DataType, Device, List
 
@@ -146,9 +147,9 @@ def test_list_eq() -> None:
     assert tuple(a) == a
     assert a == b
     assert b == a
-    assert not a.eq_ptr(b)
-    assert not b.eq_ptr(a)
-    assert a.eq_ptr(a)
+    assert not mlc.eq_ptr(a, b)
+    assert not mlc.eq_ptr(b, a)
+    assert mlc.eq_ptr(a, a)
     assert a == a  # noqa: PLR0124
 
 

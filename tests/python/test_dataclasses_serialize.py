@@ -6,7 +6,7 @@ import mlc
 
 
 @mlc.dataclasses.py_class("mlc.testing.serialize", init=False)
-class ObjTest(mlc.PyClass):
+class ObjTest:
     a: int
     b: float
     c: str
@@ -20,7 +20,7 @@ class ObjTest(mlc.PyClass):
 
 
 @mlc.dataclasses.py_class("mlc.testing.serialize_opt")
-class ObjTestOpt(mlc.PyClass):
+class ObjTestOpt:
     a: Optional[int]
     b: Optional[float]
     c: Optional[str]
@@ -28,17 +28,17 @@ class ObjTestOpt(mlc.PyClass):
 
 
 @mlc.dataclasses.py_class("mlc.testing.AnyContainer")
-class AnyContainer(mlc.PyClass):
+class AnyContainer:
     field: Any
 
 
 def test_json() -> None:
     obj = ObjTest(a=1, b=2.0, c="3", d=True)
-    obj_json = obj.json()
+    obj_json = mlc.json_dumps(obj)
     obj_json_dict = json.loads(obj_json)
     assert obj_json_dict["type_keys"] == ["mlc.testing.serialize", "int"]
     assert obj_json_dict["values"] == ["3", [0, [1, 1], 2.0, 0, True]]
-    obj_from_json: ObjTest = ObjTest.from_json(obj_json)
+    obj_from_json: ObjTest = mlc.json_loads(obj_json)
     assert obj.a == obj_from_json.a
     assert obj.b == obj_from_json.b
     assert obj.c == obj_from_json.c
@@ -57,7 +57,7 @@ def test_pickle() -> None:
 
 def test_json_opt_0() -> None:
     obj = ObjTestOpt(1, 2.0, "3", True)
-    obj_json = obj.json()
+    obj_json = mlc.json_dumps(obj)
     obj_json_dict = json.loads(obj_json)
     assert obj_json_dict["type_keys"] == ["mlc.testing.serialize_opt", "int"]
     assert obj_json_dict["values"] == [
@@ -78,7 +78,7 @@ def test_json_opt_0() -> None:
             True,
         ],
     ]
-    obj_from_json: ObjTestOpt = ObjTestOpt.from_json(obj_json)
+    obj_from_json: ObjTestOpt = mlc.json_loads(obj_json)
     assert obj.a == obj_from_json.a
     assert obj.b == obj_from_json.b
     assert obj.c == obj_from_json.c
@@ -87,11 +87,11 @@ def test_json_opt_0() -> None:
 
 def test_json_opt_1() -> None:
     obj = ObjTestOpt(None, None, None, None)
-    obj_json = obj.json()
+    obj_json = mlc.json_dumps(obj)
     obj_json_dict = json.loads(obj_json)
     assert obj_json_dict["type_keys"] == ["mlc.testing.serialize_opt"]
     assert obj_json_dict["values"] == [[0, None, None, None, None]]
-    obj_from_json: ObjTestOpt = ObjTestOpt.from_json(obj_json)
+    obj_from_json: ObjTestOpt = mlc.json_loads(obj_json)
     assert obj.a == obj_from_json.a
     assert obj.b == obj_from_json.b
     assert obj.c == obj_from_json.c
@@ -103,7 +103,7 @@ def test_json_dag() -> None:
     dct = mlc.Dict({"a": 1, "b": 2.0, "c": "3", "d": True, "v": lst})
     big_lst = mlc.List([lst, dct, lst, dct])
     obj_1 = AnyContainer([big_lst, big_lst])
-    obj_2: AnyContainer = AnyContainer.from_json(obj_1.json())
+    obj_2: AnyContainer = mlc.json_loads(mlc.json_dumps(obj_1))
     assert obj_2.field[0].is_(obj_2.field[1])
     assert obj_2.field[0] == big_lst
     big_lst = obj_2.field[0]

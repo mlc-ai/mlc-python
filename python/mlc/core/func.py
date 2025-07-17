@@ -51,13 +51,13 @@ class Func(Object):
         return decorator
 
 
-def json_loads(s: str) -> Any:
-    return _json_loads(s)
+def json_parse(s: str) -> Any:
+    return _json_parse(s)
 
 
 def build_info() -> dict[str, Any]:
     return _build_info()
 
 
-_json_loads = Func.get("mlc.core.JSONLoads")
+_json_parse = Func.get("mlc.core.JSONParse")
 _build_info = Func.get("mlc.core.BuildInfo")

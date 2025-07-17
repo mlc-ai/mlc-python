@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Literal
 
+import mlc
 import pytest
 from mlc import sym as S
 
@@ -28,7 +29,7 @@ def test_index_flatten(analyzer: S.Analyzer) -> None:
     before = (i_flattened) // 12 * 12 + (i_flattened) % 12 // 4 * 4 + (i_flattened) % 4
     expected_after = i_flattened
     after = analyzer.simplify(before)
-    expected_after.eq_s(after, assert_mode=True)
+    mlc.eq_s(expected_after, after, assert_mode=True)
 
 
 @pytest.mark.parametrize(

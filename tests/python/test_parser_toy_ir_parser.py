@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import mlc
 from mlc.testing import toy_ir
-from mlc.testing.toy_ir import Add, Assign, Func, Var
+from mlc.testing.toy_ir import Add, Assign, Func, Stmt, Var
 
 
 def test_parse_func() -> None:
@@ -16,7 +17,7 @@ def test_parse_func() -> None:
         c = Var(name="_c")
         d = Var(name="_d")
         e = Var(name="_e")
-        stmts = [
+        stmts: list[Stmt] = [
             Assign(lhs=d, rhs=Add(a, b)),
             Assign(lhs=e, rhs=Add(d, c)),
         ]
@@ -25,4 +26,4 @@ def test_parse_func() -> None:
 
     result = toy_ir.parse_func(source_code)
     expected = _expected()
-    result.eq_s(expected, assert_mode=True)
+    mlc.eq_s(result, expected, assert_mode=True)

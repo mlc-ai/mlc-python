@@ -1,6 +1,6 @@
 import contextlib
 from collections.abc import Generator
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar
 
 import mlc.dataclasses as mlcd
 from mlc.core import Func, Object, ObjectPath
@@ -102,7 +102,7 @@ class IRPrinter(Object):
     def frame_pop(self) -> None:
         IRPrinter._C(b"frame_pop", self)
 
-    def __call__(self, obj: Union[Node, int, str, bool, float, None], path: ObjectPath) -> Node:
+    def __call__(self, obj: Any, path: ObjectPath) -> Node:
         return IRPrinter._C(b"__call__", self, obj, path)
 
     @contextlib.contextmanager

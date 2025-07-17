@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import typing
 
+import mlc
 import pytest
 from mlc import sym as S
 from mlc.sym import floordiv as fld
@@ -57,13 +58,13 @@ class _Test:
         analyzer = S.Analyzer()
         with enter_constraint(analyzer, param.constraints):
             after = rewrite_simplify(analyzer, param.before)
-        if not param.after.eq_s(after):
+        if not mlc.eq_s(param.after, after):
             raise AssertionError(
                 "RewriteSimplify did not produce the expected result.\n"
                 f"Before: {param.before}\n"
                 f"Expected: {param.after}\n"
                 f"Actual: {after}\n"
-                f"Reason: {param.after.eq_s_fail_reason(after)}"
+                f"Reason: {mlc.eq_s_fail_reason(param.after, after)}"
             )
 
 

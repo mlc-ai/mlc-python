@@ -4,6 +4,7 @@ import dataclasses
 from collections.abc import Mapping
 from types import MappingProxyType
 
+import mlc
 import pytest
 from mlc import sym as S
 from mlc.sym import floordiv as fld
@@ -52,13 +53,13 @@ class _Test:
         analyzer = S.Analyzer()
         self._add_bound(analyzer, param)
         after = canonical_simplify(analyzer, param.before)
-        if not param.after.eq_s(after):
+        if not mlc.eq_s(param.after, after):
             raise AssertionError(
                 "CanonicalSimplify did not produce the expected result.\n"
                 f"Before: {param.before}\n"
                 f"Expected: {param.after}\n"
                 f"Actual: {after}\n"
-                f"Reason: {param.after.eq_s_fail_reason(after)}"
+                f"Reason: {mlc.eq_s_fail_reason(param.after, after)}"
             )
 
     def _add_bound(self, analyzer: S.Analyzer, param: Param) -> None:

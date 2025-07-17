@@ -20,6 +20,7 @@ from mlc._cython import (
     type_index2type_methods,
     type_table,
 )
+from mlc.core import Object
 from mlc.core import typing as mlc_typing
 
 KIND_MAP = {None: 0, "nobind": 1, "bind": 2, "var": 3}
@@ -284,10 +285,7 @@ def get_parent_type(type_cls: type) -> type:
     for base in type_cls.__bases__:
         if hasattr(base, "_mlc_type_info"):
             return base
-    raise ValueError(
-        f"No parent type found for `{type_cls.__module__}.{type_cls.__qualname__}`. "
-        f"The type must inherit from `mlc.Object`."
-    )
+    return Object
 
 
 def add_vtable_method(

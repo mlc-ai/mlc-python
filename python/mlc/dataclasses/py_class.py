@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+try:
+    from typing import dataclass_transform
+except ImportError:
+    from typing_extensions import dataclass_transform
+
 import ctypes
 import functools
 import typing
@@ -21,6 +26,7 @@ from mlc._cython import (
 )
 from mlc.core import Object
 
+from .utils import Field as _Field
 from .utils import (
     Structure,
     add_vtable_methods_for_type_cls,
@@ -30,28 +36,20 @@ from .utils import (
     structure_parse,
     structure_to_c,
 )
+from .utils import field as _field
 
-ClsType = typing.TypeVar("ClsType")
-
-
-class PyClass(Object):
-    _mlc_type_info = Object._mlc_type_info
-
-    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
-        raise NotImplementedError
-
-    def __str__(self) -> str:
-        return self.__repr__()
+InputClsType = typing.TypeVar("InputClsType")
 
 
-def py_class(  # noqa: PLR0915
+@dataclass_transform(field_specifiers=(_field, _Field))
+def py_class(
     type_key: str | type | None = None,
     *,
     init: bool = True,
     repr: bool = True,
     frozen: bool = False,
     structure: typing.Literal["bind", "nobind", "var"] | None = None,
-) -> Callable[[type[ClsType]], type[ClsType]]:
+) -> Callable[[type[InputClsType]], type[InputClsType]]:
     if isinstance(type_key, type):
         return py_class(
             type_key=None,
@@ -65,17 +63,11 @@ def py_class(  # noqa: PLR0915
             f"but got: {structure}"
         )
 
-    def decorator(super_type_cls: type[ClsType]) -> type[ClsType]:
+    def decorator(super_type_cls: type[InputClsType]) -> type[InputClsType]:
         nonlocal type_key
         if type_key is None:
             type_key = f"{super_type_cls.__module__}.{super_type_cls.__qualname__}"
         assert isinstance(type_key, str)
-
-        if not issubclass(super_type_cls, PyClass):
-            raise TypeError(
-                "Not a subclass of `mlc.PyClass`: "
-                f"`{super_type_cls.__module__}.{super_type_cls.__qualname__}`"
-            )
 
         # Step 1. Create the type according to its parent type
         parent_type_info: TypeInfo = get_parent_type(super_type_cls)._mlc_type_info  # type: ignore[attr-defined]
@@ -96,15 +88,11 @@ def py_class(  # noqa: PLR0915
         mlc_init = make_mlc_init(fields)
 
         # Step 3. Create the proxy class with the fields as properties
-        @functools.wraps(super_type_cls, updated=())
-        class type_cls(super_type_cls):  # type: ignore[valid-type,misc]
-            __slots__ = ()
-
-            def _mlc_init(self, *args: typing.Any) -> None:
-                mlc_init(self, *args)
-
-            def __new__(cls, *args: typing.Any, **kwargs: typing.Any) -> type[ClsType]:
-                return type_create_instance(cls, type_index, num_bytes)
+        type_cls: type[InputClsType] = _create_cls(
+            cls=super_type_cls,
+            mlc_init=mlc_init,
+            mlc_new=lambda cls, *args, **kwargs: type_create_instance(cls, type_index, num_bytes),
+        )
 
         type_info.type_cls = type_cls
         setattr(type_cls, "_mlc_type_info", type_info)
@@ -183,22 +171,49 @@ def _add_field_properties(type_fields: list[TypeField]) -> int:
 def _method_repr(
     type_key: str,
     fields: list[TypeField],
-) -> Callable[[ClsType], str]:
+) -> Callable[[InputClsType], str]:
     field_names = tuple(field.name for field in fields)
 
-    def method(self: ClsType) -> str:
+    def method(self: InputClsType) -> str:
         fields = (f"{name}={getattr(self, name)!r}" for name in field_names)
         return f"{type_key}({', '.join(fields)})"
 
     return method
 
 
-def _method_new(
-    type_cls: type[ClsType],
-) -> Callable[..., ClsType]:
-    def method(*args: typing.Any) -> ClsType:
+def _method_new(type_cls: type[InputClsType]) -> Callable[..., InputClsType]:
+    def method(*args: typing.Any) -> InputClsType:
         obj = type_cls.__new__(type_cls)
         obj._mlc_init(*args)  # type: ignore[attr-defined]
         return obj
 
     return method
+
+
+def _create_cls(
+    cls: type,
+    mlc_init: Callable[..., None],
+    mlc_new: Callable[..., None],
+) -> type[InputClsType]:
+    cls_name = cls.__name__
+    cls_bases = cls.__bases__
+    attrs = dict(cls.__dict__)
+    if cls_bases == (object,):
+        cls_bases = (Object,)
+
+    def _add_method(fn: Callable, fn_name: str) -> None:
+        attrs[fn_name] = fn
+        fn.__module__ = cls.__module__
+        fn.__name__ = fn_name
+        fn.__qualname__ = f"{cls_name}.{fn_name}"
+
+    attrs["__slots__"] = ()
+    attrs.pop("__dict__", None)
+    attrs.pop("__weakref__", None)
+    _add_method(mlc_init, "_mlc_init")
+    _add_method(mlc_new, "__new__")
+
+    new_cls = type(cls_name, cls_bases, attrs)
+    new_cls.__module__ = cls.__module__
+    new_cls = functools.wraps(cls, updated=())(new_cls)  # type: ignore
+    return new_cls

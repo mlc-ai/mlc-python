@@ -13,11 +13,17 @@ from .core import (
     Tensor,
     build_info,
     dep_graph,
+    eq_ptr,
+    eq_s,
+    eq_s_fail_reason,
+    hash_s,
+    json_dumps,
     json_loads,
+    json_parse,
     typing,
 )
 from .core.dep_graph import DepGraph, DepNode
-from .dataclasses import PyClass, c_class, py_class
+from .dataclasses import c_class, py_class
 
 try:
     from ._version import __version__, __version_tuple__  # type: ignore[import-not-found]
