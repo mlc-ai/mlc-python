@@ -8,7 +8,7 @@ from .cprint import cprint
 
 
 @mlcd.c_class("mlc.printer.PrinterConfig")
-class PrinterConfig(Object):
+class PrinterConfig:
     def_free_var: bool = True
     indent_spaces: int = 2
     print_line_numbers: int = 0
@@ -150,37 +150,38 @@ class Stmt(Node):
 
 @mlcd.c_class("mlc.printer.ast.StmtBlock")
 class StmtBlock(Stmt):
-    stmts: list[Stmt]
+    stmts: list[Stmt]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Literal")
 class Literal(Expr):
-    value: Any  # int, str, float, bool, None
+    # value can be: int, str, float, bool, None
+    value: Any  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Id")
 class Id(Expr):
-    name: str
+    name: str  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Attr")
 class Attr(Expr):
-    obj: Expr
-    name: str
+    obj: Expr  # type: ignore[misc]
+    name: str  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Index")
 class Index(Expr):
-    obj: Expr
-    idx: list[Expr]
+    obj: Expr  # type: ignore[misc]
+    idx: list[Expr]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Call")
 class Call(Expr):
-    callee: Expr
-    args: list[Expr]
-    kwargs_keys: list[str]
-    kwargs_values: list[Expr]
+    callee: Expr  # type: ignore[misc]
+    args: list[Expr]  # type: ignore[misc]
+    kwargs_keys: list[str]  # type: ignore[misc]
+    kwargs_values: list[Expr]  # type: ignore[misc]
 
 
 class OperationKind:
@@ -221,37 +222,37 @@ class OperationKind:
 
 @mlcd.c_class("mlc.printer.ast.Operation")
 class Operation(Expr):
-    op: int  # OperationKind
-    operands: list[Expr]
+    op: int  # type: ignore[misc]
+    operands: list[Expr]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Lambda")
 class Lambda(Expr):
-    args: list[Id]
-    body: Expr
+    args: list[Id]  # type: ignore[misc]
+    body: Expr  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Tuple")
 class Tuple(Expr):
-    values: list[Expr]
+    values: list[Expr]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.List")
 class List(Expr):
-    values: list[Expr]
+    values: list[Expr]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Dict")
 class Dict(Expr):
-    keys: list[Expr]
-    values: list[Expr]
+    keys: list[Expr]  # type: ignore[misc]
+    values: list[Expr]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Slice", init=False)
 class Slice(Expr):
-    start: Optional[Expr]
-    stop: Optional[Expr]
-    step: Optional[Expr]
+    start: Optional[Expr]  # type: ignore[misc]
+    stop: Optional[Expr]  # type: ignore[misc]
+    step: Optional[Expr]  # type: ignore[misc]
 
     def __init__(
         self,
@@ -264,9 +265,9 @@ class Slice(Expr):
 
 @mlcd.c_class("mlc.printer.ast.Assign", init=False)
 class Assign(Stmt):
-    lhs: Expr
-    rhs: Optional[Expr]
-    annotation: Optional[Expr]
+    lhs: Expr  # type: ignore[misc]
+    rhs: Optional[Expr]  # type: ignore[misc]
+    annotation: Optional[Expr]  # type: ignore[misc]
 
     def __init__(  # noqa: PLR0913, RUF100
         self,
@@ -283,40 +284,40 @@ class Assign(Stmt):
 
 @mlcd.c_class("mlc.printer.ast.If")
 class If(Stmt):
-    cond: Expr
-    then_branch: list[Stmt]
-    else_branch: list[Stmt]
+    cond: Expr  # type: ignore[misc]
+    then_branch: list[Stmt]  # type: ignore[misc]
+    else_branch: list[Stmt]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.While")
 class While(Stmt):
-    cond: Expr
-    body: list[Stmt]
+    cond: Expr  # type: ignore[misc]
+    body: list[Stmt]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.For")
 class For(Stmt):
-    lhs: Expr
-    rhs: Expr
-    body: list[Stmt]
+    lhs: Expr  # type: ignore[misc]
+    rhs: Expr  # type: ignore[misc]
+    body: list[Stmt]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.With")
 class With(Stmt):
-    lhs: Optional[Expr]
-    rhs: Expr
-    body: list[Stmt]
+    lhs: Optional[Expr]  # type: ignore[misc]
+    rhs: Expr  # type: ignore[misc]
+    body: list[Stmt]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.ExprStmt")
 class ExprStmt(Stmt):
-    expr: Expr
+    expr: Expr  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Assert", init=False)
 class Assert(Stmt):
-    cond: Expr
-    msg: Optional[Expr]
+    cond: Expr  # type: ignore[misc]
+    msg: Optional[Expr]  # type: ignore[misc]
 
     def __init__(
         self,
@@ -332,23 +333,23 @@ class Assert(Stmt):
 
 @mlcd.c_class("mlc.printer.ast.Return")
 class Return(Stmt):
-    value: Optional[Expr]
+    value: Optional[Expr]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Function")
 class Function(Stmt):
-    name: Id
-    args: list[Assign]
-    decorators: list[Expr]
-    return_type: Optional[Expr]
-    body: list[Stmt]
+    name: Id  # type: ignore[misc]
+    args: list[Assign]  # type: ignore[misc]
+    decorators: list[Expr]  # type: ignore[misc]
+    return_type: Optional[Expr]  # type: ignore[misc]
+    body: list[Stmt]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Class")
 class Class(Stmt):
-    name: Id
-    decorators: list[Expr]
-    body: list[Stmt]
+    name: Id  # type: ignore[misc]
+    decorators: list[Expr]  # type: ignore[misc]
+    body: list[Stmt]  # type: ignore[misc]
 
 
 @mlcd.c_class("mlc.printer.ast.Comment", init=False)

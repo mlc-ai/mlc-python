@@ -45,12 +45,12 @@ class _Test:
             for constraint in param.constraints:
                 assert isinstance(constraint, S.Expr)
                 exit_stack.enter_context(enter_constraint(analyzer, constraint))
-            bounds = modular_set(analyzer, param.expr)
+            actual = modular_set(analyzer, param.expr)
         expected_coeff, expected_base = param.expected
         if expected_coeff is not None:
-            assert bounds.coeff == expected_coeff
+            assert actual.coeff == expected_coeff
         if expected_base is not None:
-            assert bounds.base == expected_base
+            assert actual.base == expected_base
 
 
 class TestCast(_Test):

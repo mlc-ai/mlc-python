@@ -6,6 +6,7 @@ dependencies = [
     'ml-dtypes >= 0.1',
     'Pygments>=2.4.0',
     'colorama',
+    'typing-extensions >= 4.9.0',
     'setuptools ; platform_system == "Windows"',
 ]
 description = "Python-first Development for AI Compilers"

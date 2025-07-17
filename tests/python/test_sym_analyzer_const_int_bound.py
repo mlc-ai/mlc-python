@@ -41,12 +41,12 @@ class _Test:
         for var, bounds in param.bounds.items():
             const_int_bound_update(analyzer, var, ConstIntBound(*bounds))
         with enter_constraint(analyzer, param.constraint):
-            bounds = const_int_bound(analyzer, param.expr)
+            actual = const_int_bound(analyzer, param.expr)
         expected_min_value, expected_max_value = param.expected
         if expected_min_value is not None:
-            assert bounds.min_value == expected_min_value  # type: ignore[attr-defined]
+            assert actual.min_value == expected_min_value  # type: ignore[attr-defined]
         if expected_max_value is not None:
-            assert bounds.max_value == expected_max_value  # type: ignore[attr-defined]
+            assert actual.max_value == expected_max_value  # type: ignore[attr-defined]
 
 
 class TestDataType(_Test):

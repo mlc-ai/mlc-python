@@ -366,13 +366,13 @@ class MetaNoSlots(type):
         return super().__new__(cls, name, bases, dict)
 
 
-def attach_field(
+def make_field(
     cls: type,
     name: str,
     getter: typing.Callable[[typing.Any], typing.Any] | None,
     setter: typing.Callable[[typing.Any, typing.Any], None] | None,
     frozen: bool,
-) -> None:
+) -> property:
     def fget(this: typing.Any, _name: str = name) -> typing.Any:
         return getter(this)  # type: ignore[misc]
 
@@ -383,12 +383,21 @@ def attach_field(
     fget.__module__ = fset.__module__ = cls.__module__
     fget.__qualname__ = fset.__qualname__ = f"{cls.__qualname__}.{name}"  # type: ignore[attr-defined]
     fget.__doc__ = fset.__doc__ = f"Property `{name}` of class `{cls.__qualname__}`"  # type: ignore[attr-defined]
-    prop = property(
+    return property(
         fget=fget if getter else None,
         fset=fset if (not frozen) and setter else None,
         doc=f"{cls.__module__}.{cls.__qualname__}.{name}",
     )
-    setattr(cls, name, prop)
+
+
+def attach_field(
+    cls: type,
+    name: str,
+    getter: typing.Callable[[typing.Any], typing.Any] | None,
+    setter: typing.Callable[[typing.Any, typing.Any], None] | None,
+    frozen: bool,
+) -> None:
+    setattr(cls, name, make_field(cls, name, getter, setter, frozen))  # type: ignore[call-arg]
 
 
 def attach_method(

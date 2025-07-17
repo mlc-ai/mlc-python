@@ -13,18 +13,21 @@ from typing import Any, Literal, TypeVar, get_type_hints
 from mlc._cython import (
     MISSING,
     Field,
+    MLCHeader,
     TypeField,
     TypeInfo,
     TypeMethod,
     type_add_method,
+    type_field_get_accessor,
     type_index2type_methods,
     type_table,
 )
-from mlc.core import Object
-from mlc.core import typing as mlc_typing
+from mlc._cython.base import make_field
 
 KIND_MAP = {None: 0, "nobind": 1, "bind": 2, "var": 3}
 SUB_STRUCTURES = {"nobind": 0, "bind": 1}
+InputClsType = typing.TypeVar("InputClsType")
+FuncType = TypeVar("FuncType", bound=Callable[..., Any])
 
 
 class DefaultFactory(typing.NamedTuple):
@@ -122,17 +125,20 @@ def field(
 
 
 def inspect_dataclass_fields(  # noqa: PLR0912
-    type_key: str,
     type_cls: type,
     parent_type_info: TypeInfo,
     frozen: bool,
-) -> tuple[list[TypeField], list[Field]]:
+    py_mode: bool = False,
+) -> tuple[list[TypeField], list[Field], int]:
+    from mlc.core import typing as mlc_typing  # noqa: PLC0415
+
     def _get_num_bytes(field_ty: Any) -> int:
         if hasattr(field_ty, "_ctype"):
             return ctypes.sizeof(field_ty._ctype())
         return 0
 
     # Step 1. Inspect and extract all the `TypeField`s
+    c_fields = [("_mlc_header", MLCHeader)]
     type_hints = get_type_hints(type_cls)
     type_fields: list[TypeField] = []
     for type_field in parent_type_info.fields:
@@ -141,7 +147,7 @@ def inspect_dataclass_fields(  # noqa: PLR0912
         field_frozen = type_field.frozen
         if type_hints.pop(field_name, None) is None:
             raise ValueError(
-                f"Missing field `{type_key}::{field_name}`, "
+                f"Missing field `{field_name}` from `{type_cls}`, "
                 f"which appears in its parent class `{parent_type_info.type_key}`."
             )
         type_fields.append(
@@ -153,6 +159,9 @@ def inspect_dataclass_fields(  # noqa: PLR0912
                 ty=field_ty,
             )
         )
+        if py_mode:
+            c_fields.append((field_name, field_ty._ctype()))
+
     for field_name, field_ty_py in type_hints.items():
         if field_name.startswith("_mlc_"):
             continue
@@ -166,6 +175,8 @@ def inspect_dataclass_fields(  # noqa: PLR0912
                 ty=field_ty,
             )
         )
+        if py_mode:
+            c_fields.append((field_name, field_ty._ctype()))
     # Step 2. Convert `TypeField`s to dataclass `Field`s
     d_fields: list[Field] = []
     for type_field in type_fields:
@@ -188,7 +199,62 @@ def inspect_dataclass_fields(  # noqa: PLR0912
             raise ValueError(f"Cannot recognize field: {type_field.name}: {rhs}")
         d_field.name = type_field.name
         d_fields.append(d_field)
-    return type_fields, d_fields
+
+    if py_mode:
+
+        class CType(ctypes.Structure):
+            _fields_ = c_fields
+
+        for f in type_fields:
+            f.offset = getattr(CType, f.name).offset
+            f.getter, f.setter = type_field_get_accessor(f)
+        num_bytes = ctypes.sizeof(CType)
+    else:
+        num_bytes = -1
+
+    return type_fields, d_fields, num_bytes
+
+
+def create_type_class(
+    cls: type,
+    type_info: TypeInfo,
+    methods: dict[str, Callable[..., typing.Any] | None],
+) -> type[InputClsType]:
+    cls_name = cls.__name__
+    cls_bases = cls.__bases__
+    attrs = dict(cls.__dict__)
+    if cls_bases == (object,):
+        # If the class inherits from `object`, we need to set the base class to `Object`
+        from mlc.core.object import Object  # noqa: PLC0415
+
+        cls_bases = (Object,)
+
+    attrs.pop("__dict__", None)
+    attrs.pop("__weakref__", None)
+    attrs["__slots__"] = ()
+    attrs["_mlc_type_info"] = type_info
+    for name, method in methods.items():
+        if method is not None:
+            method.__module__ = cls.__module__
+            method.__name__ = name
+            method.__qualname__ = f"{cls.__qualname__}.{name}"
+            method.__doc__ = f"Method `{name}` of class `{cls.__qualname__}`"
+            attrs[name] = method
+    for field in type_info.fields:
+        attrs[field.name] = make_field(
+            cls=cls,
+            name=field.name,
+            getter=field.getter,
+            setter=field.setter,
+            frozen=field.frozen,
+        )
+
+    new_cls = type(cls_name, cls_bases, attrs)
+    new_cls.__module__ = cls.__module__
+    new_cls = functools.wraps(cls, updated=())(new_cls)  # type: ignore
+    type_info.type_cls = new_cls
+    add_vtable_methods_for_type_cls(new_cls, type_index=type_info.type_index)
+    return new_cls
 
 
 @dataclasses.dataclass
@@ -285,6 +351,8 @@ def get_parent_type(type_cls: type) -> type:
     for base in type_cls.__bases__:
         if hasattr(base, "_mlc_type_info"):
             return base
+    from mlc.core.object import Object  # noqa: PLC0415
+
     return Object
 
 
@@ -303,9 +371,6 @@ def add_vtable_method(
         py_callable=method,
         kind=int(is_static),
     )
-
-
-FuncType = TypeVar("FuncType", bound=Callable[..., Any])
 
 
 def vtable_method(is_static: bool) -> Callable[[FuncType], FuncType]:
@@ -355,6 +420,8 @@ def _prototype_cxx(
     type_info: TypeInfo,
     export_macro: str = "_EXPORTS",
 ) -> str:
+    from mlc.core import typing as mlc_typing  # noqa: PLC0415
+
     assert isinstance(type_info, TypeInfo)
     parent_type_info = type_info.get_parent()
     namespaces = type_info.type_key.split(".")
