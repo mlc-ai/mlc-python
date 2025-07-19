@@ -1,79 +1,68 @@
-import functools
 import typing
 import warnings
 from collections.abc import Callable
 
+try:
+    from typing import dataclass_transform
+except ImportError:
+    from typing_extensions import dataclass_transform
+
 from mlc._cython import (
     TypeInfo,
     TypeMethod,
-    attach_field,
-    attach_method,
     type_index2type_methods,
     type_key2py_type_info,
 )
 from mlc.core import typing as mlc_typing
 
-from .utils import (
-    add_vtable_methods_for_type_cls,
-    get_parent_type,
-    inspect_dataclass_fields,
-    method_init,
-    prototype,
-)
+from . import utils
 
-ClsType = typing.TypeVar("ClsType")
+InputClsType = typing.TypeVar("InputClsType")
 
 
+@dataclass_transform(field_specifiers=(utils.field, utils.Field))
 def c_class(
     type_key: str,
     init: bool = True,
-) -> Callable[[type[ClsType]], type[ClsType]]:
-    def decorator(super_type_cls: type[ClsType]) -> type[ClsType]:
-        @functools.wraps(super_type_cls, updated=())
-        class type_cls(super_type_cls):  # type: ignore[valid-type,misc]
-            __slots__ = ()
-
+) -> Callable[[type[InputClsType]], type[InputClsType]]:
+    def decorator(super_type_cls: type[InputClsType]) -> type[InputClsType]:
         # Step 1. Retrieve `type_info` from registry
+        parent_type_info: TypeInfo = utils.get_parent_type(super_type_cls)._mlc_type_info  # type: ignore[attr-defined]
         type_info: TypeInfo = type_key2py_type_info(type_key)
-        parent_type_info: TypeInfo = get_parent_type(super_type_cls)._mlc_type_info  # type: ignore[attr-defined]
-
         if type_info.type_cls is not None:
             raise ValueError(f"Type is already registered: {type_key}")
-        _, d_fields = inspect_dataclass_fields(type_key, type_cls, parent_type_info, frozen=False)
-        type_info.type_cls = type_cls
-        type_info.d_fields = tuple(d_fields)
 
-        # Step 2. Check if all fields are exposed as type annotations
+        # Step 2. Reflect all the fields of the type
+        _, d_fields, _ = utils.inspect_dataclass_fields(
+            super_type_cls,
+            parent_type_info,
+            frozen=False,
+        )
+        type_info.d_fields = tuple(d_fields)
+        # Check if all fields are exposed as type annotations
         _check_c_class(super_type_cls, type_info)
 
-        # Step 3. Attach fields
-        setattr(type_cls, "_mlc_type_info", type_info)
-        for field in type_info.fields:
-            attach_field(
-                cls=type_cls,
-                name=field.name,
-                getter=field.getter,
-                setter=field.setter,
-                frozen=field.frozen,
-            )
-
         # Step 4. Attach methods
+        fn_init: Callable[..., None] | None = None
         if init:
-            attach_method(
-                parent_cls=super_type_cls,
-                cls=type_cls,
-                name="__init__",
-                method=method_init(super_type_cls, d_fields),
-                check_exists=True,
-            )
-        add_vtable_methods_for_type_cls(super_type_cls, type_index=type_info.type_index)
+            fn_init = utils.method_init(super_type_cls, d_fields)
+        else:
+            fn_init = None
+        # Step 5. Create the proxy class with the fields as properties
+        type_cls: type[InputClsType] = utils.create_type_class(
+            cls=super_type_cls,
+            type_info=type_info,
+            methods={
+                "__init__": fn_init,
+            },
+        )
         return type_cls
 
     return decorator
 
 
 def _check_c_class(
-    type_cls: type[ClsType],
+    type_cls: type[InputClsType],
     type_info: TypeInfo,
 ) -> None:
     type_hints = typing.get_type_hints(type_cls)
@@ -117,5 +106,5 @@ def _check_c_class(
     if warned:
         warnings.warn(
             f"One or multiple warnings in `{type_cls.__module__}.{type_cls.__qualname__}`. Its prototype is:\n"
-            + prototype(type_info, lang="py")
+            + utils.prototype(type_info, lang="py")
         )

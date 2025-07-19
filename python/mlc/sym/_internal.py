@@ -6,20 +6,20 @@ import contextlib
 from collections.abc import Generator
 
 import mlc.dataclasses as mlcd
-from mlc.core import Func, Object
+from mlc.core import Func
 
 from .analyzer import Analyzer
 from .expr import Expr, Var, const
 
 
 @mlcd.c_class("mlc.sym.ConstIntBound")
-class ConstIntBound(Object):
+class ConstIntBound:
     min_value: int
     max_value: int
 
 
 @mlcd.c_class("mlc.sym.IntervalSet", init=False)
-class IntervalSet(Object):
+class IntervalSet:
     min_value: Expr
     max_value: Expr
 
@@ -33,11 +33,11 @@ class IntervalSet(Object):
         if isinstance(max_value, int):
             assert isinstance(min_value, Expr)
             max_value = const(min_value.dtype, max_value)
-        self._mlc_init(min_value, max_value)
+        self._mlc_init(min_value, max_value)  # type: ignore[attr-defined]
 
 
 @mlcd.c_class("mlc.sym.ModularSet")
-class ModularSet(Object):
+class ModularSet:
     coeff: int
     base: int
 
